@@ -1,0 +1,641 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.loading-text {
+	display: inline-flex;
+}
+
+.loading-letter {
+	display: inline-block;
+	animation: textJump 1.2s ease-in-out infinite;
+}
+
+@keyframes textJump {
+	0%,
+	80% {
+		transform: translateY(0);
+	}
+	40% {
+		transform: translateY(-5px);
+	}
+	100% {
+		transform: translateY(0);
+	}
+}
+/* EduNotes Design System - Clean, Professional, Educational */
+@layer base {
+	html {
+		scroll-behavior: smooth;
+		scroll-margin: 50px;
+	}
+
+	:root {
+		/* Core Colors */
+		--background: 210 20% 98%;
+		--foreground: 220 25% 10%;
+
+		--card: 0 0% 100%;
+		--card-foreground: 220 25% 10%;
+
+		--popover: 0 0% 100%;
+		--popover-foreground: 220 25% 10%;
+
+		/* Primary - Educational Blue */
+		--primary: 217 91% 50%;
+		--primary-foreground: 0 0% 100%;
+
+		/* Secondary - Soft Gray */
+		--secondary: 220 14% 96%;
+		--secondary-foreground: 220 25% 25%;
+
+		/* Muted */
+		--muted: 220 14% 96%;
+		--muted-foreground: 220 9% 46%;
+
+		/* Accent - Warm accent */
+		--accent: 217 91% 95%;
+		--accent-foreground: 217 91% 40%;
+
+		/* Semantic Colors */
+		--destructive: 0 84% 60%;
+		--destructive-foreground: 0 0% 100%;
+
+		/* Free badge - Success Green */
+		--success: 142 76% 36%;
+		--success-foreground: 0 0% 100%;
+
+		/* Paid badge - Warm Amber */
+		--warning: 38 92% 50%;
+		--warning-foreground: 0 0% 100%;
+
+		/* Borders & Inputs */
+		--border: 220 13% 91%;
+		--input: 220 13% 91%;
+		--ring: 217 91% 50%;
+
+		--radius: 0.75rem;
+
+		/* Sidebar */
+		--sidebar-background: 220 25% 10%;
+		--sidebar-foreground: 220 14% 96%;
+		--sidebar-primary: 217 91% 60%;
+		--sidebar-primary-foreground: 0 0% 100%;
+		--sidebar-accent: 220 25% 18%;
+		--sidebar-accent-foreground: 220 14% 96%;
+		--sidebar-border: 220 25% 20%;
+		--sidebar-ring: 217 91% 60%;
+
+		/* Custom Gradients */
+		--gradient-hero: linear-gradient(
+			135deg,
+			hsl(217 91% 50%) 0%,
+			hsl(200 85% 55%) 100%
+		);
+		--gradient-card: linear-gradient(
+			180deg,
+			hsl(0 0% 100%) 0%,
+			hsl(220 14% 98%) 100%
+		);
+		--gradient-success: linear-gradient(
+			135deg,
+			hsl(142 76% 36%) 0%,
+			hsl(142 72% 42%) 100%
+		);
+		--gradient-warning: linear-gradient(
+			135deg,
+			hsl(38 92% 50%) 0%,
+			hsl(32 95% 55%) 100%
+		);
+
+		/* Shadows */
+		--shadow-sm: 0 1px 2px 0 hsl(220 25% 10% / 0.05);
+		--shadow-md:
+			0 4px 6px -1px hsl(220 25% 10% / 0.08),
+			0 2px 4px -2px hsl(220 25% 10% / 0.05);
+		--shadow-lg:
+			0 10px 15px -3px hsl(220 25% 10% / 0.1),
+			0 4px 6px -4px hsl(220 25% 10% / 0.05);
+		--shadow-card:
+			0 2px 8px -2px hsl(220 25% 10% / 0.08), 0 0 0 1px hsl(220 13% 91% / 0.5);
+		--shadow-card-hover:
+			0 8px 25px -5px hsl(217 91% 50% / 0.15), 0 0 0 1px hsl(217 91% 50% / 0.1);
+	}
+
+	.dark {
+		--background: 220 25% 6%;
+		--foreground: 220 14% 96%;
+
+		--card: 220 25% 10%;
+		--card-foreground: 220 14% 96%;
+
+		--popover: 220 25% 10%;
+		--popover-foreground: 220 14% 96%;
+
+		--primary: 217 91% 60%;
+		--primary-foreground: 220 25% 6%;
+
+		--secondary: 220 25% 15%;
+		--secondary-foreground: 220 14% 96%;
+
+		--muted: 220 25% 15%;
+		--muted-foreground: 220 14% 65%;
+
+		--accent: 220 25% 18%;
+		--accent-foreground: 220 14% 96%;
+
+		--destructive: 0 62% 50%;
+		--destructive-foreground: 0 0% 100%;
+
+		--success: 142 72% 42%;
+		--success-foreground: 0 0% 100%;
+
+		--warning: 38 92% 55%;
+		--warning-foreground: 0 0% 100%;
+
+		--border: 0 0% 100%;
+		--input: 0 0% 100%;
+		--ring: 217 91% 60%;
+
+		--sidebar-background: 220 25% 6%;
+		--sidebar-foreground: 220 14% 96%;
+		--sidebar-primary: 217 91% 60%;
+		--sidebar-primary-foreground: 220 25% 6%;
+		--sidebar-accent: 220 25% 12%;
+		--sidebar-accent-foreground: 220 14% 96%;
+		--sidebar-border: 220 25% 15%;
+		--sidebar-ring: 217 91% 60%;
+	}
+}
+
+@layer base {
+	* {
+		@apply border-border;
+	}
+
+	body {
+		@apply bg-background text-foreground;
+	}
+}
+
+.high-contrast {
+	--background: 0 0% 100%;
+	--foreground: 0 0% 0%;
+	--card: 0 0% 97%;
+	--card-foreground: 0 0% 0%;
+	--popover: 0 0% 100%;
+	--popover-foreground: 0 0% 0%;
+	--primary: 217 100% 40%;
+	--primary-foreground: 0 0% 100%;
+	--secondary: 0 0% 90%;
+	--secondary-foreground: 0 0% 0%;
+	--muted: 0 0% 90%;
+	--muted-foreground: 0 0% 20%;
+	--accent: 0 0% 90%;
+	--accent-foreground: 0 0% 0%;
+	--border: 0 0% 40%;
+	--input: 0 0% 40%;
+	--ring: 0 0% 0%;
+}
+
+.high-contrast.dark {
+	--background: 0 0% 0%;
+	--foreground: 0 0% 100%;
+	--card: 0 0% 10%;
+	--card-foreground: 0 0% 100%;
+	--popover: 0 0% 10%;
+	--popover-foreground: 0 0% 100%;
+	--primary: 217 100% 70%;
+	--primary-foreground: 0 0% 0%;
+	--secondary: 0 0% 20%;
+	--secondary-foreground: 0 0% 100%;
+	--muted: 0 0% 20%;
+	--muted-foreground: 0 0% 80%;
+	--accent: 0 0% 20%;
+	--accent-foreground: 0 0% 100%;
+	--border: 0 0% 60%;
+	--input: 0 0% 60%;
+	--ring: 0 0% 100%;
+}
+
+.dyslexia-friendly,
+.dyslexia-friendly * {
+	font-family: "Atkinson Hyperlegible", "Lexend", sans-serif !important;
+}
+/* Colorblind Types */
+/* Protanomaly - Red-weak */
+.colorblind-protanomaly {
+	--primary: 211 100% 50%;
+	--primary-foreground: 0 0% 100%;
+	--destructive: 35 90% 50%;
+	--destructive-foreground: 0 0% 100%;
+	--success: 187 100% 42%;
+	--success-foreground: 0 0% 100%;
+	--warning: 50 100% 50%;
+	--warning-foreground: 0 0% 0%;
+	--accent: 211 40% 92%;
+	--accent-foreground: 220 30% 15%;
+	--ring: 211 100% 50%;
+	--gradient-hero: linear-gradient(135deg, hsl(211 100% 50%) 0%, hsl(187 100% 42%) 100%);
+	--gradient-success: linear-gradient(135deg, hsl(187 100% 42%) 0%, hsl(187 90% 48%) 100%);
+	--gradient-warning: linear-gradient(135deg, hsl(50 100% 50%) 0%, hsl(48 95% 55%) 100%);
+	--chart-1: 211 70% 50%;
+	--chart-2: 187 90% 50%;
+	--chart-3: 50 80% 55%;
+	--chart-4: 280 60% 55%;
+	--chart-5: 0 0% 45%;
+}
+.colorblind-protanomaly.dark {
+	--primary: 211 100% 65%;
+	--primary-foreground: 220 30% 10%;
+	--destructive: 35 90% 60%;
+	--destructive-foreground: 0 0% 0%;
+	--success: 187 100% 55%;
+	--success-foreground: 0 0% 0%;
+	--warning: 50 100% 60%;
+	--warning-foreground: 0 0% 0%;
+	--accent: 220 20% 18%;
+	--accent-foreground: 0 0% 100%;
+	--ring: 211 100% 65%;
+	--chart-1: 211 100% 70%;
+	--chart-2: 187 100% 65%;
+	--chart-3: 50 90% 70%;
+	--chart-4: 280 70% 70%;
+	--chart-5: 0 0% 75%;
+}
+
+/* Protanopia - Red-blind */
+.colorblind-protanopia {
+	--primary: 216 100% 42%;
+	--primary-foreground: 0 0% 100%;
+	--destructive: 38 92% 50%;
+	--destructive-foreground: 0 0% 100%;
+	--success: 186 100% 38%;
+	--success-foreground: 0 0% 100%;
+	--warning: 54 100% 62%;
+	--warning-foreground: 0 0% 0%;
+	--accent: 216 40% 92%;
+	--accent-foreground: 220 30% 15%;
+	--ring: 216 100% 42%;
+	--gradient-hero: linear-gradient(135deg, hsl(216 100% 42%) 0%, hsl(186 100% 38%) 100%);
+	--gradient-success: linear-gradient(135deg, hsl(186 100% 38%) 0%, hsl(186 90% 44%) 100%);
+	--gradient-warning: linear-gradient(135deg, hsl(54 100% 62%) 0%, hsl(52 95% 66%) 100%);
+	--chart-1: 216 70% 50%;
+	--chart-2: 186 90% 50%;
+	--chart-3: 54 80% 60%;
+	--chart-4: 280 60% 55%;
+	--chart-5: 0 0% 45%;
+}
+.colorblind-protanopia.dark {
+	--primary: 216 100% 65%;
+	--primary-foreground: 220 30% 10%;
+	--destructive: 38 92% 60%;
+	--destructive-foreground: 0 0% 0%;
+	--success: 186 100% 52%;
+	--success-foreground: 0 0% 0%;
+	--warning: 54 100% 70%;
+	--warning-foreground: 0 0% 0%;
+	--accent: 220 20% 18%;
+	--accent-foreground: 0 0% 100%;
+	--ring: 216 100% 65%;
+	--chart-1: 216 100% 70%;
+	--chart-2: 186 100% 65%;
+	--chart-3: 54 90% 75%;
+	--chart-4: 280 70% 70%;
+	--chart-5: 0 0% 75%;
+}
+
+/* Deuteranomaly - Green-weak */
+.colorblind-deuteranomaly {
+	--primary: 226 100% 58%;
+	--primary-foreground: 0 0% 100%;
+	--destructive: 30 100% 45%;
+	--destructive-foreground: 0 0% 100%;
+	--success: 172 100% 29%;
+	--success-foreground: 0 0% 100%;
+	--warning: 48 98% 60%;
+	--warning-foreground: 0 0% 0%;
+	--accent: 226 40% 92%;
+	--accent-foreground: 220 30% 15%;
+	--ring: 226 100% 58%;
+	--gradient-hero: linear-gradient(135deg, hsl(226 100% 58%) 0%, hsl(172 100% 29%) 100%);
+	--gradient-success: linear-gradient(135deg, hsl(172 100% 29%) 0%, hsl(172 90% 36%) 100%);
+	--gradient-warning: linear-gradient(135deg, hsl(48 98% 60%) 0%, hsl(46 95% 64%) 100%);
+	--chart-1: 226 70% 50%;
+	--chart-2: 172 90% 50%;
+	--chart-3: 48 80% 55%;
+	--chart-4: 280 60% 55%;
+	--chart-5: 0 0% 45%;
+}
+.colorblind-deuteranomaly.dark {
+	--primary: 226 100% 68%;
+	--primary-foreground: 220 30% 10%;
+	--destructive: 30 100% 58%;
+	--destructive-foreground: 0 0% 0%;
+	--success: 172 100% 42%;
+	--success-foreground: 0 0% 0%;
+	--warning: 48 98% 68%;
+	--warning-foreground: 0 0% 0%;
+	--accent: 220 20% 18%;
+	--accent-foreground: 0 0% 100%;
+	--ring: 226 100% 68%;
+	--chart-1: 226 100% 70%;
+	--chart-2: 172 100% 65%;
+	--chart-3: 48 90% 70%;
+	--chart-4: 280 70% 70%;
+	--chart-5: 0 0% 75%;
+}
+
+/* Deuteranopia - Green-blind */
+.colorblind-deuteranopia {
+	--primary: 211 80% 42%;
+	--primary-foreground: 0 0% 100%;
+	--destructive: 30 100% 45%;
+	--destructive-foreground: 0 0% 100%;
+	--success: 187 71% 50%;
+	--success-foreground: 0 0% 100%;
+	--warning: 38 95% 56%;
+	--warning-foreground: 0 0% 0%;
+	--accent: 211 40% 92%;
+	--accent-foreground: 220 30% 15%;
+	--ring: 211 80% 42%;
+	--gradient-hero: linear-gradient(135deg, hsl(211 80% 42%) 0%, hsl(187 71% 50%) 100%);
+	--gradient-success: linear-gradient(135deg, hsl(187 71% 50%) 0%, hsl(187 65% 56%) 100%);
+	--gradient-warning: linear-gradient(135deg, hsl(38 95% 56%) 0%, hsl(36 90% 60%) 100%);
+	--chart-1: 211 70% 50%;
+	--chart-2: 187 80% 50%;
+	--chart-3: 38 80% 55%;
+	--chart-4: 280 60% 55%;
+	--chart-5: 0 0% 45%;
+}
+.colorblind-deuteranopia.dark {
+	--primary: 211 80% 65%;
+	--primary-foreground: 220 30% 10%;
+	--destructive: 30 100% 58%;
+	--destructive-foreground: 0 0% 0%;
+	--success: 187 71% 62%;
+	--success-foreground: 0 0% 0%;
+	--warning: 38 95% 65%;
+	--warning-foreground: 0 0% 0%;
+	--accent: 220 20% 18%;
+	--accent-foreground: 0 0% 100%;
+	--ring: 211 80% 65%;
+	--chart-1: 211 100% 70%;
+	--chart-2: 187 100% 65%;
+	--chart-3: 38 90% 70%;
+	--chart-4: 280 70% 70%;
+	--chart-5: 0 0% 75%;
+}
+
+/* Tritanomaly - Blue-weak */
+.colorblind-tritanomaly {
+	--primary: 0 63% 50%;
+	--primary-foreground: 0 0% 100%;
+	--destructive: 336 76% 43%;
+	--destructive-foreground: 0 0% 100%;
+	--success: 124 44% 39%;
+	--success-foreground: 0 0% 100%;
+	--warning: 27 100% 47%;
+	--warning-foreground: 0 0% 100%;
+	--accent: 0 40% 92%;
+	--accent-foreground: 220 30% 15%;
+	--ring: 0 63% 50%;
+	--gradient-hero: linear-gradient(135deg, hsl(0 63% 50%) 0%, hsl(336 76% 43%) 100%);
+	--gradient-success: linear-gradient(135deg, hsl(124 44% 39%) 0%, hsl(124 40% 45%) 100%);
+	--gradient-warning: linear-gradient(135deg, hsl(27 100% 47%) 0%, hsl(25 95% 52%) 100%);
+	--chart-1: 0 70% 50%;
+	--chart-2: 336 80% 50%;
+	--chart-3: 124 50% 45%;
+	--chart-4: 27 80% 50%;
+	--chart-5: 0 0% 45%;
+}
+.colorblind-tritanomaly.dark {
+	--primary: 0 63% 65%;
+	--primary-foreground: 220 30% 10%;
+	--destructive: 336 76% 55%;
+	--destructive-foreground: 0 0% 0%;
+	--success: 124 44% 52%;
+	--success-foreground: 0 0% 0%;
+	--warning: 27 100% 58%;
+	--warning-foreground: 0 0% 0%;
+	--accent: 220 20% 18%;
+	--accent-foreground: 0 0% 100%;
+	--ring: 0 63% 65%;
+	--chart-1: 0 100% 70%;
+	--chart-2: 336 80% 65%;
+	--chart-3: 124 60% 60%;
+	--chart-4: 27 100% 65%;
+	--chart-5: 0 0% 75%;
+}
+
+/* Tritanopia - Blue-blind */
+.colorblind-tritanopia {
+	--primary: 0 68% 47%;
+	--primary-foreground: 0 0% 100%;
+	--destructive: 334 79% 38%;
+	--destructive-foreground: 0 0% 100%;
+	--success: 27 100% 47%;
+	--success-foreground: 0 0% 100%;
+	--warning: 0 0% 40%;
+	--warning-foreground: 0 0% 100%;
+	--accent: 0 40% 92%;
+	--accent-foreground: 220 30% 15%;
+	--ring: 0 68% 47%;
+	--gradient-hero: linear-gradient(135deg, hsl(0 68% 47%) 0%, hsl(27 100% 47%) 100%);
+	--gradient-success: linear-gradient(135deg, hsl(27 100% 47%) 0%, hsl(27 95% 53%) 100%);
+	--gradient-warning: linear-gradient(135deg, hsl(0 0% 40%) 0%, hsl(0 0% 48%) 100%);
+	--chart-1: 0 70% 50%;
+	--chart-2: 334 80% 50%;
+	--chart-3: 27 90% 50%;
+	--chart-4: 280 60% 55%;
+	--chart-5: 0 0% 45%;
+}
+.colorblind-tritanopia.dark {
+	--primary: 0 68% 65%;
+	--primary-foreground: 220 30% 10%;
+	--destructive: 334 79% 52%;
+	--destructive-foreground: 0 0% 0%;
+	--success: 27 100% 58%;
+	--success-foreground: 0 0% 0%;
+	--warning: 0 0% 60%;
+	--warning-foreground: 0 0% 0%;
+	--accent: 220 20% 18%;
+	--accent-foreground: 0 0% 100%;
+	--ring: 0 68% 65%;
+	--chart-1: 0 100% 70%;
+	--chart-2: 334 80% 65%;
+	--chart-3: 27 100% 65%;
+	--chart-4: 280 70% 70%;
+	--chart-5: 0 0% 75%;
+}
+
+/* Achromatopsia - Complete monochromacy */
+.colorblind-achromatopsia {
+	--primary: 0 0% 15%;
+	--primary-foreground: 0 0% 100%;
+	--destructive: 0 0% 35%;
+	--destructive-foreground: 0 0% 100%;
+	--success: 0 0% 50%;
+	--success-foreground: 0 0% 100%;
+	--warning: 0 0% 65%;
+	--warning-foreground: 0 0% 0%;
+	--accent: 0 0% 90%;
+	--accent-foreground: 0 0% 15%;
+	--ring: 0 0% 0%;
+	--gradient-hero: linear-gradient(135deg, hsl(0 0% 20%) 0%, hsl(0 0% 40%) 100%);
+	--gradient-success: linear-gradient(135deg, hsl(0 0% 50%) 0%, hsl(0 0% 56%) 100%);
+	--gradient-warning: linear-gradient(135deg, hsl(0 0% 65%) 0%, hsl(0 0% 70%) 100%);
+	--chart-1: 0 0% 30%;
+	--chart-2: 0 0% 45%;
+	--chart-3: 0 0% 55%;
+	--chart-4: 0 0% 65%;
+	--chart-5: 0 0% 80%;
+}
+.colorblind-achromatopsia.dark {
+	--primary: 0 0% 90%;
+	--primary-foreground: 0 0% 0%;
+	--destructive: 0 0% 75%;
+	--destructive-foreground: 0 0% 0%;
+	--success: 0 0% 60%;
+	--success-foreground: 0 0% 0%;
+	--warning: 0 0% 45%;
+	--warning-foreground: 0 0% 100%;
+	--accent: 0 0% 15%;
+	--accent-foreground: 0 0% 90%;
+	--ring: 0 0% 100%;
+	--chart-1: 0 0% 80%;
+	--chart-2: 0 0% 65%;
+	--chart-3: 0 0% 55%;
+	--chart-4: 0 0% 40%;
+	--chart-5: 0 0% 25%;
+}
+
+/* Achromatomaly - Partial monochromacy */
+.colorblind-achromatomaly {
+	--primary: 222 40% 20%;
+	--primary-foreground: 0 0% 100%;
+	--destructive: 0 30% 40%;
+	--destructive-foreground: 0 0% 100%;
+	--success: 120 20% 40%;
+	--success-foreground: 0 0% 100%;
+	--warning: 38 98% 53%;
+	--warning-foreground: 0 0% 0%;
+	--accent: 220 10% 92%;
+	--accent-foreground: 222 30% 15%;
+	--ring: 222 40% 20%;
+	--gradient-hero: linear-gradient(135deg, hsl(222 40% 20%) 0%, hsl(38 98% 53%) 100%);
+	--gradient-success: linear-gradient(135deg, hsl(120 20% 40%) 0%, hsl(120 18% 46%) 100%);
+	--gradient-warning: linear-gradient(135deg, hsl(38 98% 53%) 0%, hsl(36 95% 58%) 100%);
+	--chart-1: 222 40% 30%;
+	--chart-2: 120 30% 45%;
+	--chart-3: 38 80% 55%;
+	--chart-4: 280 30% 45%;
+	--chart-5: 0 0% 20%;
+}
+.colorblind-achromatomaly.dark {
+	--primary: 222 40% 75%;
+	--primary-foreground: 220 30% 10%;
+	--destructive: 0 30% 65%;
+	--destructive-foreground: 0 0% 0%;
+	--success: 120 20% 60%;
+	--success-foreground: 0 0% 0%;
+	--warning: 38 98% 65%;
+	--warning-foreground: 0 0% 0%;
+	--accent: 220 10% 15%;
+	--accent-foreground: 0 0% 100%;
+	--ring: 222 40% 75%;
+	--chart-1: 222 40% 70%;
+	--chart-2: 120 30% 65%;
+	--chart-3: 38 90% 70%;
+	--chart-4: 280 30% 65%;
+	--chart-5: 0 0% 80%;
+}
+
+/* Blue Cone Monochromacy - Rare cone disorder */
+.colorblind-blue-cone {
+	--primary: 211 80% 42%;
+	--primary-foreground: 0 0% 100%;
+	--destructive: 0 0% 25%;
+	--destructive-foreground: 0 0% 100%;
+	--success: 48 98% 60%;
+	--success-foreground: 0 0% 0%;
+	--warning: 0 0% 45%;
+	--warning-foreground: 0 0% 100%;
+	--accent: 211 40% 92%;
+	--accent-foreground: 220 30% 15%;
+	--ring: 211 80% 42%;
+	--gradient-hero: linear-gradient(135deg, hsl(211 80% 42%) 0%, hsl(48 98% 60%) 100%);
+	--gradient-success: linear-gradient(135deg, hsl(48 98% 60%) 0%, hsl(48 95% 65%) 100%);
+	--gradient-warning: linear-gradient(135deg, hsl(0 0% 45%) 0%, hsl(0 0% 52%) 100%);
+	--chart-1: 211 80% 50%;
+	--chart-2: 48 90% 55%;
+	--chart-3: 0 0% 35%;
+	--chart-4: 0 0% 55%;
+	--chart-5: 0 0% 70%;
+}
+.colorblind-blue-cone.dark {
+	--primary: 211 80% 65%;
+	--primary-foreground: 220 30% 10%;
+	--destructive: 0 0% 70%;
+	--destructive-foreground: 0 0% 0%;
+	--success: 48 98% 68%;
+	--success-foreground: 0 0% 0%;
+	--warning: 0 0% 55%;
+	--warning-foreground: 0 0% 0%;
+	--accent: 220 20% 18%;
+	--accent-foreground: 0 0% 100%;
+	--ring: 211 80% 65%;
+	--chart-1: 211 80% 70%;
+	--chart-2: 48 90% 70%;
+	--chart-3: 0 0% 65%;
+	--chart-4: 0 0% 50%;
+	--chart-5: 0 0% 35%;
+}
+
+/* Colorblind Image Filters */
+.colorblind-achromatopsia img,
+.colorblind-achromatopsia video {
+	filter: url(#cb-achromatopsia);
+}
+
+.colorblind-achromatomaly img,
+.colorblind-achromatomaly video {
+	filter: url(#cb-achromatomaly);
+}
+
+.colorblind-blue-cone img,
+.colorblind-blue-cone video {
+	filter: url(#cb-blue-cone);
+}
+
+.colorblind-protanopia img,
+.colorblind-protanopia video {
+	filter: url(#cb-protanopia);
+}
+
+.colorblind-deuteranopia img,
+.colorblind-deuteranopia video {
+	filter: url(#cb-deuteranopia);
+}
+
+.colorblind-tritanopia img,
+.colorblind-tritanopia video {
+	filter: url(#cb-tritanopia);
+}
+
+.colorblind-protanomaly img,
+.colorblind-protanomaly video {
+	filter: url(#cb-protanomaly);
+}
+
+.colorblind-deuteranomaly img,
+.colorblind-deuteranomaly video {
+	filter: url(#cb-deuteranomaly);
+}
+
+.colorblind-tritanomaly img,
+.colorblind-tritanomaly video {
+	filter: url(#cb-tritanomaly);
+}

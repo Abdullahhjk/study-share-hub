@@ -1,0 +1,395 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Link, useNavigate } from "react-router-dom";
+import {
+  LogIn,
+  LayoutDashboard,
+  LogOut,
+  Moon,
+  Sun,
+  ShoppingBag,
+  Menu,
+  LockKeyhole,
+  HelpCircle,
+  Shield,
+  FolderLock,
+  Bell,
+  Crown,
+  Settings,
+  ChevronDown,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type { User } from "@supabase/supabase-js";
+import { useTheme } from "next-themes";
+import { CURRENCY_STORAGE_KEY, SHOW_DROPDOWN_KEY, CURRENCY_EVENT, dispatchCurrencyEvent, currencyConfigs } from "@/lib/currency";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { RequestTracker } from "./dashboard/RequestTracker";
+import { SettingsDialog } from "./settings/SettingsDialog";
+import { Badge } from "./ui/badge";
+import { toast } from "sonner";
+
+type Profile = {
+  full_name: string | null;
+  avatar_url: string | null;
+};
+
+export function Header() {
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [currency, setCurrency] = useState(() => localStorage.getItem(CURRENCY_STORAGE_KEY) ?? "PKR");
+  const [showDropdown, setShowDropdown] = useState(() => localStorage.getItem(SHOW_DROPDOWN_KEY) === "true");
+  const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
+
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["header-unread-notifications", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      const { count } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .or(`user_id.eq.${user.id},user_id.is.null`)
+        .eq("is_read", false)
+        .eq("is_dismissed", false);
+      return count || 0;
+    },
+    enabled: !!user?.id,
+    refetchInterval: 30000,
+  });
+
+  useEffect(() => {
+    supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      setIsAdmin(false);
+      return;
+    }
+
+    supabase
+      .from("profiles")
+      .select("full_name, avatar_url")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        setProfile(data as unknown as Profile);
+      });
+
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle()
+      .then(({ data }) => {
+        setIsAdmin(!!data);
+      });
+  }, [user]);
+
+  useEffect(() => {
+    const handleCurrencyChange = () => {
+      setCurrency(localStorage.getItem(CURRENCY_STORAGE_KEY) ?? "PKR");
+      setShowDropdown(localStorage.getItem(SHOW_DROPDOWN_KEY) === "true");
+    };
+
+    window.addEventListener(CURRENCY_EVENT, handleCurrencyChange);
+    window.addEventListener("storage", handleCurrencyChange);
+
+    return () => {
+      window.removeEventListener(CURRENCY_EVENT, handleCurrencyChange);
+      window.removeEventListener("storage", handleCurrencyChange);
+    };
+  }, []);
+
+  const handleCurrencySelect = (code: string, config: any) => {
+    localStorage.setItem(CURRENCY_STORAGE_KEY, code);
+    toast.success("Currency updated", {
+      id: "currency-toast",
+      description: `${config.label} (${code}) is now active for all pricing`,
+    });
+    setCurrency(code);
+    dispatchCurrencyEvent();
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.clear();
+    window.location.reload();
+    navigate("/");
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  return (
+    <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+      <div className="container flex h-14 sm:h-16 items-center justify-between gap-1 px-2 sm:px-4">
+        <Link to="/" className="flex shrink-0 items-center gap-2">
+          <img src="/preview.png" alt="Logo" className="flex h-9 sm:h-10 w-9 sm:w-10 items-center justify-center rounded-lg" />
+          <span className="hidden sm:inline font-display text-lg font-semibold">
+            Scholar Share
+          </span>
+        </Link>
+
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+          {!user && <div><RequestTracker /></div>}
+          {(!user || showDropdown) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-9 sm:h-10 w-auto min-w-0 sm:w-[11rem] px-1.5 sm:px-2 flex items-center justify-between gap-1 text-xs sm:text-sm font-medium"
+                  title={`Currency: ${currency}`}
+                >
+                  <span className="flex items-center gap-1 sm:gap-2 truncate">
+                    <span className="w-5 sm:w-6 shrink-0 text-center text-muted-foreground">
+                      {currencyConfigs[currency].symbol}
+                    </span>
+                    <span className="hidden sm:inline flex-1 truncate">
+                      {currencyConfigs[currency].label}
+                    </span>
+                    <span className="sm:hidden font-semibold uppercase">
+                      {currency}
+                    </span>
+                  </span>
+
+                  <ChevronDown className="hidden sm:block h-3.5 w-3.5 opacity-70" />
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent
+                align="end"
+                className="w-[11rem] p-1"
+                sideOffset={6}
+              >
+                {Object.entries(currencyConfigs).map(([code, config]) => {
+                  const isActive = code === currency;
+
+                  return (
+                    <DropdownMenuItem
+                      key={code}
+                      onSelect={() => handleCurrencySelect(code, config)}
+                      className={[
+                        "h-10 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm",
+                        "cursor-pointer select-none outline-none transition-colors",
+                        "focus:bg-accent focus:text-accent-foreground",
+                        isActive
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "hover:bg-muted",
+                      ].join(" ")}
+                    >
+                      <span className="w-6 text-center text-muted-foreground">
+                        {config.symbol}
+                      </span>
+
+                      <span className="flex-1 truncate">
+                        {config.label}
+                      </span>
+
+                      <span className="w-4 text-right text-xs font-semibold">
+                        {isActive ? "✓" : ""}
+                      </span>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="h-8 w-8 relative"
+          >
+            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          </Button>
+
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className={`h-8 w-8 relative ${menuOpen && user && unreadCount > 0 ? "ring-2 ring-destructive" : ""}`}
+              >
+                <Menu className="h-4 w-4" />
+                {user && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end" className="w-56">
+              {user && (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      to={'/dashboard/?tab=settings'}
+                      className="flex items-center gap-3 px-2 py-2 h-auto w-full justify-start hover:bg-primary"
+                    >
+                      <img
+                        src={
+                          profile?.avatar_url
+                            ? profile.avatar_url
+                            : `https://ui-avatars.com/api/?name=${profile?.full_name}&background=random`
+                        }
+                        alt="Profile"
+                        className="h-8 w-8 rounded-full object-cover"
+                      />
+
+                      <div className="flex flex-col text-left">
+                        <span className="text-sm font-medium">
+                          {profile?.full_name ?? "User"}
+                        </span>
+
+                        <span className="text-xs text-muted-foreground">
+                          {user.email}
+                        </span>
+
+                        {isAdmin && (
+                          <Badge variant="secondary" className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1.5 mt-1">
+                            <Crown className="h-3.5 w-3.5" />
+                            Administrator
+                          </Badge>
+                        )}
+                      </div>
+
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+
+              {!user && (
+                <DropdownMenuItem asChild>
+                  <Link to="/my-orders" className="flex items-center gap-2">
+                    <ShoppingBag className="h-4 w-4" />
+                    My Orders
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              {user && (
+                <DropdownMenuItem asChild>
+                  <Link
+                    to="/reset-password"
+                    className="flex items-center gap-2"
+                  >
+                    <LockKeyhole className="h-4 w-4" />
+                    Reset Password
+                  </Link>
+                </DropdownMenuItem>
+              )}
+
+              {user && (
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard/?tab=notes" className="flex items-center gap-2">
+                    <LayoutDashboard className="h-4 w-4" />
+                    Dashboard
+                  </Link>
+                </DropdownMenuItem>
+              )}
+
+              {user && (
+                <DropdownMenuItem asChild>
+                  <Link to="/database-data" className="flex items-center gap-2">
+                    <FolderLock className="h-4 w-4" />
+                    Your Data
+                  </Link>
+                </DropdownMenuItem>
+              )}
+
+              {user && isAdmin && (
+                <DropdownMenuItem asChild>
+                  <Link to="/admin" className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Admin Dashboard
+                  </Link>
+                </DropdownMenuItem>
+              )}
+
+              {user && (
+                <DropdownMenuItem asChild>
+                  <Link
+                    to={isAdmin ? "/admin?tab=notifications" : "/dashboard?tab=notifications"}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Bell className="h-4 w-4" />
+                      Notifications
+                    </span>
+                    {unreadCount > 0 && (
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-destructive-foreground">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </Link>
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuItem asChild>
+                <Link to="/help" className="flex items-center gap-2">
+                  <HelpCircle className="h-4 w-4" />
+                  Help & Guide
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setSettingsOpen(true)}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
+              {user ? (
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="flex items-center gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem asChild>
+                  <Link to="/login" className="flex items-center gap-2">
+                    <LogIn className="h-4 w-4" />
+                    Teacher Login
+                  </Link>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+      <span className="block text-center p-2 border-t text-sm font-medium text-muted-foreground">
+        Multiple notes from the same teacher allowed; only one teacher per request.
+      </span>
+
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        user={user}
+      />
+    </header>
+  );
+}

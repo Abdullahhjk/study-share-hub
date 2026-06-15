@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /database-data
+Disallow: /download
+Disallow: /my-orders
+Disallow: /reset-password
+
+Sitemap: https://scholarshare.netlify.app/sitemap.xml

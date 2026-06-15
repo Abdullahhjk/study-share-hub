@@ -1,0 +1,32 @@
+project_id = "hrvjuntfnkcjfhiosssc"
+
+[functions.redeem-download-code]
+verify_jwt = false
+# JWT not required — codes are self-authenticating one-time tokens
+# Rate limiting is handled in-function
+
+[functions.admin-impersonate]
+verify_jwt = true
+
+[functions.admin-delete-user]
+verify_jwt = true
+
+[functions.cleanup-deleted-notes]
+verify_jwt = true
+
+[functions.image-preview-proxy]
+verify_jwt = false
+# Public proxy — no auth needed since <img> tags cannot send JWT
+
+[auth]
+
+
+# Rate limiting (configure via Supabase Dashboard → Auth → Rate Limits)
+# These are Supabase-managed; set via dashboard.
+# Recommended values:
+#  - Sign-up: 5 requests per hour per IP
+#  - Sign-in: 10 requests per minute per IP
+#  - Magic Link: 3 requests per hour per IP
+#  - Password Reset: 3 requests per hour per IP
+#  - Token Refresh: 30 requests per minute per IP
+#  - SMTP: 3 requests per minute per project
