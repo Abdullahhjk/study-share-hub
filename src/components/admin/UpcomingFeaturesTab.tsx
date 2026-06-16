@@ -2,9 +2,12 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { EditorView } from "@codemirror/view";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import CodeMirror from "@uiw/react-codemirror";
+import { json } from "@codemirror/lang-json";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -210,6 +213,7 @@ export default function UpcomingFeaturesTab() {
   const [jsonText, setJsonText] = useState("");
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [customInstructions, setCustomInstructions] = useState("");
   const [importJson, setImportJson] = useState("");
   const syncingRef = useRef(false);
 
@@ -292,6 +296,34 @@ export default function UpcomingFeaturesTab() {
     },
     onError: (err: any) =>
       toast({ title: "Import failed", description: err.message, variant: "destructive" }),
+  });
+
+  const enhanceMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("ai-enhance-notification", {
+        body: {
+          featureJson: JSON.parse(jsonText),
+          customInstructions: customInstructions || undefined,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      const enhanced = JSON.stringify(data, null, 2);
+      setJsonText(enhanced);
+      try {
+        const parsed = JSON.parse(enhanced);
+        syncingRef.current = true;
+        setForm(parsed);
+        setJsonError(null);
+        setTimeout(() => { syncingRef.current = false; }, 0);
+      } catch { /* ignore */ }
+      toast({ title: "Feature enhanced with AI" });
+    },
+    onError: (err: any) =>
+      toast({ title: "Enhancement failed", description: err.message, variant: "destructive" }),
   });
 
   function initForm(next: FeatureForm) {
@@ -678,21 +710,47 @@ export default function UpcomingFeaturesTab() {
   function jsonEditor() {
     return (
       <div className="space-y-2 py-2">
-        <div className="flex items-center justify-between">
-          <Label>JSON Editor</Label>
-          {jsonError && (
-            <span className="text-xs text-destructive font-medium">{jsonError}</span>
-          )}
-        </div>
-        <Textarea
+        <Label>JSON Editor</Label>
+        <CodeMirror
+          height="400px"
+          theme="dark"
           value={jsonText}
-          onChange={(e) => handleJsonChange(e.target.value)}
-          className="min-h-[300px] lg:min-h-[400px] font-mono text-xs leading-relaxed"
-          placeholder="{ ... }"
+          onChange={(value) => handleJsonChange(value ?? "")}
+          extensions={[json(), EditorView.lineWrapping]}
+          basicSetup={{
+            lineNumbers: true,
+            tabSize: 2,
+          }}
         />
+        {jsonError && (
+          <p className="text-xs text-destructive font-medium mt-1">{jsonError}</p>
+        )}
         <p className="text-[10px] text-muted-foreground">
           Edit the JSON directly. Valid JSON is automatically synced to the form.
         </p>
+        <div className="flex items-start gap-2 mt-2">
+          <Input
+            value={customInstructions}
+            onChange={(e) => setCustomInstructions(e.target.value)}
+            placeholder="Custom instructions for AI (optional)"
+            className="h-8 text-xs flex-1"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => enhanceMutation.mutate()}
+            disabled={!!jsonError || enhanceMutation.isPending}
+            className="gap-1.5 shrink-0"
+          >
+            {enhanceMutation.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            {enhanceMutation.isPending ? "Enhancing..." : "Enhance with Cohere"}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -753,7 +811,7 @@ export default function UpcomingFeaturesTab() {
                       <CardTitle className="text-sm font-semibold">{f.title}</CardTitle>
                       <div className="flex flex-wrap items-center gap-2 mt-1">
                         <Badge variant="outline" className="text-[10px]">{f.category}</Badge>
-                        <Badge variant="outline" className="text-[10px]">{f.status}</Badge>
+                        <Badge variant="outline" className="text-[10px]">{statusOptions.find((s) => s.value === f.status)?.label}</Badge>
                         {f.target_date && (
                           <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                             <Clock className="h-3 w-3" />
@@ -862,11 +920,17 @@ export default function UpcomingFeaturesTab() {
             </DialogDescription>
           </DialogHeader>
 
-          <Textarea
+          <CodeMirror
+            height="250px"
+            className="rounded-md border border-border"
+            theme="dark"
             value={importJson}
-            onChange={(e) => setImportJson(e.target.value)}
-            placeholder={`[\n  {\n    "title": "My Feature",\n    "category": "General",\n    "icon_name": "Rocket",\n    "target_date": "2026-07-15",\n    "status": "planned",\n    "description": [{ "type": "text", "content": "Description here" }]\n  }\n]`}
-            className="min-h-[200px] font-mono text-xs"
+            onChange={(value) => setImportJson(value ?? "")}
+            extensions={[json()]}
+            basicSetup={{
+              lineNumbers: true,
+              tabSize: 2,
+            }}
           />
 
           {importJson.trim() && (

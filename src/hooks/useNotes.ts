@@ -51,11 +51,11 @@ export function useCategories() {
 		queryFn: async () => {
 			const { data, error } = await supabase
 				.from("categories")
-				.select("*")
+				.select("*, subcategories(count)")
 				.order("name");
 
 			if (error) throw error;
-			return data as Category[];
+			return data as (Category & { subcategories: { count: number }[] })[];
 		},
 	});
 }
@@ -66,7 +66,7 @@ export function useSubcategories(categoryId?: string) {
 		queryFn: async () => {
 			let query = supabase
 				.from("subcategories")
-				.select("*, category:categories(*)")
+				.select("*, category:categories(*), notes(count)")
 				.order("name");
 
 			if (categoryId) {
@@ -75,7 +75,7 @@ export function useSubcategories(categoryId?: string) {
 
 			const { data, error } = await query;
 			if (error) throw error;
-			return data as (Subcategory & { category: Category })[];
+			return data as (Subcategory & { category: Category; notes: { count: number }[] })[];
 		},
 	});
 }

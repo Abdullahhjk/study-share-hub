@@ -41,6 +41,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
 import { useCurrency } from "@/hooks/useCurrency";
+import { proxyImageUrl } from "@/lib/image-proxy";
 
 type ProfileData = {
   id: string;
@@ -126,9 +127,18 @@ export default function YourData() {
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; type: "notes" | "avatar"; id?: string }>({ open: false, type: "notes" });
   const [selectedRequest, setSelectedRequest] = useState<RequestData | null>(null);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
+  const [receiptImgLoading, setReceiptImgLoading] = useState(true);
+  const [refundImgLoading, setRefundImgLoading] = useState(true);
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (selectedRequest) {
+      setReceiptImgLoading(true);
+      setRefundImgLoading(true);
+    }
+  }, [selectedRequest]);
 
   // Handle tab change with URL sync
   const handleTabChange = (value: string) => {
@@ -568,11 +578,11 @@ export default function YourData() {
                         Created: {format(new Date(note.created_at), "MMM d, yyyy")}
                       </p>
                       <div className="flex gap-2 mt-3">
-                        <Button variant="outline" size="sm" className="flex-1" onClick={() => window.open(note.file_url, "_blank")}>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => window.open(proxyImageUrl(note.file_url), "_blank")}>
                           <Eye className="h-3 w-3 mr-1" /> View
                         </Button>
                         <Button variant="outline" size="sm" asChild className="flex-1">
-                          <a href={note.file_url} download>
+                          <a href={proxyImageUrl(note.file_url)} download>
                             <Download className="h-3 w-3 mr-1" /> Download
                           </a>
                         </Button>
@@ -948,21 +958,30 @@ export default function YourData() {
                   <h4 className="font-semibold flex items-center gap-2 mb-4">
                     <DollarSign className="h-5 w-5" /> Payment Receipt
                   </h4>
-                  <a href={selectedRequest.receipt_image_url} target="_blank" rel="noopener noreferrer">
-                    <img
-                      src={selectedRequest.receipt_image_url}
-                      alt="Payment Receipt"
-                      className="w-full rounded-lg border max-h-[420px] object-contain"
-                    />
-                  </a>
+                  <div className="relative">
+                    {receiptImgLoading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-muted/30 rounded-lg">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      </div>
+                    )}
+                    <a href={proxyImageUrl(selectedRequest.receipt_image_url)} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={proxyImageUrl(selectedRequest.receipt_image_url)}
+                        alt="Payment Receipt"
+                        className="w-full rounded-lg border max-h-[420px] object-contain"
+                        onLoad={() => setReceiptImgLoading(false)}
+                        onError={() => setReceiptImgLoading(false)}
+                      />
+                    </a>
+                  </div>
                   <div className="flex gap-3 mt-4">
                     <Button variant="outline" asChild className="flex-1">
-                      <a href={selectedRequest.receipt_image_url} target="_blank" rel="noopener noreferrer">
+                      <a href={proxyImageUrl(selectedRequest.receipt_image_url)} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="mr-2 h-4 w-4" /> Open
                       </a>
                     </Button>
                     <Button variant="outline" asChild className="flex-1">
-                      <a href={selectedRequest.receipt_image_url} download>
+                      <a href={proxyImageUrl(selectedRequest.receipt_image_url)} download>
                         <Download className="mr-2 h-4 w-4" /> Download
                       </a>
                     </Button>
@@ -975,21 +994,30 @@ export default function YourData() {
                     <h4 className="font-semibold flex items-center gap-2 mb-4">
                       <DollarSign className="h-5 w-5" /> Refund Receipt
                     </h4>
-                    <a href={selectedRequest.refund_screenshot_url} target="_blank" rel="noopener noreferrer">
-                      <img
-                        src={selectedRequest.refund_screenshot_url}
-                        alt="Refund Receipt"
-                        className="w-full rounded-lg border max-h-[420px] object-contain"
-                      />
-                    </a>
+                    <div className="relative">
+                      {refundImgLoading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-muted/30 rounded-lg">
+                          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                      <a href={proxyImageUrl(selectedRequest.refund_screenshot_url)} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={proxyImageUrl(selectedRequest.refund_screenshot_url)}
+                          alt="Refund Receipt"
+                          className="w-full rounded-lg border max-h-[420px] object-contain"
+                          onLoad={() => setRefundImgLoading(false)}
+                          onError={() => setRefundImgLoading(false)}
+                        />
+                      </a>
+                    </div>
                     <div className="flex gap-3 mt-4">
                       <Button variant="outline" asChild className="flex-1">
-                        <a href={selectedRequest.refund_screenshot_url} target="_blank" rel="noopener noreferrer">
+                        <a href={proxyImageUrl(selectedRequest.refund_screenshot_url)} target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="mr-2 h-4 w-4" /> Open
                         </a>
                       </Button>
                       <Button variant="outline" asChild className="flex-1">
-                        <a href={selectedRequest.refund_screenshot_url} download>
+                        <a href={proxyImageUrl(selectedRequest.refund_screenshot_url)} download>
                           <Download className="mr-2 h-4 w-4" /> Download
                         </a>
                       </Button>

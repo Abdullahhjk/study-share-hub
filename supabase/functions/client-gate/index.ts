@@ -1,49 +1,99 @@
-// Client gate — checks if caller's IP or fingerprint is blocked.
-// Public endpoint (no JWT) — uses hashed identifiers only.
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
-async function sha256(input: string): Promise<string> {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
 
   try {
-    const { fingerprint, action } = await req.json().catch(() => ({}));
-    if (!fingerprint || typeof fingerprint !== 'string' || fingerprint.length > 256) {
-      return new Response(JSON.stringify({ error: 'invalid fingerprint' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing auth" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'unknown';
-    const salt = Deno.env.get('CLIENT_GATE_SALT') ?? 'lovable-scholar-share';
-    const ipHash = await sha256(salt + ':' + ip);
-    const fpHash = await sha256(salt + ':' + fingerprint);
+    const { title, message, template, subReason } = await req.json();
 
-    const sb = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
+    const COHERE_API_KEY = "AsM83I063fkfyqh4W6elRS0FxP71E7VdwxUlfZR6";
+    if (!COHERE_API_KEY) throw new Error("Missing COHERE_API_KEY");
 
-    const { data: blockRow } = await sb.rpc('is_client_blocked', { p_ip_hash: ipHash, p_fp_hash: fpHash });
-    const blocked = Array.isArray(blockRow) && blockRow.length > 0;
+    const userPrompt = `
+You are generating a high-quality admin notification for a SaaS platform.
 
-    if (!blocked) {
-      await sb.rpc('record_client_hit', {
-        p_ip_hash: ipHash, p_fp_hash: fpHash, p_action: (action ?? 'visit').slice(0, 64),
-      });
+Context:
+- Template Type: ${template || "Custom"}
+- Sub-reason: ${subReason || "n/a"}
+
+Input Draft:
+- Title: ${title || "(empty)"}
+- Message: ${message || "(empty)"}
+
+Requirements:
+- Rewrite and improve both the title and message.
+- Maintain the original intent and meaning.
+- Use clear, concise, professional language.
+- Make the notification sound trustworthy and polished.
+- Remove awkward phrasing, repetition, grammar mistakes, and filler.
+- Keep the tone platform-appropriate and user-friendly.
+- Make the title short, strong, and attention-grabbing.
+- Make the message structured, readable, and engaging.
+- Preserve important numbers, discounts, dates, rewards, or platform terms.
+- Do not use excessive hype, emojis, markdown, or marketing spam language.
+- Do not invent false information.
+- Return ONLY valid JSON.
+
+Output Format:
+{
+  "title": "Improved notification title",
+  "message": "Improved notification message"
+}
+`;
+
+    const resp = await fetch("https://api.cohere.com/v2/chat", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${COHERE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "command-a-03-2025",
+        messages: [
+          {
+            role: "system",
+            content:
+              'Return ONLY JSON: {"title":"...","message":"..."}',
+          },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+      }),
+    });
+
+    const data = await resp.json();
+
+    const text = data?.message?.content?.[0]?.text ?? "{}";
+
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      parsed = { title: "Error", message: "Invalid AI output" };
     }
 
-    return new Response(JSON.stringify({
-      blocked, reason: blocked ? blockRow[0].reason : null,
-    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    return new Response(JSON.stringify(parsed), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

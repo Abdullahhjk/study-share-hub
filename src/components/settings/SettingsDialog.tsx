@@ -427,7 +427,7 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
             >
               Cancel
             </Button>
-            <Button variant="outline" onClick={() => { reset(true); setTimeout(handleCloseNow, 1900) }} disabled={isSaving}>
+            <Button variant="outline" onClick={() => reset(false)} disabled={isSaving}>
               Reset Settings
             </Button>
             <Button onClick={handleSave} disabled={!isDirty || isSaving || isAutoDetecting} variant={!isDirty || isSaving || isAutoDetecting ? "ghost" : "default"}>

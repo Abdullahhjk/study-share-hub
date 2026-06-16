@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { useCurrency } from "@/hooks/useCurrency";
+import { validateRequestId, PATTERN_REGEX } from "@/lib/request-id-validator";
 import {
   Search,
   Clock,
@@ -110,10 +111,11 @@ export function RequestTracker() {
     enabled: !!request?.id,
   });
 
+  const validation = validateRequestId(requestId);
+
   const handleSearch = () => {
-    if (requestId.trim()) {
-      setSearchedId(requestId.trim());
-    }
+    const id = requestId.trim();
+    if (id) setSearchedId(id);
   };
 
   const getStatusInfo = (status: string) => {
@@ -206,15 +208,27 @@ export function RequestTracker() {
 
         <div className="space-y-4">
           <div className="flex gap-2">
-            <Input
-              placeholder="Enter your Request ID (e.g., REQ-XXXXXXXX-XXXX)"
-              value={requestId}
-              onChange={(e) => setRequestId(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            />
+            <div className="flex-1 space-y-3">
+              <Input
+                placeholder="Enter your Request ID (e.g., REQ_XXXXXXXX_XXXX)"
+                value={requestId}
+                onChange={(e) => setRequestId(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              />
+              {validation.hint && (
+                <p className="text-xs mt-1 text-muted-foreground font-mono">
+                  {validation.hint}
+                </p>
+              )}
+              {validation.error && (
+                <p className="text-xs mt-1 text-destructive font-mono">
+                  {validation.error}
+                </p>
+              )}
+            </div>
             <Button
               onClick={handleSearch}
-              disabled={!requestId.trim() || isLoading}
+              disabled={!PATTERN_REGEX.test(requestId) || isLoading || validation.hint}
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin inline-block" />

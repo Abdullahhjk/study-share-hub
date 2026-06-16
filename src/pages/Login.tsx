@@ -376,9 +376,13 @@ export default function Login() {
               </div>
 
               <div>
-                <p className="mb-3 text-center text-xs uppercase tracking-wide text-muted-foreground">
-                  Quick access
-                </p>
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-border" />
+                  <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">
+                    Quick Access
+                  </p>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
                 <GoogleButton onClick={() => handleOAuth("google")} disabled={!!oAuthLoading} />
               </div>
             </div>
@@ -437,6 +441,7 @@ export default function Login() {
                       <Field id="login-password" label="Password" error={loginForm.formState.errors.password?.message}>
                         <PasswordInput
                           id="login-password"
+                          placeholder="••••••••"
                           autoComplete="current-password"
                           tabIndex={activeTab === "login" ? 0 : -1}
                           {...loginForm.register("password")}
@@ -509,6 +514,7 @@ export default function Login() {
                       <Field id="signup-password" label="Password" error={signupForm.formState.errors.password?.message}>
                         <PasswordInput
                           id="signup-password"
+                          placeholder="••••••••"
                           autoComplete="new-password"
                           tabIndex={activeTab === "signup" ? 0 : -1}
                           {...signupForm.register("password")}

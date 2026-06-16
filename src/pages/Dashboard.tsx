@@ -311,7 +311,7 @@ export default function Dashboard() {
         return <TeacherAnalytics teacherId={user?.id} />;
       case "upload":
         return (
-          <div className="max-w-2xl">
+          <div className="max-w-full">
             {isPending || isDenied || isDeleted ? (
               <Alert className="border-warning bg-warning/10">
                 <Clock className="h-4 w-4 text-warning" />

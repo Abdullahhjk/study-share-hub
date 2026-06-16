@@ -3,27 +3,44 @@ import styled from "styled-components";
 import LoaderSVG from "@/animations/Book Loader.svg?react";
 
 const StyledWrapper = styled.div`
-  .screen {
-    position: relative;
-    overflow: hidden;
-  }
+.screen {
+  min-height: 100vh;
+  position: relative;
+  background: hsl(var(--background));
+}
 
-  .screen::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(
-      circle at top,
-      hsl(var(--primary) / 0.08),
-      transparent 70%
-    );
-  }
+.screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 32;
+
+  background: url("/favicon.png") center center / 180px 320px
+    no-repeat;
+
+  opacity: 0.15;
+}
+
+.screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background: radial-gradient(
+    circle at top,
+    hsl(var(--primary) / 0.08),
+    transparent 70%
+  );
+
+  pointer-events: none;
+}
 
   .glass {
     position: relative;
     overflow: hidden;
     border-radius: 24px;
     padding: 1px;
+    z-index: 10;
   }
 
   .glass::before {
@@ -163,8 +180,8 @@ function LoadingSteps() {
 export default function NotesLoading() {
   return (
     <StyledWrapper>
-      <div className="screen flex min-h-screen items-center justify-center bg-background px-6">
-        <div className="glass w-full max-w-sm">
+      <div className="screen flex min-h-screen items-center justify-center px-6">
+        <div className="relative z-10 glass w-full max-w-sm">
           <div className="glass-content">
             <div className="m-[1px] flex flex-col items-center rounded-[24px] bg-background px-10 py-12 text-center">
               <div className="flex h-[110px] w-[110px] items-center text-center justify-center">

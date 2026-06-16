@@ -41,6 +41,7 @@ import {
   FileUp,
   PlusCircle,
   Loader2,
+  CircleX,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -52,6 +53,7 @@ import { Footer } from "@/components/Footer";
 import { useCurrency } from "@/hooks/useCurrency";
 import { proxyImageUrl } from "@/lib/image-proxy";
 import { getStoredRequestIds, removeRequestId, addMultipleRequestIds } from "@/lib/student-request-storage";
+import { validateRequestId, PATTERN_REGEX } from "@/lib/request-id-validator";
 
 interface RequestData {
   refund_screenshot_url: string | URL;
@@ -105,6 +107,7 @@ export default function StudentDashboard() {
   }, [receiptPreviewUrl]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const manualValidation = validateRequestId(manualRequestId);
 
   useEffect(() => {
     setStoredIds(getStoredRequestIds());
@@ -176,6 +179,9 @@ export default function StudentDashboard() {
     enabled: !!requests && requests.length > 0,
   });
 
+  const validRequestIds = new Set(requests?.map((r) => r.request_id) || []);
+  const invalidIds = storedIds.filter((id) => !validRequestIds.has(id));
+
   const cancelMutation = useMutation({
     mutationFn: async (request: RequestData) => {
       if (request.status !== "pending")
@@ -239,7 +245,7 @@ export default function StudentDashboard() {
     return requiredHeaders.every(header => headers.includes(header));
   };
 
-  const parseCSV = (text: string): { requestIds: string[], isValid: boolean, error?: string } => {
+  const parseCSV = (text: string): { requestIds: string[], isValid: boolean, error?: string, warning?: string } => {
     try {
       const lines = text.split(/\r?\n/).filter(line => line.trim());
       if (lines.length < 2) {
@@ -259,14 +265,28 @@ export default function StudentDashboard() {
       const requestIdIndex = headers.indexOf("Request ID");
       const requestIds: string[] = [];
 
+      let invalidCount = 0;
+
       for (let i = 1; i < lines.length; i++) {
         const values = parseCSVLine(lines[i]);
         if (values.length > requestIdIndex) {
           const requestId = values[requestIdIndex].replace(/^"|"$/g, '').trim();
           if (requestId) {
-            requestIds.push(requestId);
+            if (PATTERN_REGEX.test(requestId)) {
+              requestIds.push(requestId);
+            } else {
+              invalidCount++;
+            }
           }
         }
+      }
+
+      if (invalidCount > 0) {
+        return {
+          requestIds,
+          isValid: true,
+          warning: `${invalidCount} row${invalidCount !== 1 ? 's' : ''} skipped due to invalid Request ID format.`
+        };
       }
 
       return { requestIds, isValid: true };
@@ -301,7 +321,7 @@ export default function StudentDashboard() {
     setIsImporting(true);
     try {
       const text = await file.text();
-      const { requestIds, isValid, error } = parseCSV(text);
+      const { requestIds, isValid, error, warning } = parseCSV(text);
 
       if (!isValid) {
         toast({
@@ -329,6 +349,14 @@ export default function StudentDashboard() {
         description: `Added ${newIds.length} new request${newIds.length !== 1 ? 's' : ''} from CSV.`,
       });
 
+      if (warning) {
+        toast({
+          title: "Warning",
+          description: warning,
+          variant: "destructive",
+        });
+      }
+
       return true;
     } catch (error) {
       toast({
@@ -343,7 +371,8 @@ export default function StudentDashboard() {
   };
 
   const handleManualAdd = () => {
-    if (!manualRequestId.trim()) {
+    const id = manualRequestId.trim();
+    if (!id) {
       toast({
         title: "Error",
         description: "Please enter a Request ID.",
@@ -352,14 +381,16 @@ export default function StudentDashboard() {
       return;
     }
 
-    const newIds = addMultipleRequestIds([manualRequestId.trim()]);
+    if (!PATTERN_REGEX.test(id)) return;
+
+    const newIds = addMultipleRequestIds([id]);
     setStoredIds(getStoredRequestIds());
     setManualRequestId("");
 
     if (newIds.length > 0) {
       toast({
         title: "Request Added",
-        description: `Request ${manualRequestId} has been added to your history.`,
+        description: `Request ${id} has been added to your history.`,
       });
     } else {
       toast({
@@ -488,7 +519,7 @@ export default function StudentDashboard() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : !requests || requests.length === 0 ? (
+        ) : !requests || (requests.length === 0 && invalidIds.length === 0) ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Package className="h-12 w-12 text-muted-foreground mb-4" />
@@ -503,7 +534,9 @@ export default function StudentDashboard() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-5">
+          <>
+            {requests.length > 0 && (
+            <div className="space-y-5">
             {requests.map((request) => {
               const isRejectedOrRefunded =
                 (request.status === "rejected" ||
@@ -780,10 +813,38 @@ export default function StudentDashboard() {
               );
             })}
           </div>
+            )}
+
+            {invalidIds.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Unavailable Requests</h3>
+                {invalidIds.map((id) => (
+                  <Card key={id} className="border-destructive/40">
+                    <CardContent className="flex items-center justify-between py-4">
+                      <div className="space-y-1">
+                        <p className="font-mono text-sm">{id}</p>
+                        <p className="text-sm text-muted-foreground">
+                          This request is no longer available or doesn't exist.
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveFromHistory(id)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Remove
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         {/* Refresh & Download & Import */}
-        <div className="my-6 grid grid-cols-1 sm:grid-cols-3 justify-center gap-2">
+        <div className="my-6 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 justify-center gap-2">
           {storedIds.length > 0 && (
             <>
               <Button variant="outline" onClick={() => refetch()}>
@@ -793,12 +854,18 @@ export default function StudentDashboard() {
               <Button variant="outline" onClick={handleDownloadRequests}>
                 <Download className="h-4 w-4 mr-2" />
                 Download Requests
-              </Button></>
+              </Button>
+              <Button variant="destructive" onClick={() => { localStorage.removeItem("student_request_ids"); refetch(); }}>
+                <CircleX className="h-4 w-4 mr-2" />
+                Clear Requests
+              </Button>
+            </>
           )}
           <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
             <Upload className="h-4 w-4 mr-2" />
             Import Requests
           </Button>
+
         </div>
         <Footer />
       </main>
@@ -943,7 +1010,7 @@ export default function StudentDashboard() {
                 <Label htmlFor="request-id">Request ID</Label>
                 <Input
                   id="request-id"
-                  placeholder="e.g., REQ-XXXXXXX-XXXX"
+                  placeholder="e.g., REQ_XXXXXXXX_XXXX"
                   value={manualRequestId}
                   onChange={(e) => setManualRequestId(e.target.value)}
                   onKeyPress={(e) => {
@@ -953,6 +1020,16 @@ export default function StudentDashboard() {
                     }
                   }}
                 />
+                {manualValidation.hint && (
+                  <p className="text-xs text-muted-foreground font-mono">
+                    {manualValidation.hint}
+                  </p>
+                )}
+                {manualValidation.error && (
+                  <p className="text-xs text-destructive font-mono">
+                    {manualValidation.error}
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Enter a single Request ID to add it to your history.
                 </p>
@@ -961,10 +1038,13 @@ export default function StudentDashboard() {
                 <Button variant="outline" onClick={() => setImportDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={() => {
-                  handleManualAdd();
-                  setImportDialogOpen(false);
-                }}>
+                <Button
+                  onClick={() => {
+                    handleManualAdd();
+                    setImportDialogOpen(false);
+                  }}
+                  disabled={!PATTERN_REGEX.test(manualRequestId)}
+                >
                   Add Request
                 </Button>
               </DialogFooter>
