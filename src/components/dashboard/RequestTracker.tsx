@@ -35,6 +35,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Link } from "react-router-dom";
 
 interface RequestData {
   id: string;
@@ -228,7 +229,7 @@ export function RequestTracker() {
             </div>
             <Button
               onClick={handleSearch}
-              disabled={!PATTERN_REGEX.test(requestId) || isLoading || validation.hint}
+              disabled={!PATTERN_REGEX.test(requestId) || isLoading || !!validation.hint}
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin inline-block" />
@@ -251,6 +252,26 @@ export function RequestTracker() {
                       No request found with ID "{searchedId}". Please check and
                       try again.
                     </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {searchedId && !isLoading && request && (
+            <Card className="border-success/30 bg-success/5">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="h-5 w-5 text-success" />
+                  <div>
+                    <Link to="/my-orders">
+                      <Button variant="outline" className="gap-2" onClick={() => { localStorage.setItem("student_request_ids", JSON.stringify([...JSON.parse(localStorage.getItem("student_request_ids") || "[]"), searchedId])) }}>
+                        <Search className="h-4 w-4" />
+                        <p className="hidden sm:inline">
+                          Go to My Orders for more details
+                        </p>
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               </CardContent>

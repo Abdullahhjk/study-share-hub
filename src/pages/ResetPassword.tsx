@@ -81,27 +81,39 @@ export default function ResetPassword() {
   const handleResetPassword = async (data: ResetData) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.updateUser({
         password: data.password,
       });
+
       if (error) throw error;
 
-      toast({
-        title: "Password updated!",
-        description: "Your password has been successfully reset.",
-      });
-
-      // Optional: sign out after reset for security
-      if (window.location.hash.includes("#profile")) {
-        navigate("/dashboard");
-        return;
+      // Update localStorage with user info for welcome message
+      if (user) {
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .single();
+        
+        localStorage.setItem("cred", JSON.stringify({
+          name: profile?.full_name || "",
+          email: user.email || ""
+        }));
       }
+
+      toast({
+        title: "Password updated successfully!",
+        description: "Your password has been reset.",
+      });
       await supabase.auth.signOut();
       navigate("/login");
-    } catch (error: any) {
+    } catch {
       toast({
-        title: "Failed to reset password",
-        description: error.message,
+        title: "Password reset failed",
+        description: "Could not reset your password. Please try again.",
         variant: "destructive",
       });
     } finally {

@@ -117,9 +117,8 @@ export default function UsersTab() {
       const requests = requestsRes.data || [];
       const completedRevenue = requests.filter(r => r.status === "completed").reduce((s, r) => s + (r.total_amount || 0), 0);
       const pendingRevenue = requests.filter(r => r.status === "pending").reduce((s, r) => s + (r.total_amount || 0), 0);
-      const notesPriceTotal = notes.filter(n => !n.is_free).reduce((s, n) => s + (n.price || 0), 0);
-      const gross = completedRevenue + notesPriceTotal;
-      return { totalNotes: notesRes.count || 0, totalRequests: requests.length, completedRevenue, pendingRevenue, notesPriceTotal, gross, platformCharge: gross * TAX_RATE, net: gross - gross * TAX_RATE, activityCount: logsRes.count || 0 };
+      const gross = completedRevenue;
+      return { totalNotes: notesRes.count || 0, totalRequests: requests.length, completedRevenue, pendingRevenue, gross, platformCharge: gross * TAX_RATE, net: gross - gross * TAX_RATE, activityCount: logsRes.count || 0 };
     },
     enabled: !!statsUser?.user_id,
   });
@@ -359,10 +358,9 @@ export default function UsersTab() {
               <MiniStat label="Requests" value={userStats.totalRequests} icon={<MessageSquare className="h-3.5 w-3.5" />} />
               <MiniStat label="Completed Revenue" value={formatPrice(userStats.completedRevenue)} icon={<DollarSign className="h-3.5 w-3.5 text-success" />} />
               <MiniStat label="Pending Revenue" value={formatPrice(userStats.pendingRevenue)} icon={<DollarSign className="h-3.5 w-3.5 text-warning" />} />
-              <MiniStat label="Notes Price Total" value={formatPrice(userStats.notesPriceTotal)} icon={<DollarSign className="h-3.5 w-3.5" />} />
               <MiniStat label="Gross Revenue" value={formatPrice(userStats.gross)} icon={<TrendingUp className="h-3.5 w-3.5" />} />
-              <MiniStat label="Platform Charge (15%)" value={formatPrice(Math.round(userStats.platformCharge))} icon={<DollarSign className="h-3.5 w-3.5 text-destructive" />} />
-              <MiniStat label="Net Earnings" value={formatPrice(Math.round(userStats.net))} icon={<TrendingUp className="h-3.5 w-3.5 text-primary" />} />
+              <MiniStat label="Platform Charge (15%)" value={formatPrice(userStats.platformCharge)} icon={<DollarSign className="h-3.5 w-3.5 text-destructive" />} />
+              <MiniStat label="Net Earnings" value={formatPrice(userStats.net)} icon={<TrendingUp className="h-3.5 w-3.5 text-primary" />} />
               <div className="col-span-2">
                 <MiniStat label="Activity Logs" value={userStats.activityCount} icon={<Activity className="h-3.5 w-3.5" />} />
               </div>

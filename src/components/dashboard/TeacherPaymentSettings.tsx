@@ -213,10 +213,10 @@ export function TeacherPaymentSettings({ teacherId }: Props) {
 
   return (
     <>
-      <Card className="mt-3">
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className="mt-3 overflow-hidden">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex flex-wrap items-center gap-2">
               <Banknote className="h-5 w-5" />
               Payment Methods
             </CardTitle>
@@ -224,10 +224,11 @@ export function TeacherPaymentSettings({ teacherId }: Props) {
               Manage bank accounts and wallets for receiving payments ({methods.length}/{MAX_METHODS})
             </CardDescription>
           </div>
+
           <Button
             variant={atLimit ? "destructive" : "outline"}
             size="sm"
-            className={cn("gap-1", atLimit && "cursor-not-allowed")}
+            className={cn("w-full sm:w-auto gap-1", atLimit && "cursor-not-allowed")}
             onClick={() => {
               if (!atLimit) {
                 setAddOpen(true);
@@ -245,7 +246,7 @@ export function TeacherPaymentSettings({ teacherId }: Props) {
           </Button>
         </CardHeader>
 
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-3 sm:px-6">
           {isLoading ? (
             <div className="flex flex-col items-center rounded-lg border border-dashed py-6 text-center">
               <div className="flex justify-center py-4">
@@ -262,36 +263,33 @@ export function TeacherPaymentSettings({ teacherId }: Props) {
               {methods.map((m) => {
                 const name = m.approved_bank?.bank_name ?? "Unknown";
                 const wallet = isMobileWallet(name);
+
                 return (
                   <div
                     key={m.bank_id}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors",
-                      m.is_preferred && "border-primary/30 bg-primary/5"
+                      "flex flex-col gap-3 rounded-lg border px-3 py-3 text-sm transition-colors sm:flex-row sm:items-center",
+                      m.is_preferred &&
+                      "border-primary bg-primary/5 ring-1 ring-primary/30"
                     )}
                   >
-                    {wallet ? (
-                      <Smartphone className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    ) : (
-                      <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    )}
+                    <div className="flex items-center gap-2">
+                      {wallet ? (
+                        <Smartphone className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      ) : (
+                        <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      )}
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="truncate font-medium">{name}</span>
-                        {m.is_preferred && (
-                          <Badge variant="default" className="h-5 gap-0.5 px-1.5 text-[10px]">
-                            <Star className="h-2.5 w-2.5 fill-current" />
-                            Preferred
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {m.account_holder_name} &middot; {m.account_number_or_iban}
-                      </p>
+                      <span className="font-medium truncate max-w-[180px]">
+                        {name}
+                      </span>
                     </div>
 
-                    <div className="flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground truncate sm:ml-2">
+                      {m.account_holder_name} · {m.account_number_or_iban}
+                    </p>
+
+                    <div className="flex items-center gap-1 sm:ml-auto">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -319,9 +317,7 @@ export function TeacherPaymentSettings({ teacherId }: Props) {
                             size="icon"
                             className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
                             title="Delete"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -334,16 +330,16 @@ export function TeacherPaymentSettings({ teacherId }: Props) {
                               This action cannot be undone. This will permanently delete this payment method.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
+
                           <AlertDialogFooter>
                             <AlertDialogCancel disabled={deleteMutation.isPending}>
                               Cancel
                             </AlertDialogCancel>
+
                             <AlertDialogAction
                               disabled={deleteMutation.isPending}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              onClick={() => {
-                                deleteMutation.mutate(m.bank_id);
-                              }}
+                              onClick={() => deleteMutation.mutate(m.bank_id)}
                             >
                               {deleteMutation.isPending ? "Deleting..." : "Delete"}
                             </AlertDialogAction>
@@ -367,7 +363,6 @@ export function TeacherPaymentSettings({ teacherId }: Props) {
         </CardContent>
       </Card>
 
-      {/* ── Add Dialog ──────────────────────────────── */}
       <Dialog
         open={addOpen}
         onOpenChange={(open) => {
@@ -401,7 +396,6 @@ export function TeacherPaymentSettings({ teacherId }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* ── Edit Dialog ─────────────────────────────── */}
       <Dialog
         open={!!editing}
         onOpenChange={(open) => {

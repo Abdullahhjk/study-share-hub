@@ -19,7 +19,7 @@ import {
 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, dataTagErrorSymbol } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { ClearDataDialog } from "./ClearDataDialog";
 import { TeacherPaymentSettings } from "./TeacherPaymentSettings";
@@ -144,6 +144,7 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
 
   const updateProfile = useMutation({
     mutationFn: async (data: ProfileFormData) => {
+      localStorage.setItem("cred", JSON.stringify({ "name": data.full_name || data.email }))
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -157,12 +158,9 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile", userId] });
       ActivityLogger.updateProfile(["full_name", "phone", "school_name"]);
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been saved successfully.",
-      });
     },
     onError: (error: any) => {
+      localStorage.setItem("cred", JSON.stringify({ "name": profile?.full_name || profile?.email }))
       toast({
         title: "Failed to update profile",
         description: error.message,
@@ -209,7 +207,7 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="overflow-hidden">
         <CardContent className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin" />
         </CardContent>
@@ -219,9 +217,9 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
 
   return (
     <>
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex flex-wrap items-center gap-2">
             <User2 className="h-5 w-5" />
             Profile Settings
           </CardTitle>
@@ -230,9 +228,9 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 px-4 sm:px-6">
           {/* Avatar Upload */}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
             <img
               src={
                 proxyImageUrl(profile?.avatar_url ?? null) ??
@@ -240,11 +238,11 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
                 }&background=random`
               }
               alt="Avatar"
-              className="h-20 w-20 rounded-full object-cover"
+              className="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-cover"
             />
             <label
               htmlFor="avatar-upload"
-              className="inline-flex items-center gap-2 px-4 py-2 border rounded-md cursor-pointer select-none"
+              className="inline-flex w-full sm:w-auto justify-center items-center gap-2 px-4 py-2 border rounded-md cursor-pointer select-none"
             >
               {uploading ? (
                 <Loader2 className="h-4 w-4 animate-spin inline-block" />
@@ -268,7 +266,7 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
             </label>
             <Button
               variant="default"
-              className="items-center"
+              className="w-full sm:w-auto items-center"
               onClick={() => setSettingsOpen(true)}
             >
               <Settings className="mr-2 h-4 w-4" />
@@ -278,7 +276,7 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
 
           {/* Profile Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="full_name">Full Name *</Label>
                 <Input
@@ -337,10 +335,10 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
               </div>
             </div>
 
-            <div className="grid lg:grid-cols-3 sm:grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Button
-                type="submit"
-                className="items-center"
+                type="button"
+                className="w-full gap-2"
                 disabled={!isDirty || updateProfile.isPending}
               >
                 {updateProfile.isPending ? (

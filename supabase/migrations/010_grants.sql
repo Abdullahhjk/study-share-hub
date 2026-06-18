@@ -24,6 +24,7 @@ GRANT ALL ON TABLE public.note_access_codes TO anon, authenticated, service_role
 GRANT ALL ON TABLE public.note_reports TO anon, authenticated, service_role;
 GRANT ALL ON TABLE public.note_requests TO anon, authenticated, service_role;
 GRANT ALL ON TABLE public.notes TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.payment_records TO anon, authenticated, service_role;
 GRANT ALL ON TABLE public.notifications TO anon, authenticated, service_role;
 GRANT ALL ON TABLE public.profiles TO anon, authenticated, service_role;
 GRANT ALL ON TABLE public.request_audit TO anon, authenticated, service_role;
@@ -70,6 +71,13 @@ GRANT ALL ON FUNCTION public.is_category_in_use(category_id uuid) TO anon, authe
 GRANT ALL ON FUNCTION public.is_subcategory_in_use(subcategory_id uuid) TO anon, authenticated, service_role;
 GRANT ALL ON FUNCTION public.is_client_blocked(p_ip_hash text, p_fp_hash text) TO anon, authenticated, service_role;
 GRANT ALL ON FUNCTION public.record_client_hit(p_ip_hash text, p_fp_hash text, p_action text) TO anon, authenticated, service_role;
+GRANT ALL ON FUNCTION public.get_teacher_outstanding_balance(p_teacher_id uuid) TO anon, authenticated, service_role;
+GRANT ALL ON FUNCTION public.generate_monthly_payment_record(p_teacher_id uuid, p_year integer, p_month integer) TO anon, authenticated, service_role;
+GRANT ALL ON FUNCTION public.record_teacher_payment(p_teacher_id uuid, p_year integer, p_month integer, p_amount numeric, p_method text, p_reference text, p_notes text) TO anon, authenticated, service_role;
+GRANT ALL ON FUNCTION public.submit_payment_proof(p_teacher_id uuid, p_year integer, p_month integer, p_proof_url text, p_proof_reference text) TO anon, authenticated, service_role;
+GRANT ALL ON FUNCTION public.verify_teacher_payment(p_record_id uuid, p_verified_by uuid, p_paid_amount numeric, p_reference_number text, p_notes text) TO anon, authenticated, service_role;
+GRANT ALL ON FUNCTION public.reject_payment_proof(p_record_id uuid, p_reason text) TO anon, authenticated, service_role;
+GRANT ALL ON FUNCTION public.get_teacher_overdue_months(p_teacher_id uuid) TO anon, authenticated, service_role;
 
 -- ============================================================
 -- Default privileges (future objects)

@@ -491,7 +491,7 @@ export type Database = {
           receipt_image_url: string
           refund_screenshot_url?: string | null
           rejection_reason?: string | null
-          request_id: string
+          request_id?: string
           request_token?: string
           status?: string
           student_contact: string
@@ -632,6 +632,129 @@ export type Database = {
           {
             foreignKeyName: "notifications_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_credentials: {
+        Row: {
+          account_holder: string | null
+          account_number: string | null
+          bank_name: string | null
+          created_at: string
+          iban: string | null
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          account_holder?: string | null
+          account_number?: string | null
+          bank_name?: string | null
+          created_at?: string
+          iban?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          account_holder?: string | null
+          account_number?: string | null
+          bank_name?: string | null
+          created_at?: string
+          iban?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_records: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          month: number
+          notes: string | null
+          paid_amount: number
+          paid_at: string | null
+          payment_method: string | null
+          proof_reference: string | null
+          proof_url: string | null
+          reference_number: string | null
+          rejection_reason: string | null
+          status: string
+          submitted_at: string | null
+          teacher_id: string
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+          year: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          month: number
+          notes?: string | null
+          paid_amount?: number
+          paid_at?: string | null
+          payment_method?: string | null
+          proof_reference?: string | null
+          proof_url?: string | null
+          reference_number?: string | null
+          rejection_reason?: string | null
+          status?: string
+          submitted_at?: string | null
+          teacher_id: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          year: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          month?: number
+          notes?: string | null
+          paid_amount?: number
+          paid_at?: string | null
+          payment_method?: string | null
+          proof_reference?: string | null
+          proof_url?: string | null
+          reference_number?: string | null
+          rejection_reason?: string | null
+          status?: string
+          submitted_at?: string | null
+          teacher_id?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_records_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_records_verified_by_fkey"
+            columns: ["verified_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1056,7 +1179,6 @@ export type Database = {
       }
     }
     Functions: {
-      _fire_edge_one_shot: { Args: { p_job_name: string }; Returns: undefined }
       cancel_student_request: {
         Args: { p_request_id: string }
         Returns: boolean
@@ -1101,6 +1223,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      generate_monthly_payment_record: {
+        Args: { p_month: number; p_teacher_id: string; p_year: number }
+        Returns: string
       }
       get_free_note_file_url: { Args: { p_note_id: string }; Returns: string }
       get_my_note_file_url: { Args: { p_note_id: string }; Returns: string }
@@ -1168,6 +1294,20 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_teacher_outstanding_balance: {
+        Args: { p_teacher_id: string }
+        Returns: number
+      }
+      get_teacher_overdue_months: {
+        Args: { p_teacher_id: string }
+        Returns: {
+          amount: number
+          days_overdue: number
+          month: number
+          record_id: string
+          year: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1218,11 +1358,47 @@ export type Database = {
         Args: { p_action: string; p_fp_hash: string; p_ip_hash: string }
         Returns: undefined
       }
+      record_teacher_payment: {
+        Args: {
+          p_amount: number
+          p_method?: string
+          p_month: number
+          p_notes?: string
+          p_reference?: string
+          p_teacher_id: string
+          p_year: number
+        }
+        Returns: string
+      }
+      reject_payment_proof: {
+        Args: { p_reason: string; p_record_id: string }
+        Returns: undefined
+      }
+      submit_payment_proof: {
+        Args: {
+          p_month: number
+          p_proof_reference?: string
+          p_proof_url?: string
+          p_teacher_id: string
+          p_year: number
+        }
+        Returns: string
+      }
       validate_access_code: {
         Args: { p_code: string }
         Returns: {
           teacher_id: string
         }[]
+      }
+      verify_teacher_payment: {
+        Args: {
+          p_notes?: string
+          p_paid_amount?: number
+          p_record_id: string
+          p_reference_number?: string
+          p_verified_by: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

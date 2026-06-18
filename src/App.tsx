@@ -70,7 +70,7 @@ function AppContent() {
 
     setTimeout(() => {
       toast.success("Welcome to Scholar Share", {
-        description: "Thanks for joining us while the platform continues to improve.",
+        description: "Thanks for joining us while the platform continues to improve. Please report any issues you encounter.",
         duration: 5000,
       });
     }, 250);
@@ -131,7 +131,11 @@ function AppContent() {
                     <li>• Some functionality may be temporarily unavailable.</li>
                     <li>• UI inconsistencies and bugs may occur.</li>
                     <li>• Report issues via Footer → Stay Connected → Feedback.</li>
+                    <li>• Please report any issues you encounter.</li>
                   </ul>
+                  <small className="text-muted-foreground">
+                    This app doesn't use cookies, but for this notice to work, we need to store a cookie to remember your preference.
+                  </small>
                 </div>
               </div>
 

@@ -38,6 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -66,6 +67,7 @@ type NoteData = {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  purged_at: string | null;
   subcategory?: { name: string; category?: { name: string } };
 };
 
@@ -124,7 +126,7 @@ export default function YourData() {
   const [user, setUser] = useState<any>(null);
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
   const [selectedAvatars, setSelectedAvatars] = useState<Set<string>>(new Set());
-  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; type: "notes" | "avatar"; id?: string }>({ open: false, type: "notes" });
+  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; type: "notes" | "avatar" | "forever"; id?: string; count?: number }>({ open: false, type: "notes" });
   const [selectedRequest, setSelectedRequest] = useState<RequestData | null>(null);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [receiptImgLoading, setReceiptImgLoading] = useState(true);
@@ -179,12 +181,14 @@ export default function YourData() {
         supabase
           .from("notes")
           .select("id", { count: "exact", head: true })
-          .eq("teacher_id", user?.id),
+          .eq("teacher_id", user?.id)
+          .is("purged_at", null),
         supabase
           .from("notes")
           .select("id", { count: "exact", head: true })
           .eq("teacher_id", user?.id)
-          .not("deleted_at", "is", null),
+          .not("deleted_at", "is", null)
+          .is("purged_at", null),
         supabase
           .from("note_requests")
           .select("status, total_amount")
@@ -216,6 +220,7 @@ export default function YourData() {
         .from("notes")
         .select("*, subcategory:subcategories(name, category:categories(name))")
         .eq("teacher_id", user?.id)
+        .is("purged_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as NoteData[];
@@ -231,6 +236,7 @@ export default function YourData() {
         .select("*, subcategory:subcategories(name, category:categories(name))")
         .eq("teacher_id", user?.id)
         .not("deleted_at", "is", null)
+        .is("purged_at", null)
         .order("deleted_at", { ascending: false });
       if (error) throw error;
       return (data || []) as NoteData[];
@@ -301,24 +307,18 @@ export default function YourData() {
 
   const permanentlyDeleteNotes = useMutation({
     mutationFn: async (noteIds: string[]) => {
-      for (const noteId of noteIds) {
-        const note = deletedNotes.find(n => n.id === noteId);
-        if (note?.file_url) {
-          const path = note.file_url.split("/notes/")[1];
-          if (path) await supabase.storage.from("notes").remove([path]);
-          if (note.preview_image_url) {
-            const previewPath = note.preview_image_url.split("/notes/previews/")[1];
-            if (previewPath) await supabase.storage.from("notes").remove([`previews/${previewPath}`]);
-          }
-        }
-        await supabase.from("notes").delete().eq("id", noteId);
-      }
+      const { error } = await supabase
+        .from("notes")
+        .update({ purged_at: new Date().toISOString() })
+        .in("id", noteIds);
+      if (error) throw error;
     },
     onSuccess: (_, noteIds) => {
       queryClient.invalidateQueries({ queryKey: ["user-deleted-notes", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["user-all-notes", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["user-data-stats", user?.id] });
       setSelectedNotes(new Set());
-      toast.success(`${noteIds.length} note(s) permanently deleted`);
+      toast.success(`${noteIds.length} note(s) removed from your view`);
     },
     onError: (e: any) => toast.error(e.message || "Failed to delete notes"),
   });
@@ -535,7 +535,7 @@ export default function YourData() {
                       </div>
                       <div className="p-4 rounded-lg bg-muted/50">
                         <p className="text-2xl font-bold text-destructive">{formatPrice(stats?.completedRequests * 0.15 || 0)}</p>
-                        <p className="text-xs text-muted-foreground">Amount Owed to Platfrom</p>
+                        <p className="text-xs text-muted-foreground">Amount Owed to Platform</p>
                       </div>
                     </div>
                   )}
@@ -824,6 +824,15 @@ export default function YourData() {
               </Card>
             ) : (
               <>
+                <Alert className="mb-4 border-muted bg-muted/30">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Deleted notes are recoverable for 30 days</AlertTitle>
+                  <AlertDescription>
+                    After 30 days, notes are auto-purged. "Delete Forever" removes them from your view immediately,
+                    but they remain in our system for <strong>15 days</strong> as per retention policy.
+                  </AlertDescription>
+                </Alert>
+
                 <div className="flex flex-wrap gap-2 mb-4">
                   <Button
                     variant="default"
@@ -835,7 +844,7 @@ export default function YourData() {
                   <Button
                     variant="destructive"
                     disabled={selectedNotes.size === 0 || permanentlyDeleteNotes.isPending}
-                    onClick={() => permanentlyDeleteNotes.mutate(Array.from(selectedNotes))}
+                    onClick={() => setConfirmDelete({ open: true, type: "forever", count: selectedNotes.size })}
                   >
                     <X className="h-4 w-4 mr-2" /> Delete Forever ({selectedNotes.size})
                   </Button>
@@ -845,7 +854,7 @@ export default function YourData() {
                   {deletedNotes.map((note) => {
                     const daysLeft = getDaysRemaining(note.deleted_at!);
                     return (
-                      <Card key={note.id} className="overflow-hidden">
+                      <Card key={note.id} className="overflow-hidden group">
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between gap-3 mb-3">
                             <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -863,7 +872,7 @@ export default function YourData() {
                               </div>
                             </div>
                             <Badge variant={daysLeft <= 7 ? "destructive" : "secondary"}>
-                              {daysLeft}d left
+                              {daysLeft} day{daysLeft !== 1 ? "s" : ""} left
                             </Badge>
                           </div>
 
@@ -913,27 +922,45 @@ export default function YourData() {
       <Dialog open={confirmDelete.open} onOpenChange={(open) => !open && setConfirmDelete({ open: false, type: "notes" })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Permanent Deletion</DialogTitle>
+            <DialogTitle>
+              {confirmDelete.type === "forever" ? "Delete Forever" : "Confirm Permanent Deletion"}
+            </DialogTitle>
             <DialogDescription>
-              {confirmDelete.type === "notes"
-                ? "This note will be permanently deleted and cannot be recovered."
-                : "This avatar will be permanently deleted from storage."}
+              {confirmDelete.type === "forever"
+                ? `${confirmDelete.count} note(s) will be removed from your view.`
+                : confirmDelete.type === "avatar"
+                  ? "This avatar will be permanently deleted from storage."
+                  : "This item will be permanently deleted and cannot be recovered."}
             </DialogDescription>
           </DialogHeader>
+
+          {confirmDelete.type === "forever" && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Retention Policy</AlertTitle>
+              <AlertDescription>
+                Deleted items remain in our system for <strong>15 days</strong> as per our data retention policy.
+                You will not be able to recover them after this action. Contact support if you need assistance within the retention period.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDelete({ open: false, type: "notes" })}>
               Cancel
             </Button>
             <Button
               variant="destructive"
-              onClick={() => {
-                if (confirmDelete.type === "avatar" && confirmDelete.id) {
+              onClick={async () => {
+                if (confirmDelete.type === "forever" && confirmDelete.count) {
+                  permanentlyDeleteNotes.mutate(Array.from(selectedNotes));
+                } else if (confirmDelete.type === "avatar" && confirmDelete.id) {
                   deleteAvatar.mutate(confirmDelete.id);
                 }
                 setConfirmDelete({ open: false, type: "notes" });
               }}
             >
-              Delete Permanently
+              {confirmDelete.type === "forever" ? "Yes, Delete Forever" : "Delete Permanently"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -941,120 +968,163 @@ export default function YourData() {
 
       {/* Request Receipt Dialog */}
       <Dialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-4xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="w-full max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
               <CreditCard className="h-5 w-5" />
               Request Details — {selectedRequest?.request_id}
             </DialogTitle>
-            <DialogDescription>Payment and refund documentation</DialogDescription>
+            <DialogDescription>
+              Payment and refund documentation
+            </DialogDescription>
           </DialogHeader>
 
           {selectedRequest && (
-            <div className="mt-6 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Payment Receipt */}
-                <div className="border rounded-xl p-5">
-                  <h4 className="font-semibold flex items-center gap-2 mb-4">
-                    <DollarSign className="h-5 w-5" /> Payment Receipt
+            <div className="mt-4 sm:mt-6 space-y-5 sm:space-y-6">
+              {/* layout */}
+              <div
+                className={`grid gap-4 sm:gap-6 ${selectedRequest.status === "refunded" &&
+                  selectedRequest.refund_screenshot_url
+                  ? "grid-cols-1 lg:grid-cols-2"
+                  : "grid-cols-1"
+                  }`}
+              >
+                {/* Payment */}
+                <div className="border rounded-xl p-3 sm:p-5">
+                  <h4 className="font-semibold flex items-center gap-2 mb-3 sm:mb-4 text-sm sm:text-base">
+                    <DollarSign className="h-5 w-5" />
+                    Payment Receipt
                   </h4>
+
                   <div className="relative">
                     {receiptImgLoading && (
                       <div className="absolute inset-0 flex items-center justify-center bg-muted/30 rounded-lg">
-                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                       </div>
                     )}
-                    <a href={proxyImageUrl(selectedRequest.receipt_image_url)} target="_blank" rel="noopener noreferrer">
-                      <img
-                        src={proxyImageUrl(selectedRequest.receipt_image_url)}
-                        alt="Payment Receipt"
-                        className="w-full rounded-lg border max-h-[420px] object-contain"
-                        onLoad={() => setReceiptImgLoading(false)}
-                        onError={() => setReceiptImgLoading(false)}
-                      />
-                    </a>
+
+                    <img
+                      src={proxyImageUrl(selectedRequest.receipt_image_url)}
+                      alt="Payment Receipt"
+                      className="w-full rounded-lg border max-h-[260px] sm:max-h-[420px] object-contain"
+                      onLoad={() => setReceiptImgLoading(false)}
+                      onError={() => setReceiptImgLoading(false)}
+                    />
                   </div>
-                  <div className="flex gap-3 mt-4">
-                    <Button variant="outline" asChild className="flex-1">
-                      <a href={proxyImageUrl(selectedRequest.receipt_image_url)} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="mr-2 h-4 w-4" /> Open
+
+                  <div className="flex flex-col sm:flex-row gap-2 mt-3 sm:mt-4">
+                    <Button variant="outline" asChild className="w-full sm:flex-1">
+                      <a
+                        href={proxyImageUrl(selectedRequest.receipt_image_url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Open
                       </a>
                     </Button>
-                    <Button variant="outline" asChild className="flex-1">
-                      <a href={proxyImageUrl(selectedRequest.receipt_image_url)} download>
-                        <Download className="mr-2 h-4 w-4" /> Download
+
+                    <Button variant="outline" asChild className="w-full sm:flex-1">
+                      <a
+                        href={proxyImageUrl(selectedRequest.receipt_image_url)}
+                        download
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download
                       </a>
                     </Button>
                   </div>
                 </div>
 
-                {/* Refund Receipt */}
-                {selectedRequest.status === "refunded" && selectedRequest.refund_screenshot_url && (
-                  <div className="border rounded-xl p-5">
-                    <h4 className="font-semibold flex items-center gap-2 mb-4">
-                      <DollarSign className="h-5 w-5" /> Refund Receipt
-                    </h4>
-                    <div className="relative">
-                      {refundImgLoading && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-muted/30 rounded-lg">
-                          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                        </div>
-                      )}
-                      <a href={proxyImageUrl(selectedRequest.refund_screenshot_url)} target="_blank" rel="noopener noreferrer">
+                {/* Refund */}
+                {selectedRequest.status === "refunded" &&
+                  selectedRequest.refund_screenshot_url && (
+                    <div className="border rounded-xl p-3 sm:p-5">
+                      <h4 className="font-semibold flex items-center gap-2 mb-3 sm:mb-4 text-sm sm:text-base">
+                        <DollarSign className="h-5 w-5" />
+                        Refund Receipt
+                      </h4>
+
+                      <div className="relative">
+                        {refundImgLoading && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-muted/30 rounded-lg">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                          </div>
+                        )}
+
                         <img
                           src={proxyImageUrl(selectedRequest.refund_screenshot_url)}
                           alt="Refund Receipt"
-                          className="w-full rounded-lg border max-h-[420px] object-contain"
+                          className="w-full rounded-lg border max-h-[260px] sm:max-h-[420px] object-contain"
                           onLoad={() => setRefundImgLoading(false)}
                           onError={() => setRefundImgLoading(false)}
                         />
-                      </a>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-2 mt-3 sm:mt-4">
+                        <Button variant="outline" asChild className="w-full sm:flex-1">
+                          <a
+                            href={proxyImageUrl(selectedRequest.refund_screenshot_url)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            Open
+                          </a>
+                        </Button>
+
+                        <Button variant="outline" asChild className="w-full sm:flex-1">
+                          <a
+                            href={proxyImageUrl(selectedRequest.refund_screenshot_url)}
+                            download
+                          >
+                            <Download className="mr-2 h-4 w-4" />
+                            Download
+                          </a>
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-3 mt-4">
-                      <Button variant="outline" asChild className="flex-1">
-                        <a href={proxyImageUrl(selectedRequest.refund_screenshot_url)} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="mr-2 h-4 w-4" /> Open
-                        </a>
-                      </Button>
-                      <Button variant="outline" asChild className="flex-1">
-                        <a href={proxyImageUrl(selectedRequest.refund_screenshot_url)} download>
-                          <Download className="mr-2 h-4 w-4" /> Download
-                        </a>
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                  )}
               </div>
 
-              {/* Additional Info */}
+              {/* Notes */}
               {selectedRequest.request_notes?.length > 0 && (
                 <div>
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <FileText className="h-4 w-4" /> Requested Notes
+                  <h4 className="font-medium mb-3 flex items-center gap-2 text-sm sm:text-base">
+                    <FileText className="h-4 w-4" />
+                    Requested Notes
                   </h4>
+
                   <div className="space-y-2">
                     {selectedRequest.request_notes.map((rn, i) => (
-                      <div key={i} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                      <div
+                        key={i}
+                        className="flex items-center gap-3 p-3 bg-muted rounded-lg"
+                      >
                         <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span>{rn.notes?.title}</span>
+                        <span className="text-sm">{rn.notes?.title}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
+              {/* Rejection */}
               {selectedRequest.rejection_reason && (
-                <div className="p-4 border border-destructive/30 bg-destructive/5 rounded-xl">
-                  <p className="font-medium text-destructive flex items-center gap-2 mb-2">
-                    <XCircle className="h-4 w-4" /> Rejection Reason
+                <div className="p-3 sm:p-4 border border-destructive/30 bg-destructive/5 rounded-xl">
+                  <p className="font-medium text-destructive flex items-center gap-2 mb-2 text-sm sm:text-base">
+                    <XCircle className="h-4 w-4" />
+                    Rejection Reason
                   </p>
-                  <p>{selectedRequest.rejection_reason}</p>
+                  <p className="text-sm sm:text-base">
+                    {selectedRequest.rejection_reason}
+                  </p>
                 </div>
               )}
             </div>
           )}
 
-          <DialogFooter className="mt-8">
+          <DialogFooter className="mt-4 sm:mt-6">
             <Button onClick={() => setReceiptDialogOpen(false)} className="w-full sm:w-auto">
               Close
             </Button>

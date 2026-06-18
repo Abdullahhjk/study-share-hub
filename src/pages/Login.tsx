@@ -255,6 +255,23 @@ export default function Login() {
       const { error } = await supabase.auth.signInWithPassword({ email: data.email, password: data.password });
       if (error) throw error;
       ActivityLogger.login();
+      try {
+        const { data: user } = await supabase.auth.getUser();
+        const { data: profile, error: profileError } = await supabase.from("profiles").select("full_name").eq("id", user?.user?.id).single();
+        if (profileError) throw profileError;
+        // Store both name and email for the welcome message
+        localStorage.setItem("cred", JSON.stringify({
+          name: profile?.full_name || "",
+          email: user?.user?.email || data.email
+        }));
+      } catch {
+        const { data: user } = await supabase.auth.getUser();
+        // Fallback: store email as well
+        localStorage.setItem("cred", JSON.stringify({
+          name: "",
+          email: user?.user?.email || data.email
+        }));
+      }
       navigate("/");
       window.location.reload();
     } catch {
@@ -274,6 +291,11 @@ export default function Login() {
       });
       if (error) throw error;
       ActivityLogger.signup();
+      // For signup, store both name and email
+      localStorage.setItem("cred", JSON.stringify({
+        name: data.fullName || "",
+        email: data.email
+      }));
       toast({ title: "Account created!", description: "Verify your email, then sign in to your teacher dashboard." });
       navigate("/dashboard");
     } catch {
@@ -401,17 +423,6 @@ export default function Login() {
                   <TabsTrigger value="signup">Create account</TabsTrigger>
                 </TabsList>
               </Tabs>
-
-              {/*
-                FIXED-HEIGHT CONTAINER.
-                Both panes live here simultaneously. The active one is
-                position:relative (drives height). The inactive one is
-                position:absolute (takes zero layout space) + visibility:hidden
-                (invisible, non-interactive, but still painted so its height
-                is always known — no reflow on tab switch).
-                minHeight = height of the taller pane (signup) so the card
-                never shrinks when switching to the shorter pane (login).
-              */}
               <div className="relative" style={{ minHeight: PANE_MIN_H }}>
 
                 {/* LOGIN pane */}

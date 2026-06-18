@@ -22,6 +22,7 @@ import {
   Bell,
   Flag,
   Loader2,
+  DollarSign,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UploadNoteForm } from "@/components/dashboard/UploadNoteForm";
@@ -35,6 +36,7 @@ import { TeacherApprovalPanel } from "@/components/dashboard/TeacherApprovalPane
 import { ActivityLogs } from "@/components/dashboard/ActivityLogs";
 import { TeacherReports } from "@/components/dashboard/TeacherReports";
 import { TeacherNotifications } from "@/components/dashboard/TeacherNotifications";
+import TeacherPayments from "@/components/dashboard/TeacherPayments";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -63,6 +65,7 @@ export default function Dashboard() {
     "reports",
     "approvals",
     "settings",
+    "payments",
   ]);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -284,6 +287,7 @@ export default function Dashboard() {
     { value: "reports", label: "Reports", icon: <Flag className="h-4 w-4" /> },
     { value: "approvals", label: "Approvals", icon: <UserCheck className="h-4 w-4" />, adminOnly: true },
     { value: "settings", label: "Settings", icon: <Settings className="h-4 w-4" /> },
+    { value: "payments", label: "Payments", icon: <DollarSign className="h-4 w-4" /> },
   ];
 
   const visibleTabs = tabs.filter((t) => !t.adminOnly || isAdmin);
@@ -349,6 +353,9 @@ export default function Dashboard() {
         return <TeacherReports teacherId={user?.id} />;
       case "approvals":
         return isAdmin ? <TeacherApprovalPanel /> : null;
+
+      case "payments":
+        return <TeacherPayments teacherId={user?.id} />;
 
       default:
         return null;

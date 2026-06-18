@@ -24,6 +24,7 @@ ALTER TABLE public.build_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.newsletter_subscribers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.deleted_avatars ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.upcoming_features ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payment_records ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- profiles
@@ -417,3 +418,22 @@ CREATE POLICY "Admins write upcoming"
   ON public.upcoming_features
   USING (public.has_role(auth.uid(), 'admin'::public.app_role))
   WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+-- ============================================================
+-- payment_records
+-- ============================================================
+CREATE POLICY "Admins read all payment_records"
+  ON public.payment_records FOR SELECT
+  USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+CREATE POLICY "Admins insert payment_records"
+  ON public.payment_records FOR INSERT
+  WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+CREATE POLICY "Admins update payment_records"
+  ON public.payment_records FOR UPDATE
+  USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+CREATE POLICY "Admins delete payment_records"
+  ON public.payment_records FOR DELETE
+  USING (public.has_role(auth.uid(), 'admin'::public.app_role));
