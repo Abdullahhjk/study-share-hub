@@ -7,9 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useCurrency } from "@/hooks/useCurrency";
 
+const borderColorMap: Record<string, string> = {
+  "text-success": "border-success",
+  "text-primary": "border-primary",
+  "text-warning": "border-warning",
+  "text-destructive": "border-destructive",
+};
+
 export function StatCard({ title, value, icon, sub, color }: { title: string; value: string | number; icon: React.ReactNode; sub?: string; color?: string }) {
+  const borderClass = color && borderColorMap[color] ? borderColorMap[color] : "border-muted";
   return (
-    <Card>
+    <Card className={`border-l-4 ${borderClass}`}>
       <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
         <CardTitle className="text-xs sm:text-sm font-medium">{title}</CardTitle>
         <span className="text-muted-foreground">{icon}</span>

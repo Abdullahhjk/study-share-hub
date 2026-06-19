@@ -320,7 +320,7 @@ const Index = () => {
       </main>
 
       {!cartHidden ? (
-        <div className="fixed bottom-14 right-4 z-50 flex flex-col items-end gap-2">
+        <div className="fixed bottom-14 left-4 z-50 flex flex-col items-end gap-2">
           <Card className="w-72 shadow-lg border-primary/20">
             <CardContent className="p-3">
               <div className="flex items-center justify-between mb-2">
@@ -382,7 +382,7 @@ const Index = () => {
                 <span className="font-medium">
                   Total:{" "}
                   {formatPrice(cart.reduce(
-                    (s, n) => s + Number(n.price),
+                    (s, n) => s + Number(n.price ?? 0),
                     0
                   ))}
                 </span>
@@ -408,7 +408,7 @@ const Index = () => {
       ) : (
         <Button
           onClick={() => setCartHidden(false)}
-          className="fixed bottom-12 right-5 z-50 h-14 w-14 rounded-full shadow-xl bg-primary text-primary-foreground hover:scale-105 active:scale-95 transition-all duration-200"
+          className="fixed bottom-12 left-5 z-50 h-14 w-14 rounded-full shadow-xl bg-primary text-primary-foreground hover:scale-105 active:scale-95 transition-all duration-200"
         >
           <div className="relative flex items-center justify-center">
             <ShoppingCart className="h-6 w-6" />

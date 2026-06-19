@@ -29,6 +29,7 @@ import {
   AlertCircle,
   ExternalLink,
   Loader2,
+  Shield,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -134,6 +135,21 @@ export default function YourData() {
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const { data: userRole } = useQuery({
+    queryKey: ["yourdata-role", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      return data?.role;
+    },
+    enabled: !!user?.id,
+  });
+
+  const isCoadmin = userRole === "coadmin";
 
   useEffect(() => {
     if (selectedRequest) {
@@ -435,21 +451,27 @@ export default function YourData() {
             <TabsTrigger value="profile" className="flex items-center gap-1 text-xs sm:text-sm">
               <User className="h-3.5 w-3.5" /> Profile
             </TabsTrigger>
-            <TabsTrigger value="notes" className="flex items-center gap-1 text-xs sm:text-sm">
-              <FileText className="h-3.5 w-3.5" /> Notes ({allNotes.length})
-            </TabsTrigger>
-            <TabsTrigger value="requests" className="flex items-center gap-1 text-xs sm:text-sm">
-              <CreditCard className="h-3.5 w-3.5" /> Requests ({allRequests.length})
-            </TabsTrigger>
+            {!isCoadmin && (
+              <TabsTrigger value="notes" className="flex items-center gap-1 text-xs sm:text-sm">
+                <FileText className="h-3.5 w-3.5" /> Notes ({allNotes.length})
+              </TabsTrigger>
+            )}
+            {!isCoadmin && (
+              <TabsTrigger value="requests" className="flex items-center gap-1 text-xs sm:text-sm">
+                <CreditCard className="h-3.5 w-3.5" /> Requests ({allRequests.length})
+              </TabsTrigger>
+            )}
             <TabsTrigger value="activity" className="flex items-center gap-1 text-xs sm:text-sm">
               <Activity className="h-3.5 w-3.5" /> Activity
             </TabsTrigger>
             <TabsTrigger value="avatars" className="flex items-center gap-1 text-xs sm:text-sm">
               <Image className="h-3.5 w-3.5" /> Avatars
             </TabsTrigger>
-            <TabsTrigger value="trash" className="flex items-center gap-1 text-xs sm:text-sm">
-              <Trash2 className="h-3.5 w-3.5" /> Trash ({deletedNotes.length})
-            </TabsTrigger>
+            {!isCoadmin && (
+              <TabsTrigger value="trash" className="flex items-center gap-1 text-xs sm:text-sm">
+                <Trash2 className="h-3.5 w-3.5" /> Trash ({deletedNotes.length})
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* PROFILE TAB */}
@@ -511,11 +533,37 @@ export default function YourData() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <History className="h-5 w-5" /> Quick Stats
+                    {isCoadmin ? <Shield className="h-5 w-5" /> : <History className="h-5 w-5" />}
+                    {isCoadmin ? "Account Info" : "Quick Stats"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {statsLoading ? (
+                  {isCoadmin ? (
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Shield className="h-5 w-5 text-primary" />
+                          <span className="font-semibold">Co-Admin Account</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          You have platform oversight with access to user management, categories, notifications, reports, and administrative tools.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-lg bg-muted/50">
+                          <p className="text-xs text-muted-foreground">Role</p>
+                          <p className="text-sm font-semibold flex items-center gap-1.5 mt-0.5">
+                            <Shield className="h-3.5 w-3.5 text-primary" />
+                            Co-Admin
+                          </p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-muted/50">
+                          <p className="text-xs text-muted-foreground">Account Type</p>
+                          <p className="text-sm font-semibold mt-0.5">Administrative</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : statsLoading ? (
                     <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
                   ) : (
                     <div className="grid grid-cols-2 gap-4">
@@ -552,7 +600,15 @@ export default function YourData() {
 
           {/* NOTES TAB */}
           <TabsContent value="notes">
-            {notesLoading ? (
+            {isCoadmin ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <Shield className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                  <h3 className="font-medium">Not available for co-admins</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Notes management is a teacher feature</p>
+                </CardContent>
+              </Card>
+            ) : notesLoading ? (
               <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
             ) : allNotes.length === 0 ? (
               <Card>
@@ -602,7 +658,15 @@ export default function YourData() {
 
           {/* REQUESTS TAB */}
           <TabsContent value="requests">
-            {requestsLoading ? (
+            {isCoadmin ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <Shield className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                  <h3 className="font-medium">Not available for co-admins</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Payment requests are a teacher feature</p>
+                </CardContent>
+              </Card>
+            ) : requestsLoading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin" />
               </div>
@@ -818,7 +882,15 @@ export default function YourData() {
 
           {/* TRASH TAB */}
           <TabsContent value="trash">
-            {trashLoading ? (
+            {isCoadmin ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <Shield className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                  <h3 className="font-medium">Not available for co-admins</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Note trash is a teacher feature</p>
+                </CardContent>
+              </Card>
+            ) : trashLoading ? (
               <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
             ) : deletedNotes.length === 0 ? (
               <Card>
@@ -884,7 +956,7 @@ export default function YourData() {
 
                           {note.preview_image_url && (
                             <img
-                              src={note.preview_image_url}
+                              src={proxyImageUrl(note.preview_image_url)}
                               alt={note.title}
                               className="w-full h-40 object-cover rounded-md mb-3"
                             />
@@ -899,7 +971,7 @@ export default function YourData() {
                               variant="outline"
                               size="sm"
                               className="flex-1"
-                              onClick={() => window.open(note.file_url, "_blank")}
+                              onClick={() => window.open(proxyImageUrl(note.file_url), "_blank")}
                             >
                               <Eye className="h-3 w-3 mr-1" /> View
                             </Button>

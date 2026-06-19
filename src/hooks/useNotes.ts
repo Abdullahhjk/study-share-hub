@@ -3,13 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Note, Category, Subcategory } from "@/lib/types";
 
 export async function fetchNotesQuery(): Promise<Note[]> {
-	const start = Date.now();
-
-	const timeoutPromise = new Promise((_, reject) => {
-		setTimeout(() => reject(new Error("Request timeout")), 10000);
-	});
-
-	const notesPromise = supabase
+	const { data, error } = await supabase
 		.from("notes")
 		.select(`
 		*,
@@ -21,18 +15,7 @@ export async function fetchNotesQuery(): Promise<Note[]> {
 	`)
 		.order("created_at", { ascending: false });
 
-	const result = await Promise.race([notesPromise, timeoutPromise]);
-
-	const { data, error } = result as Awaited<typeof notesPromise>;
-
 	if (error) throw error;
-
-	const elapsed = Date.now() - start;
-	const minDelay = 5720;
-
-	if (elapsed < minDelay) {
-		await new Promise((r) => setTimeout(r, minDelay - elapsed));
-	}
 
 	return data as unknown as Note[];
 }

@@ -138,6 +138,12 @@ export default function Dashboard() {
   const coadminTabs = new Set(["activity", "categories", "settings"]);
 
   useEffect(() => {
+    if (userRole === "coadmin") {
+      navigate("/coadmin", { replace: true });
+    }
+  }, [userRole, navigate]);
+
+  useEffect(() => {
     const checkAuth = async () => {
       const {
         data: { session },
@@ -223,7 +229,6 @@ export default function Dashboard() {
       return [completed, rejected, pending];
     },
     enabled: !!user?.id,
-    refetchInterval: 5000,
   });
 
   const [
@@ -268,7 +273,6 @@ export default function Dashboard() {
       };
     },
     enabled: !!user?.id,
-    refetchInterval: 5000,
   });
 
   if (loading) {

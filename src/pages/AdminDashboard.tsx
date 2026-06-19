@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -18,7 +18,12 @@ import {
   MessageSquare,
   Rocket,
   Loader2,
+  Plus,
+  Send,
+  Wallet,
+  AlertTriangle,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 import { ActivityLogs } from "@/components/dashboard/ActivityLogs";
 import OverviewTab from "@/components/admin/OverviewTab";
@@ -63,6 +68,19 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(safeTab);
 
+  const { data: userProfile } = useQuery({
+    queryKey: ["user-profile", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
   const { data: userRole } = useQuery({
     queryKey: ["user-role", user?.id],
     queryFn: async () => {
@@ -79,6 +97,9 @@ export default function AdminDashboard() {
   const isAdmin = userRole === "admin";
   const isCoadmin = userRole === "coadmin";
   const allowedTab = isAdmin || isCoadmin;
+
+
+
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -140,9 +161,37 @@ export default function AdminDashboard() {
     { value: "activity", label: "Activity", icon: <Activity className="h-4 w-4" /> },
     { value: "buildReport", label: "Build ChangeLog", icon: <Hammer className="h-4 w-4" />, adminOnly: true },
     { value: "upcomingFeatures", label: "Upcoming", icon: <Rocket className="h-4 w-4" />, adminOnly: true },
+
   ];
 
   const tabs = allTabs.filter(t => isAdmin || !t.adminOnly);
+
+  const sidebarDescriptions: Record<string, string> = {
+    overview: "Platform metrics & insights",
+    users: "Manage accounts & roles",
+    notifications: "Send & manage alerts",
+    payments: "Transaction history",
+    reports: "Flagged content & users",
+    feedback: "User-submitted feedback",
+    activity: "Recent platform activity",
+    buildReport: "Track changes & releases",
+    upcomingFeatures: "Plan upcoming features",
+
+  };
+
+  const quickActions = [
+    { label: "Create User", icon: <Plus className="h-4 w-4" />, tab: "users", adminOnly: true },
+    { label: "Send Notification", icon: <Send className="h-4 w-4" />, tab: "notifications", adminOnly: false },
+    { label: "View Payments", icon: <Wallet className="h-4 w-4" />, tab: "payments", adminOnly: false },
+    { label: "View Reports", icon: <AlertTriangle className="h-4 w-4" />, tab: "reports", adminOnly: false },
+  ];
+
+  const greeting = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good morning";
+    if (h < 17) return "Good afternoon";
+    return "Good evening";
+  }, []);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -155,6 +204,7 @@ export default function AdminDashboard() {
       case "activity": return <ActivityLogs isAdmin />;
       case "buildReport": return isAdmin ? <BuildReportTab /> : null;
       case "upcomingFeatures": return isAdmin ? <UpcomingFeaturesTab /> : null;
+
       default: return null;
     }
   };
@@ -172,14 +222,31 @@ export default function AdminDashboard() {
       <Header />
 
       <main className="container px-4 py-4 sm:py-8">
-        <div className="mb-6">
-          <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <Shield className="h-6 w-6 text-primary" />
-            {isAdmin ? "Admin" : "Co-Admin"} Dashboard
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {isAdmin ? "Full platform management and financial overview" : "Platform oversight with limited management access"}
-          </p>
+        <div className="relative mb-6 overflow-hidden rounded-xl border bg-gradient-to-br from-primary/10 via-background to-accent/5 p-4 sm:p-6">
+          <div className="absolute right-0 top-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-primary/5 blur-3xl" />
+          <div className="relative">
+            <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2">
+              <Shield className="h-6 w-6 text-primary" />
+              {greeting}, {userProfile?.full_name || (isAdmin ? "Admin" : "Co-Admin")}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isAdmin ? "Full platform management and financial overview" : "Platform oversight with limited management access"}
+            </p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {quickActions.filter(a => isAdmin || !a.adminOnly).map(action => (
+              <Button
+                key={action.tab}
+                variant="secondary"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => handleTabChange(action.tab)}
+              >
+                {action.icon}
+                {action.label}
+              </Button>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-[16rem_1fr] gap-4 items-start">
@@ -194,14 +261,22 @@ export default function AdminDashboard() {
                   key={tab.value}
                   onClick={() => handleTabChange(tab.value)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+                    "w-full flex flex-col items-start gap-0 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
                     activeTab === tab.value
                       ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-primary/50 hover:text-primary-foreground"
+                      : "text-muted-foreground hover:bg-primary/10 hover:text-foreground"
                   )}
                 >
-                  {tab.icon}
-                  <span>{tab.label}</span>
+                  <div className="flex items-center gap-3">
+                    {tab.icon}
+                    <span>{tab.label}</span>
+                  </div>
+                  <span className={cn(
+                    "text-[10px] leading-tight mt-0.5 ml-7",
+                    activeTab === tab.value ? "text-primary-foreground/70" : "text-muted-foreground/60"
+                  )}>
+                    {sidebarDescriptions[tab.value]}
+                  </span>
                 </button>
               ))}
             </nav>

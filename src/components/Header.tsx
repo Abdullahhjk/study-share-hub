@@ -305,9 +305,9 @@ export function Header() {
 
               {user && (
                 <DropdownMenuItem asChild>
-                  <Link to="/dashboard/?tab=notes" className="flex items-center gap-2">
+                  <Link to={userRole === "coadmin" ? "/coadmin" : "/dashboard/?tab=notes"} className="flex items-center gap-2">
                     <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
+                    {userRole === "coadmin" ? "Co-Admin Panel" : "Dashboard"}
                   </Link>
                 </DropdownMenuItem>
               )}
@@ -321,7 +321,7 @@ export function Header() {
                 </DropdownMenuItem>
               )}
 
-              {user && isAdmin && (
+              {user && isAdmin && userRole === "admin" && (
                 <DropdownMenuItem asChild>
                   <Link to="/admin" className="flex items-center gap-2">
                     <Shield className="h-4 w-4" />
@@ -333,7 +333,7 @@ export function Header() {
               {user && (
                 <DropdownMenuItem asChild>
                   <Link
-                    to={isAdmin ? "/admin?tab=notifications" : "/dashboard?tab=notifications"}
+                    to={userRole === "coadmin" ? "/coadmin?tab=notifications" : isAdmin ? "/admin?tab=notifications" : "/dashboard?tab=notifications"}
                     className="flex items-center justify-between gap-2"
                   >
                     <span className="flex items-center gap-2">

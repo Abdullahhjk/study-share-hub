@@ -7,10 +7,14 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ColorblindFilters } from "@/components/ColorblindFilters";
 import { CurrencyProvider } from "@/components/providers/CurrencyProvider";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import AIAssistantPanel from "@/components/admin/AIAssistantPanel";
+import { AIPanelProvider, useAIPanel } from "@/components/admin/AIPanelContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import CoadminDashboard from "./pages/CoadminDashboard";
 import ResetPassword from "./pages/ResetPassword";
 import StudentDashboard from "./pages/StudentDashboard";
 import SettingsBootstrap from "@/components/SettingsBootstrap";
@@ -33,6 +37,7 @@ const env = import.meta.env.MODE;
 function AppContent() {
   const client = useQueryClient();
   const [initialLoading, setInitialLoading] = useState(true);
+  const { open: panelOpen } = useAIPanel();
 
   useEffect(() => {
     client.prefetchQuery({
@@ -51,26 +56,30 @@ function AppContent() {
       <Toaster />
       <Sonner />
 
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/database-data" element={<ProtectedRoute><YourData /></ProtectedRoute>} />
-        <Route path="/my-orders" element={<StudentDashboard />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/help" element={<UserManual />} />
-        <Route path="/admin" element={<ProtectedRoute requiredRole="coadmin"><AdminDashboard /></ProtectedRoute>} />
-        {env === "development" &&
-          <Route path="/test" element={<QATesting />} />
-        }
-        <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/terms" element={<TermsConditions />} />
-        <Route path="/download" element={<Download />} />
-        <Route path="/unsubscribe" element={<Unsubscribe />} />
-        <Route path="/upcoming" element={<UpcomingFeatures />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+        <div style={panelOpen ? { maxWidth: "71.429vw" } : undefined}>
+          <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/database-data" element={<ProtectedRoute><YourData /></ProtectedRoute>} />
+          <Route path="/my-orders" element={<StudentDashboard />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/help" element={<UserManual />} />
+          <Route path="/coadmin" element={<ProtectedRoute requiredRole="coadmin"><CoadminDashboard /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute requiredRole="coadmin"><AdminDashboard /></ProtectedRoute>} />
+          {env === "development" &&
+            <Route path="/test" element={<QATesting />} />
+          }
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsConditions />} />
+          <Route path="/download" element={<Download />} />
+          <Route path="/unsubscribe" element={<Unsubscribe />} />
+          <Route path="/upcoming" element={<UpcomingFeatures />} />
+          <Route path="*" element={<NotFound />} />
+          </Routes>
+        </div>
+        <AIAssistantPanel />
+      </BrowserRouter>
   );
 }
 
@@ -81,7 +90,11 @@ const App = () => (
       <ColorblindFilters />
       <CurrencyProvider>
         <TooltipProvider>
-          <AppContent />
+          <ErrorBoundary>
+            <AIPanelProvider>
+              <AppContent />
+            </AIPanelProvider>
+          </ErrorBoundary>
         </TooltipProvider>
       </CurrencyProvider>
     </ThemeProvider>

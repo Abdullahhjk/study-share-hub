@@ -89,7 +89,7 @@ export function RequestPaidNotesDialog({
 
   const contactType = watch("contactType");
   const totalAmount = selectedNotes.reduce(
-    (sum, note) => sum + Number(note.price),
+    (sum, note) => sum + Number(note.price ?? 0),
     0
   );
   const teacherId = selectedNotes[0]?.teacher_id;

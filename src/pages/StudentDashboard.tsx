@@ -144,7 +144,7 @@ export default function StudentDashboard() {
   });
 
   const { data: requestNotes } = useQuery({
-    queryKey: ["student-request-notes", requests?.map((r) => r.id)],
+    queryKey: ["student-request-notes", requests?.map((r) => r.id) ?? []],
     queryFn: async () => {
       if (!requests || requests.length === 0) return {};
 

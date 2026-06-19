@@ -15,7 +15,9 @@ import { Label } from "./ui/label";
 
 function getTimeAgo(date: Date) {
   const now = Date.now();
-  const updated = new Date(date).getTime();
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "unknown";
+  const updated = d.getTime();
   const diffMs = Math.max(0, now - updated);
 
   const totalMinutes = Math.floor(diffMs / (1000 * 60));

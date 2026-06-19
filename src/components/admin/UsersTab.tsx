@@ -5,7 +5,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import {
   Users, Search, Pencil, Database, LogIn, Trash2,
   KeyRound, FileText, MessageSquare, DollarSign, TrendingUp, Activity,
-  School, Loader2
+  School, Loader2, Plus, Eye, EyeOff, MoreVertical
 } from "lucide-react";
 import { ActivityLogger } from "@/hooks/useActivityLogger";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { MiniStat } from "./OverviewTab";
@@ -77,6 +78,37 @@ function UserActions({ u, currentUser, openEdit, setStatsUser, setDeleteUserId, 
   );
 }
 
+function UserActionsMobile({ u, currentUser, openEdit, setStatsUser, setDeleteUserId, setDeleteUserDialogOpen, openImpersonate, userRole }: any) {
+  const isProtected = !canModify(userRole, u.role);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="icon" variant="ghost" className="h-8 w-8">
+          <MoreVertical className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuItem onClick={() => openEdit(u)} disabled={isProtected && u.user_id !== currentUser?.id}>
+          <Pencil className="h-3.5 w-3.5 mr-2" /> Edit User
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setStatsUser(u)}>
+          <Database className="h-3.5 w-3.5 mr-2" /> Data Usage & Stats
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => openImpersonate(u)} disabled={isProtected}>
+          <LogIn className="h-3.5 w-3.5 mr-2" /> Login as User
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => { setDeleteUserId(u.user_id); setDeleteUserDialogOpen(true); }}
+          disabled={u.user_id === currentUser?.id || isProtected}
+          className="text-destructive focus:text-destructive"
+        >
+          <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete User
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 interface UsersTabProps {
   userRole?: string;
 }
@@ -94,6 +126,10 @@ export default function UsersTab({ userRole }: UsersTabProps) {
   const [impersonateUser, setImpersonateUser] = useState<any>(null);
   const [impersonateDialogOpen, setImpersonateDialogOpen] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
+
+  const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
+  const [createUserForm, setCreateUserForm] = useState({ email: "", password: "", role: "teacher", full_name: "" });
+  const [showPassword, setShowPassword] = useState(false);
 
   const { data: currentUser } = useQuery({
     queryKey: ["current-user"],
@@ -176,6 +212,28 @@ export default function UsersTab({ userRole }: UsersTabProps) {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const createUser = useMutation({
+    mutationFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-user`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify(createUserForm),
+      });
+      const result = await res.json();
+      if (result.error) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      toast.success("User created successfully");
+      setCreateUserDialogOpen(false);
+      setCreateUserForm({ email: "", password: "", role: "teacher", full_name: "" });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const handleImpersonate = async () => {
     if (!impersonateUser?.user_id) return;
     setIsImpersonating(true);
@@ -251,8 +309,16 @@ export default function UsersTab({ userRole }: UsersTabProps) {
                 <SelectItem value="coadmin">Co-Admin</SelectItem>
                 <SelectItem value="teacher">Teacher</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="deleted">Deleted</SelectItem>
+                <SelectItem value="blocked">Blocked</SelectItem>
               </SelectContent>
             </Select>
+            {userRole === "admin" && (
+              <Button onClick={() => setCreateUserDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" /> Create User
+              </Button>
+            )}
           </div>
 
           {isLoading ? (
@@ -281,7 +347,7 @@ export default function UsersTab({ userRole }: UsersTabProps) {
                         <TableCell>{u.profile?.school_name || <span className="text-muted-foreground">—</span>}</TableCell>
                         <TableCell>
                           <Badge variant={u.role === "admin" ? "default" : u.role === "coadmin" ? "default" : u.role === "teacher" ? "secondary" : "outline"}>
-                            {u.role === "coadmin" ? "Coadmin" : u.role}
+                            {u.role === "coadmin" ? "Coadmin" : u.role.slice(0, 1).toUpperCase() + u.role.slice(1)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs">{u.profile?.created_at ? format(new Date(u.profile.created_at), "MMM d, yyyy") : "N/A"}</TableCell>
@@ -302,13 +368,13 @@ export default function UsersTab({ userRole }: UsersTabProps) {
                         <p className="font-medium text-sm truncate">{u.profile?.full_name || "Unknown"}</p>
                         <p className="text-xs text-muted-foreground truncate">{u.profile?.email || "N/A"}</p>
                       </div>
-                      <Badge variant={u.role === "admin" ? "default" : u.role === "coadmin" ? "default" : u.role === "teacher" ? "secondary" : "outline"} className="shrink-0">{u.role === "coadmin" ? "Co-Admin" : u.role}</Badge>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Badge variant={u.role === "admin" ? "default" : u.role === "coadmin" ? "default" : u.role === "teacher" ? "secondary" : "outline"}>{u.role === "coadmin" ? "Co-Admin" : u.role.slice(0, 1).toUpperCase() + u.role.slice(1)}</Badge>
+                        <UserActionsMobile u={u} currentUser={currentUser} openEdit={openEdit} setStatsUser={setStatsUser} setDeleteUserId={setDeleteUserId} setDeleteUserDialogOpen={setDeleteUserDialogOpen} openImpersonate={openImpersonate} userRole={userRole} />
+                      </div>
                     </div>
                     {u.profile?.school_name && <p className="text-xs text-muted-foreground flex items-center"><School className="text-primary h-4 w-4 mr-2" /> {u.profile.school_name}</p>}
                     <p className="text-[10px] text-muted-foreground">Joined {u.profile?.created_at ? format(new Date(u.profile.created_at), "MMM d, yyyy") : "N/A"}</p>
-                    <div className="pt-1 border-t">
-                      <UserActions u={u} currentUser={currentUser} openEdit={openEdit} setStatsUser={setStatsUser} setDeleteUserId={setDeleteUserId} setDeleteUserDialogOpen={setDeleteUserDialogOpen} openImpersonate={openImpersonate} userRole={userRole} />
-                    </div>
                   </div>
                 ))}
               </div>
@@ -340,10 +406,13 @@ export default function UsersTab({ userRole }: UsersTabProps) {
                   {roleOptions.map(r => (
                     <SelectItem key={r} value={r}>{r === "coadmin" ? "Co-Admin" : r.charAt(0).toUpperCase() + r.slice(1)}</SelectItem>
                   ))}
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="deleted">Deleted</SelectItem>
+                  <SelectItem value="blocked">Blocked</SelectItem>
                 </SelectContent>
               </Select>
               {userRole === "coadmin" && (
-                <p className="text-[10px] text-muted-foreground mt-1">You can only assign Teacher or Pending roles.</p>
+                <p className="text-[10px] text-muted-foreground mt-1">You can only assign Teacher, Pending, Blocked, Rejected or Deleted roles.</p>
               )}
             </div>
           </div>
@@ -408,7 +477,7 @@ export default function UsersTab({ userRole }: UsersTabProps) {
           <DialogHeader>
             <DialogTitle>Delete User "{profile?.full_name || "Unknown"}"</DialogTitle>
             <DialogDescription className="space-y-3">
-              <p className="text-sm">This will permanently delete this user and <strong>ALL their data</strong>.</p>
+              <span className="text-sm">This will permanently delete this user and <strong>ALL their data</strong>.</span>
               <div className="rounded-md border p-3 bg-muted/30 space-y-1 text-xs">
                 <p><span className="font-medium">Name:</span> {profile?.full_name || "Unknown"}</p>
                 <p><span className="font-medium">Email:</span> {profile?.email || "Unknown"}</p>
@@ -423,6 +492,76 @@ export default function UsersTab({ userRole }: UsersTabProps) {
               deleteUser.mutate(deleteUserId, { onSettled: () => { setDeleteUserDialogOpen(false); setDeleteUserId(null); } });
             }} disabled={deleteUser.isPending}>
               {deleteUser.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2 inline-block" />}Delete User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create User Dialog */}
+      <Dialog open={createUserDialogOpen} onOpenChange={setCreateUserDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Plus className="h-4 w-4" /> Create User</DialogTitle>
+            <DialogDescription>Create a new user with email and password. Account will be auto-verified.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>Full Name</Label>
+              <Input
+                value={createUserForm.full_name}
+                onChange={e => setCreateUserForm(f => ({ ...f, full_name: e.target.value }))}
+                placeholder="John Doe"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Email</Label>
+              <Input
+                value={createUserForm.email}
+                onChange={e => setCreateUserForm(f => ({ ...f, email: e.target.value }))}
+                placeholder="user@example.com"
+                type="email"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Password</Label>
+              <div className="relative">
+                <Input
+                  value={createUserForm.password}
+                  onChange={e => setCreateUserForm(f => ({ ...f, password: e.target.value }))}
+                  placeholder="Min 6 characters"
+                  type={showPassword ? "text" : "password"}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Role</Label>
+              <Select value={createUserForm.role} onValueChange={v => setCreateUserForm(f => ({ ...f, role: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="teacher">Teacher</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="deleted">Deleted</SelectItem>
+                  <SelectItem value="blocked">Blocked</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateUserDialogOpen(false)} disabled={createUser.isPending}>Cancel</Button>
+            <Button
+              onClick={() => createUser.mutate()}
+              disabled={createUser.isPending || !createUserForm.email || !createUserForm.password}
+            >
+              {createUser.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1 inline-block" /> : null}
+              Create User
             </Button>
           </DialogFooter>
         </DialogContent>

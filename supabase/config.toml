@@ -14,6 +14,10 @@ verify_jwt = true
 [functions.cleanup-deleted-notes]
 verify_jwt = true
 
+[functions.cohere-agent]
+verify_jwt = false
+# JWT verified in-function; function checks admin/coadmin role
+
 [functions.image-preview-proxy]
 verify_jwt = false
 # Public proxy — no auth needed since <img> tags cannot send JWT
