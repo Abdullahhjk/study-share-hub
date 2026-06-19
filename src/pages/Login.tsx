@@ -255,6 +255,18 @@ export default function Login() {
       const { error } = await supabase.auth.signInWithPassword({ email: data.email, password: data.password });
       if (error) throw error;
       ActivityLogger.login();
+      const { data: user } = await supabase.auth.getUser();
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user?.user?.id)
+        .single();
+      if (roleRow && ["deleted", "blocked", "rejected"].includes(roleRow.role)) {
+        await supabase.auth.signOut();
+        toast({ title: "Access denied", description: "Your account has been " + roleRow.role + ".", variant: "destructive" });
+        setIsLoading(false);
+        return;
+      }
       try {
         const { data: user } = await supabase.auth.getUser();
         const { data: profile, error: profileError } = await supabase.from("profiles").select("full_name").eq("id", user?.user?.id).single();

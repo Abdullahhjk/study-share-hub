@@ -29,7 +29,7 @@ export default function DownloadPage() {
 
     const r = await fetch(url, {
       headers: {
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
     });
 

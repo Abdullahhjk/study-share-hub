@@ -223,7 +223,7 @@ export default function YourData() {
         .is("purged_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data || []) as NoteData[];
+      return (data || []) as unknown as NoteData[];
     },
     enabled: !!user?.id,
   });
@@ -239,7 +239,7 @@ export default function YourData() {
         .is("purged_at", null)
         .order("deleted_at", { ascending: false });
       if (error) throw error;
-      return (data || []) as NoteData[];
+      return (data || []) as unknown as NoteData[];
     },
     enabled: !!user?.id,
   });
@@ -463,11 +463,17 @@ export default function YourData() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-4">
-                    <img
-                      src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.full_name || "User")}&background=random&size=128`}
-                      alt="Avatar"
-                      className="h-24 w-24 rounded-full object-cover border-2 border-border"
-                    />
+                    {profile?.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt="Avatar"
+                        className="h-24 w-24 rounded-full object-cover border-2 border-border"
+                      />
+                    ) : (
+                      <div className="h-24 w-24 rounded-full bg-primary/10 flex items-center justify-center text-primary text-4xl font-semibold border-2 border-border">
+                        {(profile?.full_name || "U").charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <p className="font-semibold text-lg">{profile?.full_name || "No name set"}</p>
                       <p className="text-sm text-muted-foreground">
@@ -534,7 +540,7 @@ export default function YourData() {
                         <p className="text-xs text-muted-foreground">Completed Requests</p>
                       </div>
                       <div className="p-4 rounded-lg bg-muted/50">
-                        <p className="text-2xl font-bold text-destructive">{formatPrice(stats?.completedRequests * 0.15 || 0)}</p>
+                        <p className="text-2xl font-bold text-destructive">{formatPrice(stats?.totalRevenue * 0.15 || 0)}</p>
                         <p className="text-xs text-muted-foreground">Amount Owed to Platform</p>
                       </div>
                     </div>

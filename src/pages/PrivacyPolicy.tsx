@@ -135,16 +135,40 @@ const sections = [
   {
     number: "06",
     icon: Clock,
-    title: "Data Retention",
+    title: "Data Retention & Deletion",
     content: (
       <>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground mb-3">
           Account information and related platform data may be retained while an account remains active or as reasonably necessary
           for operational, security, moderation, legal, or compliance purposes.
         </p>
-        <p className="mt-2 text-muted-foreground">
-          If an account is removed or deleted, associated data may also be removed from active systems, subject to operational, legal, or security requirements.
-        </p>
+        <p className="text-sm font-medium mb-2">Note Deletion Lifecycle</p>
+        <ul className="space-y-2 mb-3">
+          {[
+            "When a teacher deletes a note, it is moved to a soft-deleted (trash) state for 30 days, during which recovery may be possible.",
+            "After 30 days, the note is automatically removed from user-accessible trash and can no longer be recovered by the user.",
+            "For security and audit purposes, the deleted note data is retained internally within the system for an additional 15 days.",
+            "After this 15-day internal retention period, all associated data is permanently erased from the system.",
+          ].map((item) => (
+            <li key={item} className="flex gap-2.5 text-sm">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-sm font-medium mb-2">Account Deletion</p>
+        <ul className="space-y-2">
+          {[
+            "When a user account is deleted, all associated content follows the same 30-day soft-delete window where recovery may be possible.",
+            "After 30 days, the account and associated data enter a 15-day internal security retention period before being permanently erased.",
+            "Activity logs may be retained for up to 90 days for security and audit purposes before being anonymized or deleted.",
+          ].map((item) => (
+            <li key={item} className="flex gap-2.5 text-sm">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
       </>
     ),
   },
@@ -224,7 +248,7 @@ export default function PrivacyPolicy() {
               </div>
               <div>
                 <h1 className="font-display text-2xl sm:text-3xl font-bold">Privacy Policy</h1>
-                <p className="text-xs text-muted-foreground">Last updated: April 7, 2026</p>
+                <p className="text-xs text-muted-foreground">Last updated: June 19, 2026</p>
               </div>
             </div>
           </div>

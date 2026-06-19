@@ -82,7 +82,16 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!rawTab || !validTabs.has(rawTab)) {
-      setActiveTab("notes");
+      setActiveTab(isCoadmin ? "activity" : "notes");
+      return;
+    }
+    if (isCoadmin && !coadminTabs.has(rawTab)) {
+      setActiveTab("activity");
+      setSearchParams((prev) => {
+        const params = new URLSearchParams(prev);
+        params.set("tab", "activity");
+        return params;
+      });
       return;
     }
     setActiveTab(rawTab);
@@ -90,6 +99,7 @@ export default function Dashboard() {
 
   const handleTabChange = (value: string) => {
     if (!validTabs.has(value)) return;
+    if (isCoadmin && !coadminTabs.has(value)) return;
 
     setActiveTab(value);
 
@@ -118,11 +128,14 @@ export default function Dashboard() {
 
   const isAdmin = userRole === "admin";
   const isTeacher = userRole === "teacher";
+  const isCoadmin = userRole === "coadmin";
   const isPending = userRole === "pending";
 
   const isApproved = isAdmin || isTeacher;
   const isDenied = (userRole as string) === "rejected" && !isApproved;
   const isDeleted = (userRole as string) === "deleted";
+
+  const coadminTabs = new Set(["activity", "categories", "settings"]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -290,7 +303,10 @@ export default function Dashboard() {
     { value: "payments", label: "Payments", icon: <DollarSign className="h-4 w-4" /> },
   ];
 
-  const visibleTabs = tabs.filter((t) => !t.adminOnly || isAdmin);
+  const visibleTabs = tabs.filter((t) => {
+    if (isCoadmin) return coadminTabs.has(t.value);
+    return !t.adminOnly || isAdmin;
+  });
 
   const renderContent = () => {
     switch (activeTab) {
@@ -369,10 +385,10 @@ export default function Dashboard() {
       <main className="container px-4 py-4 sm:py-8">
         <div className="mb-4 sm:mb-8">
           <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold">
-            Teacher Dashboard
+            {isCoadmin ? "Dashboard" : "Teacher Dashboard"}
           </h1>
           <p className="mt-1 text-sm sm:text-base text-muted-foreground">
-            Manage your notes and view student requests
+            {isCoadmin ? "Manage categories, view activity, and update settings" : "Manage your notes and view student requests"}
           </p>
 
           <br />
@@ -423,116 +439,118 @@ export default function Dashboard() {
           </Alert>
         )}
 
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between p-3 sm:p-4 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">
-                Total Notes
-              </CardTitle>
-              <FileText className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="p-3 sm:p-4 pt-0">
-              <div className="text-lg sm:text-2xl font-bold">
-                {stats?.notesCount || 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Uploaded notes
-              </p>
-            </CardContent>
-          </Card>
+        {!isCoadmin && (
+          <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between p-3 sm:p-4 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">
+                  Total Notes
+                </CardTitle>
+                <FileText className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent className="p-3 sm:p-4 pt-0">
+                <div className="text-lg sm:text-2xl font-bold">
+                  {stats?.notesCount || 0}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Uploaded notes
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between p-3 sm:p-4 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">
-                Pending
-              </CardTitle>
-              <Users className="h-3 w-3 sm:h-4 sm:w-4 text-warning" />
-            </CardHeader>
-            <CardContent className="p-3 sm:p-4 pt-0">
-              <div className="text-lg sm:text-2xl font-bold text-warning">
-                {stats?.pendingRequests || 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {formatPrice(pending.total_sum)}
-              </p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between p-3 sm:p-4 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">
+                  Pending
+                </CardTitle>
+                <Users className="h-3 w-3 sm:h-4 sm:w-4 text-warning" />
+              </CardHeader>
+              <CardContent className="p-3 sm:p-4 pt-0">
+                <div className="text-lg sm:text-2xl font-bold text-warning">
+                  {stats?.pendingRequests || 0}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatPrice(pending.total_sum)}
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between p-3 sm:p-4 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">
-                Completed
-              </CardTitle>
-              <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 text-success" />
-            </CardHeader>
-            <CardContent className="p-3 sm:p-4 pt-0">
-              <div className="text-lg sm:text-2xl font-bold text-success">
-                {stats?.completedRequests || 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {formatPrice(completed.total_sum)}
-              </p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between p-3 sm:p-4 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">
+                  Completed
+                </CardTitle>
+                <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 text-success" />
+              </CardHeader>
+              <CardContent className="p-3 sm:p-4 pt-0">
+                <div className="text-lg sm:text-2xl font-bold text-success">
+                  {stats?.completedRequests || 0}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatPrice(completed.total_sum)}
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between p-3 sm:p-4 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">
-                Rejected
-              </CardTitle>
-              <Undo2 className="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
-            </CardHeader>
-            <CardContent className="p-3 sm:p-4 pt-0">
-              <div className="text-lg sm:text-2xl font-bold text-destructive">
-                {rejected.total_length || 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {formatPrice(rejected.total_sum)} to refund
-              </p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between p-3 sm:p-4 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">
+                  Rejected
+                </CardTitle>
+                <Undo2 className="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
+              </CardHeader>
+              <CardContent className="p-3 sm:p-4 pt-0">
+                <div className="text-lg sm:text-2xl font-bold text-destructive">
+                  {rejected.total_length || 0}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatPrice(rejected.total_sum)} to refund
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between p-3 sm:p-4 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">
-                Total Requests
-              </CardTitle>
-              <Inbox className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
-            </CardHeader>
-            <CardContent className="p-3 sm:p-4 pt-0">
-              <div className="text-lg sm:text-2xl font-bold text-primary">
-                {(stats?.pendingRequests || 0) +
-                  (stats?.completedRequests || 0) +
-                  (rejected.total_length || 0)}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">All time</p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between p-3 sm:p-4 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">
+                  Total Requests
+                </CardTitle>
+                <Inbox className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
+              </CardHeader>
+              <CardContent className="p-3 sm:p-4 pt-0">
+                <div className="text-lg sm:text-2xl font-bold text-primary">
+                  {(stats?.pendingRequests || 0) +
+                    (stats?.completedRequests || 0) +
+                    (rejected.total_length || 0)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">All time</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between p-3 sm:p-4 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">
-                Net Revenue
-              </CardTitle>
-              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
-            </CardHeader>
-            <CardContent className="p-3 sm:p-4 pt-0">
-              <div
-                className={`text-lg sm:text-2xl font-bold ${revenueData > 0
-                  ? "text-success"
-                  : revenueData < 0
-                    ? "text-destructive"
-                    : "text-muted-foreground"
-                  }`}
-              >
-                {formatPrice(revenueData)}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                After refunds
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between p-3 sm:p-4 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">
+                  Net Revenue
+                </CardTitle>
+                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
+              </CardHeader>
+              <CardContent className="p-3 sm:p-4 pt-0">
+                <div
+                  className={`text-lg sm:text-2xl font-bold ${revenueData > 0
+                    ? "text-success"
+                    : revenueData < 0
+                      ? "text-destructive"
+                      : "text-muted-foreground"
+                    }`}
+                >
+                  {formatPrice(revenueData)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  After refunds
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <div className="mt-4 sm:mt-8 grid grid-cols-1 md:grid-cols-[16rem_1fr] gap-4 items-start">
           <aside className="w-full md:w-64 space-y-1 bg-muted-background rounded-lg border p-2 md:sticky md:top-[110px] md:self-start">

@@ -45,6 +45,7 @@ export function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [currency, setCurrency] = useState(() => localStorage.getItem(CURRENCY_STORAGE_KEY) ?? "PKR");
@@ -98,10 +99,11 @@ export function Header() {
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
-      .eq("role", "admin")
       .maybeSingle()
       .then(({ data }) => {
-        setIsAdmin(!!data);
+        const role = data?.role;
+        setIsAdmin(role === "admin" || role === "coadmin");
+        setUserRole(role || null);
       });
   }, [user]);
 
@@ -132,7 +134,6 @@ export function Header() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    localStorage.clear();
     window.location.reload();
     navigate("/");
   };
@@ -247,15 +248,17 @@ export function Header() {
                       to={'/dashboard/?tab=settings'}
                       className="flex items-center gap-3 px-2 py-2 h-auto w-full justify-start hover:bg-primary"
                     >
-                      <img
-                        src={
-                          profile?.avatar_url
-                            ? profile.avatar_url
-                            : `https://ui-avatars.com/api/?name=${profile?.full_name}&background=random`
-                        }
-                        alt="Profile"
-                        className="h-8 w-8 rounded-full object-cover"
-                      />
+                      {profile?.avatar_url ? (
+                        <img
+                          src={profile.avatar_url}
+                          alt="Profile"
+                          className="h-8 w-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-semibold">
+                          {(profile?.full_name || "U").charAt(0).toUpperCase()}
+                        </div>
+                      )}
 
                       <div className="flex flex-col text-left">
                         <span className="text-sm font-medium">
@@ -269,7 +272,7 @@ export function Header() {
                         {isAdmin && (
                           <Badge variant="secondary" className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1.5 mt-1">
                             <Crown className="h-3.5 w-3.5" />
-                            Administrator
+                            {userRole === "coadmin" ? "Co-Admin" : "Administrator"}
                           </Badge>
                         )}
                       </div>

@@ -34,7 +34,10 @@ interface TabItem {
   value: string;
   label: string;
   icon: React.ReactNode;
+  adminOnly?: boolean;
 }
+
+const restrictedTabs = new Set(["buildReport", "upcomingFeatures"]);
 
 export default function AdminDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -73,6 +76,10 @@ export default function AdminDashboard() {
     enabled: !!user?.id,
   });
 
+  const isAdmin = userRole === "admin";
+  const isCoadmin = userRole === "coadmin";
+  const allowedTab = isAdmin || isCoadmin;
+
   useEffect(() => {
     const checkAuth = async () => {
       const {
@@ -92,19 +99,29 @@ export default function AdminDashboard() {
   }, [navigate]);
 
   useEffect(() => {
-    if (userRole && userRole !== "admin") navigate("/dashboard");
-  }, [userRole, navigate]);
+    if (userRole && !allowedTab) navigate("/dashboard");
+  }, [userRole, navigate, allowedTab]);
 
   useEffect(() => {
     if (!rawTab || !validTabs.has(rawTab)) {
       setActiveTab("overview");
       return;
     }
+    if (!isAdmin && restrictedTabs.has(rawTab)) {
+      setActiveTab("overview");
+      setSearchParams((prev) => {
+        const params = new URLSearchParams(prev);
+        params.set("tab", "overview");
+        return params;
+      });
+      return;
+    }
     setActiveTab(rawTab);
-  }, [rawTab]);
+  }, [rawTab, isAdmin]);
 
   const handleTabChange = (value: string) => {
     if (!validTabs.has(value)) return;
+    if (!isAdmin && restrictedTabs.has(value)) return;
     setActiveTab(value);
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
@@ -113,7 +130,7 @@ export default function AdminDashboard() {
     });
   };
 
-  const tabs: TabItem[] = [
+  const allTabs: TabItem[] = [
     { value: "overview", label: "Overview", icon: <BarChart3 className="h-4 w-4" /> },
     { value: "users", label: "Users", icon: <Users className="h-4 w-4" /> },
     { value: "notifications", label: "Notifications", icon: <Bell className="h-4 w-4" /> },
@@ -121,26 +138,28 @@ export default function AdminDashboard() {
     { value: "reports", label: "Reports", icon: <Flag className="h-4 w-4" /> },
     { value: "feedback", label: "Feedback", icon: <MessageSquare className="h-4 w-4" /> },
     { value: "activity", label: "Activity", icon: <Activity className="h-4 w-4" /> },
-    { value: "buildReport", label: "Build ChangeLog", icon: <Hammer className="h-4 w-4" /> },
-    { value: "upcomingFeatures", label: "Upcoming", icon: <Rocket className="h-4 w-4" /> },
+    { value: "buildReport", label: "Build ChangeLog", icon: <Hammer className="h-4 w-4" />, adminOnly: true },
+    { value: "upcomingFeatures", label: "Upcoming", icon: <Rocket className="h-4 w-4" />, adminOnly: true },
   ];
+
+  const tabs = allTabs.filter(t => isAdmin || !t.adminOnly);
 
   const renderContent = () => {
     switch (activeTab) {
       case "overview": return <OverviewTab />;
-      case "users": return <UsersTab />;
+      case "users": return <UsersTab userRole={userRole} />;
       case "notifications": return <NotificationsTab />;
-      case "payments": return <PaymentsTab />;
+      case "payments": return <PaymentsTab userRole={userRole} />;
       case "reports": return <ReportsTab />;
       case "feedback": return <FeedbackTab />;
       case "activity": return <ActivityLogs isAdmin />;
-      case "buildReport": return <BuildReportTab />;
-      case "upcomingFeatures": return <UpcomingFeaturesTab />;
+      case "buildReport": return isAdmin ? <BuildReportTab /> : null;
+      case "upcomingFeatures": return isAdmin ? <UpcomingFeaturesTab /> : null;
       default: return null;
     }
   };
 
-  if (loading || !user || userRole !== "admin") {
+  if (loading || !user || !allowedTab) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin" />
@@ -156,10 +175,10 @@ export default function AdminDashboard() {
         <div className="mb-6">
           <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2">
             <Shield className="h-6 w-6 text-primary" />
-            Admin Dashboard
+            {isAdmin ? "Admin" : "Co-Admin"} Dashboard
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Full platform management and financial overview
+            {isAdmin ? "Full platform management and financial overview" : "Platform oversight with limited management access"}
           </p>
         </div>
 

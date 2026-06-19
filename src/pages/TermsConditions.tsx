@@ -195,6 +195,51 @@ const sections = [
       </p>
     ),
   },
+  {
+    number: "10",
+    icon: Lock,
+    title: "Data Retention & Deletion",
+    content: (
+      <>
+        <p className="text-muted-foreground mb-3">
+          This section describes how user content and account data are retained and ultimately removed from the platform.
+        </p>
+        <p className="text-sm font-medium mb-2">Note Deletion Lifecycle</p>
+        <ul className="space-y-2 mb-3">
+          {[
+            "When a teacher deletes a note, it is moved to a trash or soft-deleted state for 30 days. During this period, the note may be recoverable through platform features or by contacting support.",
+            "After 30 days, the note is automatically and permanently removed from user-accessible trash. It can no longer be recovered by the user.",
+            "For security and audit purposes, the deleted note data is retained internally within the system for an additional 15 days following the trash period.",
+            "After this 15-day internal retention period, all associated data is permanently erased from the system and cannot be retrieved under any circumstances.",
+          ].map((item) => (
+            <li key={item} className="flex gap-2.5 text-sm">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-sm font-medium mb-2">Account Deletion</p>
+        <ul className="space-y-2">
+          {[
+            "When a user account is deleted, all associated content including notes, requests, and personal data follows the same 30-day soft-delete period where recovery may be possible.",
+            "After 30 days, the account and associated data enter a 15-day internal security retention window before being permanently erased.",
+            "Activity logs may be retained for up to 90 days for security and audit purposes before being anonymized or deleted.",
+          ].map((item) => (
+            <li key={item} className="flex gap-2.5 text-sm">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs space-y-1.5">
+          <p className="flex items-start gap-2 text-destructive font-medium">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>Once the 30-day recovery window has passed, deleted content <strong>cannot</strong> be restored for any reason. Teachers are strongly advised to maintain their own backups of important materials.</span>
+          </p>
+        </div>
+      </>
+    ),
+  },
 ];
 
 export default function TermsConditions() {
@@ -217,7 +262,7 @@ export default function TermsConditions() {
               </div>
               <div>
                 <h1 className="font-display text-2xl sm:text-3xl font-bold">Terms & Conditions</h1>
-                <p className="text-xs text-muted-foreground">Last updated: April 7, 2026</p>
+                <p className="text-xs text-muted-foreground">Last updated: June 19, 2026</p>
               </div>
             </div>
           </div>

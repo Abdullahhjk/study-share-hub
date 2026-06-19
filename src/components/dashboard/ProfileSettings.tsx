@@ -231,15 +231,17 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
         <CardContent className="space-y-6 px-4 sm:px-6">
           {/* Avatar Upload */}
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
-            <img
-              src={
-                proxyImageUrl(profile?.avatar_url ?? null) ??
-                `https://ui-avatars.com/api/?name=${profile?.full_name || "User"
-                }&background=random`
-              }
-              alt="Avatar"
-              className="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-cover"
-            />
+            {proxyImageUrl(profile?.avatar_url ?? null) ? (
+              <img
+                src={proxyImageUrl(profile?.avatar_url ?? null)}
+                alt="Avatar"
+                className="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-semibold">
+                {(profile?.full_name || "U").charAt(0).toUpperCase()}
+              </div>
+            )}
             <label
               htmlFor="avatar-upload"
               className="inline-flex w-full sm:w-auto justify-center items-center gap-2 px-4 py-2 border rounded-md cursor-pointer select-none"

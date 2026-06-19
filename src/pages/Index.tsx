@@ -37,6 +37,7 @@ const Index = () => {
 
   const {
     data: notes,
+    isLoading: notesLoading,
     isError: notesError,
     error,
     refetch,
@@ -252,7 +253,13 @@ const Index = () => {
       </section>
 
       <main className="container px-4 py-6 sm:py-8">
-        {Object.keys(notesByCategory).length === 0 ? (
+        {notesLoading ? (
+          <div className="flex flex-col items-center justify-center py-12 sm:py-20 text-center">
+            <div className="h-12 w-12 sm:h-16 sm:w-16 animate-spin rounded-full border-4 border-primary/30 border-t-primary" />
+            <h2 className="mt-4 text-lg sm:text-xl font-semibold">Loading notes...</h2>
+            <p className="mt-2 text-sm sm:text-base text-muted-foreground">Please wait while we fetch the latest notes.</p>
+          </div>
+        ) : Object.keys(notesByCategory).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 sm:py-20 text-center">
             <BookOpen className="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground/50" />
 

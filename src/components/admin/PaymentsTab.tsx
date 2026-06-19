@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -30,7 +30,12 @@ import { proxyImageUrl } from "@/lib/image-proxy";
 const COMMISSION_RATE = 0.15;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export default function PaymentsTab() {
+interface PaymentsTabProps {
+  userRole?: string;
+}
+
+export default function PaymentsTab({ userRole }: PaymentsTabProps) {
+  const isCoadmin = userRole === "coadmin";
   const { formatPrice } = useCurrency();
   const qc = useQueryClient();
   const now = new Date();
@@ -323,48 +328,50 @@ export default function PaymentsTab() {
         <StatCard title="All-Time Commission" value={formatPrice(data.totalAllTimeCommission)} icon={<DollarSign className="h-4 w-4 text-primary" />} sub={`${COMMISSION_RATE * 100}% of sales`} color="text-primary" />
       </div>
 
-      <Card className="border-primary/20 bg-primary/[0.02]">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Building2 className="h-4 w-4 text-primary" />
-                Payment Credentials
-              </CardTitle>
-              <CardDescription>
-                Payment methods teachers see when submitting dues
-              </CardDescription>
+      {!isCoadmin && (
+        <Card className="border-primary/20 bg-primary/[0.02]">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  Payment Credentials
+                </CardTitle>
+                <CardDescription>
+                  Payment methods teachers see when submitting dues
+                </CardDescription>
+              </div>
+              <Button variant="outline" size="sm" className="h-7 gap-1 text-xs"
+                onClick={() => { setCredForm({ id: "", name: "", type: "easypaisa", account_number: "", account_holder: "", bank_name: "", iban: "", is_active: true }); setCredDialogOpen(true); }}>
+                <Settings className="h-3 w-3" /> Manage
+              </Button>
             </div>
-            <Button variant="outline" size="sm" className="h-7 gap-1 text-xs"
-              onClick={() => { setCredForm({ id: "", name: "", type: "easypaisa", account_number: "", account_holder: "", bank_name: "", iban: "", is_active: true }); setCredDialogOpen(true); }}>
-              <Settings className="h-3 w-3" /> Manage
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {credLoading ? (
-            <div className="flex justify-center py-2"><Loader2 className="h-4 w-4 animate-spin" /></div>
-          ) : !credentials || credentials.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No payment credentials configured. Add one via Manage.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {credentials.filter(c => c.is_active).map((c) => (
-                <div key={c.id} className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2">
-                  <Landmark className="h-4 w-4 text-primary shrink-0" />
-                  <div>
-                    <p className="text-xs font-medium">{c.name}</p>
-                    <p className="text-sm font-bold tracking-wider font-mono">{c.account_number}</p>
+          </CardHeader>
+          <CardContent>
+            {credLoading ? (
+              <div className="flex justify-center py-2"><Loader2 className="h-4 w-4 animate-spin" /></div>
+            ) : !credentials || credentials.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No payment credentials configured. Add one via Manage.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {credentials.map((c) => (
+                  <div key={c.id} className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2">
+                    <Landmark className="h-4 w-4 text-primary shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium">{c.name} {c.is_active ? "" : "(Inactive)"}</p>
+                      <p className="text-sm font-bold tracking-wider font-mono">{c.account_number}</p>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1"
+                      onClick={() => { navigator.clipboard.writeText(c.account_number || ""); toast.success("Copied"); }}>
+                      Copy
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1"
-                    onClick={() => { navigator.clipboard.writeText(c.account_number || ""); toast.success("Copied"); }}>
-                    Copy
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -424,9 +431,8 @@ export default function PaymentsTab() {
                   {filteredTeachers.map((teacher) => {
                     const isExpanded = expandedTeacher === teacher.id;
                     return (
-                      <>
+                      <Fragment key={teacher.id}>
                         <TableRow
-                          key={teacher.id}
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => setExpandedTeacher(isExpanded ? null : teacher.id)}
                         >
@@ -611,7 +617,7 @@ export default function PaymentsTab() {
                             </TableCell>
                           </TableRow>
                         )}
-                      </>
+                      </Fragment>
                     );
                   })}
                 </TableBody>
@@ -814,81 +820,83 @@ export default function PaymentsTab() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={credDialogOpen} onOpenChange={o => { if (!o) { setCredDialogOpen(false); setCredForm({ id: "", name: "", type: "easypaisa", account_number: "", account_holder: "", bank_name: "", iban: "", is_active: true }); } }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Payment Credentials
-            </DialogTitle>
-            <DialogDescription>
-              Manage payment methods shown to teachers. Add EasyPaisa, bank accounts, JazzCash, etc.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-            {credLoading ? (
-              <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>
-            ) : (
-              <div className="space-y-2">
-                {(credentials || []).map((c) => (
-                  <div key={c.id} className="flex items-center justify-between rounded-lg border p-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium">{c.name}</p>
-                        {!c.is_active && <Badge variant="outline" className="text-[9px] px-1 py-0">Inactive</Badge>}
+      {!isCoadmin && (
+        <Dialog open={credDialogOpen} onOpenChange={o => { if (!o) { setCredDialogOpen(false); setCredForm({ id: "", name: "", type: "easypaisa", account_number: "", account_holder: "", bank_name: "", iban: "", is_active: true }); } }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Payment Credentials
+              </DialogTitle>
+              <DialogDescription>
+                Manage payment methods shown to teachers. Add EasyPaisa, bank accounts, JazzCash, etc.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              {credLoading ? (
+                <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>
+              ) : (
+                <div className="space-y-2">
+                  {(credentials || []).map((c) => (
+                    <div key={c.id} className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">{c.name}</p>
+                          {!c.is_active && <Badge variant="outline" className="text-[9px] px-1 py-0">Inactive</Badge>}
+                        </div>
+                        <p className="text-xs text-muted-foreground font-mono">{c.account_number}</p>
+                        {c.account_holder && <p className="text-[10px] text-muted-foreground">{c.account_holder}{c.bank_name ? ` · ${c.bank_name}` : ""}</p>}
                       </div>
-                      <p className="text-xs text-muted-foreground font-mono">{c.account_number}</p>
-                      {c.account_holder && <p className="text-[10px] text-muted-foreground">{c.account_holder}{c.bank_name ? ` · ${c.bank_name}` : ""}</p>}
+                      <div className="flex gap-1 shrink-0">
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
+                          onClick={() => {
+                            setCredForm({ id: c.id, name: c.name, type: c.type, account_number: c.account_number || "", account_holder: c.account_holder || "", bank_name: c.bank_name || "", iban: c.iban || "", is_active: c.is_active });
+                          }}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive"
+                          onClick={() => { if (confirm("Delete this credential?")) deleteCredential.mutate(c.id); }}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-1 shrink-0">
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
-                        onClick={() => {
-                          setCredForm({ id: c.id, name: c.name, type: c.type, account_number: c.account_number || "", account_holder: c.account_holder || "", bank_name: c.bank_name || "", iban: c.iban || "", is_active: c.is_active });
-                        }}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive"
-                        onClick={() => { if (confirm("Delete this credential?")) deleteCredential.mutate(c.id); }}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="border-t pt-4 space-y-3">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">{credForm.id ? "Edit" : "Add"} Credential</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs">Name</Label><Input size={1} value={credForm.name} onChange={e => setCredForm(f => ({ ...f, name: e.target.value }))} placeholder="EasyPaisa Main" /></div>
-                <div className="space-y-1"><Label className="text-xs">Type</Label>
-                  <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm" value={credForm.type} onChange={e => setCredForm(f => ({ ...f, type: e.target.value }))}>
-                    <option value="easypaisa">EasyPaisa</option>
-                    <option value="jazzcash">JazzCash</option>
-                    <option value="bank">Bank Account</option>
-                    <option value="other">Other</option>
-                  </select>
+                  ))}
                 </div>
-                <div className="space-y-1"><Label className="text-xs">Account Number</Label><Input value={credForm.account_number} onChange={e => setCredForm(f => ({ ...f, account_number: e.target.value }))} placeholder="03089148914" /></div>
-                <div className="space-y-1"><Label className="text-xs">Account Holder</Label><Input value={credForm.account_holder} onChange={e => setCredForm(f => ({ ...f, account_holder: e.target.value }))} placeholder="John Doe" /></div>
-                {credForm.type === "bank" && (
-                  <>
-                    <div className="space-y-1"><Label className="text-xs">Bank Name</Label><Input value={credForm.bank_name} onChange={e => setCredForm(f => ({ ...f, bank_name: e.target.value }))} placeholder="HBL" /></div>
-                    <div className="space-y-1"><Label className="text-xs">IBAN</Label><Input value={credForm.iban} onChange={e => setCredForm(f => ({ ...f, iban: e.target.value }))} placeholder="PK36..." /></div>
-                  </>
-                )}
+              )}
+              <div className="border-t pt-4 space-y-3">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">{credForm.id ? "Edit" : "Add"} Credential</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1"><Label className="text-xs">Name</Label><Input size={1} value={credForm.name} onChange={e => setCredForm(f => ({ ...f, name: e.target.value }))} placeholder="EasyPaisa Main" /></div>
+                  <div className="space-y-1"><Label className="text-xs">Type</Label>
+                    <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm" value={credForm.type} onChange={e => setCredForm(f => ({ ...f, type: e.target.value }))}>
+                      <option value="easypaisa">EasyPaisa</option>
+                      <option value="jazzcash">JazzCash</option>
+                      <option value="bank">Bank Account</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1"><Label className="text-xs">Account Number</Label><Input value={credForm.account_number} onChange={e => setCredForm(f => ({ ...f, account_number: e.target.value }))} placeholder="03089148914" /></div>
+                  <div className="space-y-1"><Label className="text-xs">Account Holder</Label><Input value={credForm.account_holder} onChange={e => setCredForm(f => ({ ...f, account_holder: e.target.value }))} placeholder="John Doe" /></div>
+                  {credForm.type === "bank" && (
+                    <>
+                      <div className="space-y-1"><Label className="text-xs">Bank Name</Label><Input value={credForm.bank_name} onChange={e => setCredForm(f => ({ ...f, bank_name: e.target.value }))} placeholder="HBL" /></div>
+                      <div className="space-y-1"><Label className="text-xs">IBAN</Label><Input value={credForm.iban} onChange={e => setCredForm(f => ({ ...f, iban: e.target.value }))} placeholder="PK36..." /></div>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="isActive" checked={credForm.is_active} onChange={e => setCredForm(f => ({ ...f, is_active: e.target.checked }))} />
+                  <Label htmlFor="isActive" className="text-xs">Active (visible to teachers)</Label>
+                </div>
+                <Button size="sm" onClick={() => saveCredential.mutate()} disabled={saveCredential.isPending || !credForm.name.trim() || !credForm.account_number.trim()}>
+                  {saveCredential.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                  {credForm.id ? "Update" : "Add"} Credential
+                </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="isActive" checked={credForm.is_active} onChange={e => setCredForm(f => ({ ...f, is_active: e.target.checked }))} />
-                <Label htmlFor="isActive" className="text-xs">Active (visible to teachers)</Label>
-              </div>
-              <Button size="sm" onClick={() => saveCredential.mutate()} disabled={saveCredential.isPending || !credForm.name.trim() || !credForm.account_number.trim()}>
-                {saveCredential.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-                {credForm.id ? "Update" : "Add"} Credential
-              </Button>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

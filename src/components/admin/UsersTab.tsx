@@ -23,16 +23,23 @@ import { MiniStat } from "./OverviewTab";
 
 const TAX_RATE = 0.15;
 
-function UserActions({ u, currentUser, openEdit, setStatsUser, setDeleteUserId, setDeleteUserDialogOpen, openImpersonate }: any) {
+function canModify(userRole: string | undefined, targetRole: string): boolean {
+  if (userRole === "admin") return true;
+  if (userRole === "coadmin") return targetRole === "teacher" || targetRole === "pending" || targetRole === "blocked" || targetRole === "rejected" || targetRole === "deleted";
+  return false;
+}
+
+function UserActions({ u, currentUser, openEdit, setStatsUser, setDeleteUserId, setDeleteUserDialogOpen, openImpersonate, userRole }: any) {
+  const isProtected = !canModify(userRole, u.role);
   return (
     <div className="flex gap-1 flex-wrap">
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => openEdit(u)}>
+          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => openEdit(u)} disabled={isProtected && u.user_id !== currentUser?.id}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Edit User</TooltipContent>
+        <TooltipContent>{isProtected && u.user_id !== currentUser?.id ? "Cannot edit admin/coadmin accounts" : "Edit User"}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
@@ -44,11 +51,11 @@ function UserActions({ u, currentUser, openEdit, setStatsUser, setDeleteUserId, 
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => openImpersonate(u)}>
+          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => openImpersonate(u)} disabled={isProtected}>
             <LogIn className="h-3.5 w-3.5" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Login as User</TooltipContent>
+        <TooltipContent>{isProtected ? "Cannot impersonate admin/coadmin" : "Login as User"}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
@@ -57,20 +64,24 @@ function UserActions({ u, currentUser, openEdit, setStatsUser, setDeleteUserId, 
             variant={u.role === "admin" ? "outline" : "destructive"}
             className="h-8 w-8"
             onClick={() => { setDeleteUserId(u.user_id); setDeleteUserDialogOpen(true); }}
-            disabled={u.user_id === currentUser?.id}
+            disabled={u.user_id === currentUser?.id || isProtected}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          {u.user_id === currentUser?.id ? "You can't remove yourself" : u.role === "admin" ? "Delete This Admin" : "Delete This User & All Data"}
+          {u.user_id === currentUser?.id ? "You can't remove yourself" : isProtected ? "Cannot delete admin/coadmin" : "Delete This User & All Data"}
         </TooltipContent>
       </Tooltip>
     </div>
   );
 }
 
-export default function UsersTab() {
+interface UsersTabProps {
+  userRole?: string;
+}
+
+export default function UsersTab({ userRole }: UsersTabProps) {
   const { formatPrice } = useCurrency();
   const queryClient = useQueryClient();
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
@@ -131,6 +142,7 @@ export default function UsersTab() {
       } as any).eq("id", uid);
       if (profileErr) throw profileErr;
       if (editForm.role !== editUser.role) {
+        if (!canModify(userRole, editUser.role)) throw new Error("You don't have permission to change this user's role");
         const { error: roleErr } = await supabase.from("user_roles").update({ role: editForm.role as any }).eq("user_id", uid);
         if (roleErr) throw roleErr;
       }
@@ -193,11 +205,19 @@ export default function UsersTab() {
   });
 
   const openEdit = (u: any) => {
+    if (!canModify(userRole, u.role) && u.user_id !== currentUser?.id) {
+      toast.error("You can only edit teacher or pending accounts");
+      return;
+    }
     setEditUser(u);
     setEditForm({ full_name: u.profile?.full_name || "", email: u.profile?.email || "", school_name: u.profile?.school_name || "", phone: u.profile?.phone || "", role: u.role });
   };
 
   const openImpersonate = (u: any) => {
+    if (!canModify(userRole, u.role)) {
+      toast.error("You can only impersonate teacher or pending accounts");
+      return;
+    }
     if (!u?.profile?.email) { toast.error("User has no email"); return; }
     setImpersonateUser(u);
     setImpersonateDialogOpen(true);
@@ -205,6 +225,10 @@ export default function UsersTab() {
 
   const selectedUser = users.find(u => u.user_id === deleteUserId);
   const profile = selectedUser?.profile;
+
+  const roleOptions = userRole === "admin"
+    ? ["admin", "coadmin", "teacher", "pending"]
+    : ["teacher", "pending"];
 
   return (
     <TooltipProvider>
@@ -224,6 +248,7 @@ export default function UsersTab() {
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="coadmin">Co-Admin</SelectItem>
                 <SelectItem value="teacher">Teacher</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
               </SelectContent>
@@ -255,13 +280,13 @@ export default function UsersTab() {
                         <TableCell className="text-xs">{u.profile?.email || "N/A"}</TableCell>
                         <TableCell>{u.profile?.school_name || <span className="text-muted-foreground">—</span>}</TableCell>
                         <TableCell>
-                          <Badge variant={u.role === "admin" ? "default" : u.role === "teacher" ? "secondary" : "outline"}>
-                            {u.role}
+                          <Badge variant={u.role === "admin" ? "default" : u.role === "coadmin" ? "default" : u.role === "teacher" ? "secondary" : "outline"}>
+                            {u.role === "coadmin" ? "Coadmin" : u.role}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs">{u.profile?.created_at ? format(new Date(u.profile.created_at), "MMM d, yyyy") : "N/A"}</TableCell>
                         <TableCell>
-                          <UserActions u={u} currentUser={currentUser} openEdit={openEdit} setStatsUser={setStatsUser} setDeleteUserId={setDeleteUserId} setDeleteUserDialogOpen={setDeleteUserDialogOpen} openImpersonate={openImpersonate} />
+                          <UserActions u={u} currentUser={currentUser} openEdit={openEdit} setStatsUser={setStatsUser} setDeleteUserId={setDeleteUserId} setDeleteUserDialogOpen={setDeleteUserDialogOpen} openImpersonate={openImpersonate} userRole={userRole} />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -277,12 +302,12 @@ export default function UsersTab() {
                         <p className="font-medium text-sm truncate">{u.profile?.full_name || "Unknown"}</p>
                         <p className="text-xs text-muted-foreground truncate">{u.profile?.email || "N/A"}</p>
                       </div>
-                      <Badge variant={u.role === "admin" ? "default" : u.role === "teacher" ? "secondary" : "outline"} className="shrink-0">{u.role}</Badge>
+                      <Badge variant={u.role === "admin" ? "default" : u.role === "coadmin" ? "default" : u.role === "teacher" ? "secondary" : "outline"} className="shrink-0">{u.role === "coadmin" ? "Co-Admin" : u.role}</Badge>
                     </div>
                     {u.profile?.school_name && <p className="text-xs text-muted-foreground flex items-center"><School className="text-primary h-4 w-4 mr-2" /> {u.profile.school_name}</p>}
                     <p className="text-[10px] text-muted-foreground">Joined {u.profile?.created_at ? format(new Date(u.profile.created_at), "MMM d, yyyy") : "N/A"}</p>
                     <div className="pt-1 border-t">
-                      <UserActions u={u} currentUser={currentUser} openEdit={openEdit} setStatsUser={setStatsUser} setDeleteUserId={setDeleteUserId} setDeleteUserDialogOpen={setDeleteUserDialogOpen} openImpersonate={openImpersonate} />
+                      <UserActions u={u} currentUser={currentUser} openEdit={openEdit} setStatsUser={setStatsUser} setDeleteUserId={setDeleteUserId} setDeleteUserDialogOpen={setDeleteUserDialogOpen} openImpersonate={openImpersonate} userRole={userRole} />
                     </div>
                   </div>
                 ))}
@@ -309,11 +334,17 @@ export default function UsersTab() {
               <Select value={editForm.role} onValueChange={v => setEditForm(f => ({ ...f, role: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="teacher">Teacher</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
+                  {!roleOptions.includes("coadmin") && (
+                    <SelectItem value="coadmin" disabled>Co-Admin</SelectItem>
+                  )}
+                  {roleOptions.map(r => (
+                    <SelectItem key={r} value={r}>{r === "coadmin" ? "Co-Admin" : r.charAt(0).toUpperCase() + r.slice(1)}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {userRole === "coadmin" && (
+                <p className="text-[10px] text-muted-foreground mt-1">You can only assign Teacher or Pending roles.</p>
+              )}
             </div>
           </div>
           <DialogFooter>

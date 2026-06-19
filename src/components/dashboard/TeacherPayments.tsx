@@ -145,7 +145,7 @@ export default function TeacherPayments({ teacherId }: { teacherId: string }) {
       setProofFile(null);
       toast.success("Payment proof submitted for verification");
     },
-    onError: (e: any) => { toast.error(e.message); console.log(e); },
+    onError: (e: any) => { toast.error(e.message); },
     onSettled: () => setUploadProgress(false),
   });
 
@@ -255,17 +255,54 @@ export default function TeacherPayments({ teacherId }: { teacherId: string }) {
           ) : (
             <div className="flex flex-wrap gap-3">
               {credentials.map((c) => (
-                <div key={c.id} className="flex items-center gap-3 rounded-lg border bg-background px-4 py-3 min-w-[200px]">
-                  <Landmark className="h-5 w-5 text-primary shrink-0" />
-                  <div>
-                    <p className="text-xs font-medium">{c.name}</p>
-                    <p className="text-sm font-bold tracking-wider font-mono">{c.account_number}</p>
-                    {c.account_holder && <p className="text-[10px] text-muted-foreground">{c.account_holder}</p>}
+                <div
+                  key={c.id}
+                  className="flex items-start gap-3 rounded-lg border bg-background p-3"
+                >
+                  <Landmark className="mt-0.5 h-5 w-5 text-primary shrink-0" />
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{c.name}</p>
+                      {!c.is_active && (
+                        <span className="text-xs text-muted-foreground">
+                          (Inactive)
+                        </span>
+                      )}
+                    </div>
+
+                    {c.bank_name && (
+                      <p className="text-xs text-muted-foreground">
+                        {c.bank_name}
+                      </p>
+                    )}
+
+                    {c.account_number && (
+                      <p className="mt-1 font-mono text-sm">
+                        {c.account_number}
+                      </p>
+                    )}
+
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      {c.account_holder && <span>{c.account_holder}</span>}
+                      {c.type && <span>• {c.type}</span>}
+                      {c.iban && <span>• IBAN available</span>}
+                    </div>
                   </div>
-                  <Button variant="outline" size="sm" className="h-7 text-xs shrink-0"
-                    onClick={() => { navigator.clipboard.writeText(c.account_number || ""); toast.success("Copied"); }}>
-                    Copy
-                  </Button>
+
+                  {c.account_number && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => {
+                        navigator.clipboard.writeText(c.account_number);
+                        toast.success("Copied");
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>

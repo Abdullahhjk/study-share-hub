@@ -216,9 +216,7 @@ export default function SettingsBootstrap() {
                     }
                 }
 
-                console.log(
-                    "Settings bootstrap completed"
-                );
+                // Settings bootstrap completed
             } catch (err) {
                 console.error(
                     "Settings bootstrap failed:",

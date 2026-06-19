@@ -70,16 +70,14 @@ export function NoteCard({ note, onRequestPaid, onCardClick, onReport }: NoteCar
           <div className="flex items-center gap-2">
             {note.teacher?.avatar_url ? (
               <img
-                src={note.teacher.avatar_url}
+                src={proxyImageUrl(note.teacher.avatar_url)}
                 alt="Profile"
                 className="h-10 w-10 rounded-full"
               />
             ) : (
-              <img
-                src={`https://ui-avatars.com/api/?name=${note.teacher.full_name}&background=random`}
-                alt="Profile"
-                className="h-10 w-10 rounded-full"
-              />
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-semibold shrink-0">
+                {(note.teacher.full_name || "T").charAt(0).toUpperCase()}
+              </div>
             )}
             <div className="flex flex-col text-[10px] sm:text-xs min-w-0">
               {note.teacher && (

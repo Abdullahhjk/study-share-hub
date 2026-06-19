@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: "admin";
+  requiredRole?: "admin" | "coadmin";
   fallbackPath?: string;
 }
 
@@ -23,12 +23,12 @@ export default function ProtectedRoute({ children, requiredRole, fallbackPath = 
         return;
       }
 
-      if (requiredRole === "admin") {
+      if (requiredRole === "admin" || requiredRole === "coadmin") {
         const { data: roleData } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", session.user.id)
-          .eq("role", "admin")
+          .in("role", ["admin", "coadmin"])
           .maybeSingle();
 
         if (!roleData) {

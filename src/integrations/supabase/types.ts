@@ -537,6 +537,7 @@ export type Database = {
           is_free: boolean
           preview_image_url: string | null
           price: number | null
+          purged_at: string | null
           school_name: string | null
           subcategory_id: string
           teacher_id: string
@@ -552,6 +553,7 @@ export type Database = {
           is_free?: boolean
           preview_image_url?: string | null
           price?: number | null
+          purged_at?: string | null
           school_name?: string | null
           subcategory_id: string
           teacher_id: string
@@ -567,6 +569,7 @@ export type Database = {
           is_free?: boolean
           preview_image_url?: string | null
           price?: number | null
+          purged_at?: string | null
           school_name?: string | null
           subcategory_id?: string
           teacher_id?: string
@@ -1224,6 +1227,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      delete_old_purged_rows: { Args: never; Returns: undefined }
       generate_monthly_payment_record: {
         Args: { p_month: number; p_teacher_id: string; p_year: number }
         Returns: string
@@ -1404,6 +1408,7 @@ export type Database = {
     Enums: {
       app_role:
         | "admin"
+        | "coadmin"
         | "teacher"
         | "pending"
         | "deleted"
@@ -1538,6 +1543,7 @@ export const Constants = {
     Enums: {
       app_role: [
         "admin",
+        "coadmin",
         "teacher",
         "pending",
         "deleted",

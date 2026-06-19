@@ -86,16 +86,15 @@ export function TeacherApprovalPanel() {
 
   const rejectMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // Delete the user role (keeps the profile but they can't do anything)
-      const { error: removeTeacherError } = await supabase
+      const { error: rejectError } = await supabase
         .from("user_roles")
-        .delete()
+        .update({ role: "rejected" })
         .eq("user_id", userId);
-      if (removeTeacherError) throw removeTeacherError;
+      if (rejectError) throw rejectError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pending-teachers"] });
-      toast.success("User rejected and removed.");
+      toast.success("User rejected.");
     },
     onError: (error: any) => {
       toast.error("Failed to reject: " + error.message);
