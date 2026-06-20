@@ -1,8 +1,14 @@
 export const STORAGE_KEY = "ai-messages";
 
+export interface ToolCallData {
+  query: string;
+  result: any;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  toolCalls?: ToolCallData[];
 }
 
 export function loadMessages(): ChatMessage[] {

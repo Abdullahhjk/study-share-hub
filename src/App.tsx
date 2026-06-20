@@ -56,7 +56,10 @@ function AppContent() {
       <Toaster />
       <Sonner />
 
-        <div style={panelOpen ? { maxWidth: "71.429vw" } : undefined}>
+        <div style={{
+          maxWidth: panelOpen ? "71.429vw" : "100%",
+          transition: "max-width 300ms ease-in-out",
+        }}>
           <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />

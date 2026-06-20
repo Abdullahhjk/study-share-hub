@@ -556,8 +556,8 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="mt-4 sm:mt-8 grid grid-cols-1 md:grid-cols-[16rem_1fr] gap-4 items-start">
-          <aside className="w-full md:w-64 space-y-1 bg-muted-background rounded-lg border p-2 md:sticky md:top-[110px] md:self-start">
+        <div className="mt-4 sm:mt-8 grid grid-cols-1 md:grid-cols-[clamp(3rem,22vw,16rem)_1fr] gap-4 items-start transition-all duration-300">
+          <aside className="@container w-full space-y-1 bg-muted-background rounded-lg border p-2 md:sticky md:top-[110px] md:self-start overflow-hidden transition-all duration-300">
             <div className="px-3 py-2 text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
               Navigation
             </div>
