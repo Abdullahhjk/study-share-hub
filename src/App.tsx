@@ -37,7 +37,7 @@ const env = import.meta.env.MODE;
 function AppContent() {
   const client = useQueryClient();
   const [initialLoading, setInitialLoading] = useState(true);
-  const { open: panelOpen } = useAIPanel();
+  const { open: panelOpen, panelWidth } = useAIPanel();
 
   useEffect(() => {
     client.prefetchQuery({
@@ -57,8 +57,7 @@ function AppContent() {
       <Sonner />
 
         <div style={{
-          maxWidth: panelOpen ? "71.429vw" : "100%",
-          transition: "max-width 300ms ease-in-out",
+          maxWidth: panelOpen ? `${100 - panelWidth}vw` : "100%",
         }}>
           <Routes>
           <Route path="/" element={<Index />} />

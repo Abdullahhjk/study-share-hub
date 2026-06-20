@@ -84,7 +84,7 @@ export default function AIAssistantPanel() {
   const isOnAiTab = (location.pathname === "/admin" || location.pathname === "/coadmin") && searchParams.get("tab") === "aiAssistant";
 
   const isMobile = useIsMobile();
-  const { open, setOpen } = useAIPanel();
+  const { open, setOpen, panelWidth, setPanelWidth } = useAIPanel();
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
@@ -107,6 +107,7 @@ export default function AIAssistantPanel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const isHoveringRef = useRef(false);
+  const resizeRef = useRef({ isResizing: false, startX: 0, startWidth: 0 });
 
   const initAgent = useCallback(async () => {
     try {
@@ -177,6 +178,36 @@ export default function AIAssistantPanel() {
       textareaRef.current?.focus();
     }
   }, [isLoading]);
+
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    resizeRef.current = { isResizing: true, startX: e.clientX, startWidth: panelWidth };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, [panelWidth]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizeRef.current.isResizing) return;
+      const dx = resizeRef.current.startX - e.clientX;
+      const newWidth = Math.min(40, Math.max(25, resizeRef.current.startWidth + (dx / window.innerWidth) * 100));
+      setPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      if (!resizeRef.current.isResizing) return;
+      resizeRef.current.isResizing = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
 
   const invokeAgent = useCallback(async (history: ChatMessage[]) => {
     const config = configRef.current;
@@ -644,13 +675,14 @@ export default function AIAssistantPanel() {
           <div className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${streamMode === "stream" ? "opacity-100" : "opacity-0"} bg-gradient-to-b from-green-800 to-green-950`} />
           <div className={`relative z-10 flex items-center justify-between border-b px-3 py-2.5 ${streamMode === "stream" ? "border-green-500/20" : ""}`}>
             <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
-              <img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5 shrink-0" /> <span className="truncate">A.R.C.H.O.N.</span> <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">BETA</span>
+              <img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5 shrink-0" /> <span className="truncate">A.R.C.H.O.N.</span>
               <button
                 onClick={() => setStreamMode(s => s === "collect" ? "stream" : "collect")}
                 className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors shrink-0 ${streamMode === "stream" ? "bg-green-500/10 text-green-500 border-green-500/30" : "bg-muted text-muted-foreground border-border"}`}
               >
                 {streamMode === "stream" ? "Streaming" : "Collect"}
               </button>
+
             </div>
             <div className="flex items-center gap-1 shrink-0">
               {messages.length > 0 && (
@@ -683,20 +715,28 @@ export default function AIAssistantPanel() {
     <>
       <div
         ref={panelRef}
-        className={`fixed right-0 top-0 bottom-0 z-40 w-[28.571%] border-l flex flex-col shadow-lg bg-background transition-transform duration-300 ease-in-out ${streamMode === "stream" ? "border-green-500/20" : "border-border"} ${open ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
+        style={{ width: `${panelWidth}%` }}
+        className={`fixed right-0 top-0 bottom-0 z-40 border-l flex flex-col shadow-lg bg-background transition-transform duration-300 ease-in-out ${streamMode === "stream" ? "border-green-500/20" : "border-border"} ${open ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
         onMouseEnter={() => { isHoveringRef.current = true; }}
         onMouseLeave={() => { isHoveringRef.current = false; }}
       >
+        <div
+          onMouseDown={handleResizeMouseDown}
+          className="absolute left-0 top-0 bottom-0 w-5 -ml-2.5 cursor-col-resize z-50 flex items-center justify-center group"
+        >
+          <div className="h-full w-1.5" />
+          <div className="absolute top-1/2 -translate-y-1/2 w-2 h-10 rounded-full bg-border/60 group-hover:bg-primary/50 group-active:bg-primary/60 transition-colors" />
+        </div>
         <div className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${streamMode === "stream" ? "opacity-100" : "opacity-0"} bg-gradient-to-b from-green-500/[0.04] to-green-800/[0.15]`} />
         <div className="relative z-10 flex flex-col flex-1 min-h-0">
           <div className={`flex items-center justify-between border-b px-3 py-2.5 shrink-0 ${streamMode === "stream" ? "border-green-500/20" : ""}`}>
             <div className="flex flex-col items-start gap-1 text-sm font-semibold">
-              <span className="flex items-center gap-2"><img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5" /> A.R.C.H.O.N. <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">BETA</span>
+              <span className="flex items-center gap-2"><img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5" /> A.R.C.H.O.N.
                 <button
                   onClick={() => setStreamMode(s => s === "collect" ? "stream" : "collect")}
                   className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${streamMode === "stream" ? "bg-green-500/10 text-green-500 border-green-500/30" : "bg-muted text-muted-foreground border-border"}`}
                 >
-                  {streamMode === "stream" ? "Streaming" : "Collect"}
+                {streamMode === "stream" ? "Streaming" : "Collect"}
                 </button>
               </span>
             </div>
