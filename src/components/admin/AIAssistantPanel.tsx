@@ -50,7 +50,7 @@ function ToolCallSection({ calls }: { calls: ToolCallData[] }) {
 
 const TOOLS = [
   {
-    type: "function",
+    type: "function" as const,
     function: {
       name: "run_sql",
       description: "Execute a SQL query against the database. Supports SELECT, INSERT, UPDATE, DELETE. For SELECT queries, execute with confirmed=true. For INSERT/UPDATE/DELETE, first show the user the query and get approval, then call again with confirmed=true.",
@@ -96,6 +96,7 @@ export default function AIAssistantPanel() {
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const [thinkingStage, setThinkingStage] = useState(0);
   const [streamMode, setStreamMode] = useState<"collect" | "stream">("collect");
+  const [executingSql, setExecutingSql] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -189,7 +190,24 @@ export default function AIAssistantPanel() {
 
     const systemMsg = {
       role: "system" as const,
-      content: config.systemPrompt + "\n\n" + "Current Date: " + new Date().toISOString().split("T")[0] + "\n\n" + "Current Time: " + new Date().toISOString().split("T")[1].split(".")[0] + "\n\n" + "User Current URL: " + window.location.href + "\n\n" + "User Current Role: " + role + "\n\n" + "User Data:" + JSON.stringify(user),
+      content:
+        config.systemPrompt +
+        "\n\nCurrent Date: " +
+        new Date().toLocaleDateString("en-CA") +
+        "\n\nCurrent Time: " +
+        new Date().toLocaleTimeString("en-GB", {
+          hour12: false,
+        }) +
+        "\n\nCurrent Time Zone: " +
+        Intl.DateTimeFormat().resolvedOptions().timeZone +
+        "\n\nUser Current URL: " +
+        window.location.href +
+        "\n\nCurrent Page Content:\n" +
+        document.body.innerText.slice(0, 30000) +
+        "\n\nUser Current Role: " +
+        role +
+        "\n\nUser Data: " +
+        JSON.stringify(user),
     };
 
     const sanitize = (msgs: ChatMessage[]) => msgs.map(({ toolCalls: _, ...rest }) => rest);
@@ -197,78 +215,154 @@ export default function AIAssistantPanel() {
     try {
       // ── STREAM MODE ──────────────────────────────────────────
       if (streamMode === "stream") {
-        const resp = await fetch("https://api.cohere.com/v2/chat", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: config.model,
-            messages: [systemMsg, ...sanitize(history)],
-            stream: true,
-          }),
-          signal: controller.signal,
-        });
-
-        if (!resp.ok) {
-          const err = await resp.text();
-          throw new Error(`Cohere API error (${resp.status}): ${err}`);
-        }
-
-        const reader = resp.body!.getReader();
-        const decoder = new TextDecoder();
-        let buf = "";
-        let fullText = "";
-        let curData = "";
+        const client = new CohereClientV2({ token: config.apiKey });
 
         const streamMsgIdx = history.length;
         setMessages(prev => [...prev, { role: "assistant", content: "" }]);
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        let fullText = "";
+        const toolCallsAcc = new Map<number, {
+          id: string;
+          type: "function";
+          function: { name: string; arguments: string };
+        }>();
 
-          buf += decoder.decode(value, { stream: true });
+        // ── First streaming request ──
+        {
+          const streamResp = await client.chatStream({
+            model: config.model,
+            messages: [systemMsg, ...sanitize(history)],
+            tools: TOOLS,
+          }, { abortSignal: controller.signal });
 
-          while (buf.includes("\n")) {
-            const nlIdx = buf.indexOf("\n");
-            const line = buf.slice(0, nlIdx).replace(/\r$/, "");
-            buf = buf.slice(nlIdx + 1);
+          const stream = await streamResp;
 
-            if (line.startsWith("data: ")) {
-              curData = line.slice(6).trim();
-            }
-
-            if (!line.trim() && curData) {
-              if (curData === "[DONE]") break;
-
-              try {
-                const event = JSON.parse(curData);
-                if (event.type === "content-delta") {
-                  const text = event.delta?.message?.content?.text;
-                  if (text) {
-                    fullText += text;
-                    setMessages(prev => {
-                      const copy = [...prev];
-                      if (streamMsgIdx < copy.length) {
-                        copy[streamMsgIdx] = { role: "assistant", content: fullText };
-                      }
-                      return copy;
-                    });
+          for await (const event of stream) {
+            if (event.type === "content-delta") {
+              const text = event.delta?.message?.content?.text;
+              if (text) {
+                fullText += text;
+                setMessages(prev => {
+                  const copy = [...prev];
+                  if (streamMsgIdx < copy.length) {
+                    copy[streamMsgIdx] = { role: "assistant", content: fullText };
                   }
-                }
-              } catch { /* skip malformed */ }
-
-              curData = "";
+                  return copy;
+                });
+              }
+            } else if (event.type === "tool-call-start") {
+              const tc = event.delta?.message?.toolCalls;
+              if (tc) {
+                toolCallsAcc.set(event.index ?? 0, {
+                  id: tc.id,
+                  type: "function",
+                  function: {
+                    name: tc.function?.name ?? "",
+                    arguments: tc.function?.arguments ?? "",
+                  },
+                });
+              }
+            } else if (event.type === "tool-call-delta") {
+              const idx = event.index ?? 0;
+              const existing = toolCallsAcc.get(idx);
+              if (existing) {
+                existing.function.arguments += event.delta?.message?.toolCalls?.function?.arguments ?? "";
+              }
             }
           }
         }
 
-        setMessages(prev => {
-          const copy = [...prev];
-          if (streamMsgIdx < copy.length) {
-            copy[streamMsgIdx] = { role: "assistant", content: fullText || "Empty response" };
+        const toolCallsFromStream = Array.from(toolCallsAcc.values())
+          .filter(tc => tc.function.name === "run_sql");
+
+        // ── Execute tool calls if any ────────────────────────────
+        if (toolCallsFromStream.length > 0) {
+          const originalText = fullText;
+          setExecutingSql(true);
+
+          const executed: { tc: typeof toolCallsFromStream[0]; data: any }[] = [];
+          for (const tc of toolCallsFromStream) {
+            const args = JSON.parse(tc.function.arguments || "{}");
+            if (tc.function.name === "run_sql") {
+              const { data: sqlData, error } = await supabase.functions.invoke("cohere-agent", {
+                body: { action: "sql", query: args.query, confirmed: args.confirmed ?? false },
+              });
+              if (error) throw new Error(error.message);
+              executed.push({ tc, data: sqlData });
+            }
           }
-          return copy;
-        });
+
+          const toolCallData: ToolCallData[] = executed.map(({ tc, data }) => {
+            const args = JSON.parse(tc.function.arguments || "{}");
+            return { query: args.query, result: data };
+          });
+
+          setExecutingSql(false);
+
+          setMessages(prev => {
+            const copy = [...prev];
+            if (streamMsgIdx < copy.length) {
+              copy[streamMsgIdx] = { role: "assistant", content: originalText, toolCalls: toolCallData };
+            }
+            return copy;
+          });
+
+          // ── Second streaming request with tool results ──
+          const toolMessages = [
+            ...sanitize(history),
+            { role: "assistant" as const, toolCalls: toolCallsFromStream, content: originalText || "" },
+            ...executed.map(({ tc, data }) => ({
+              role: "tool" as const,
+              toolCallId: tc.id,
+              content: JSON.stringify(data),
+            })),
+          ];
+
+          const streamResp2 = await client.chatStream({
+            model: config.model,
+            messages: [systemMsg, ...toolMessages],
+            tools: TOOLS,
+          }, { abortSignal: controller.signal });
+
+          const stream2 = await streamResp2;
+          let fullText2 = "";
+
+          for await (const event of stream2) {
+            if (event.type === "content-delta") {
+              const text = event.delta?.message?.content?.text;
+              if (text) {
+                fullText2 += text;
+                setMessages(prev => {
+                  const copy = [...prev];
+                  if (streamMsgIdx < copy.length) {
+                    copy[streamMsgIdx] = { role: "assistant", content: fullText2, toolCalls: toolCallData };
+                  }
+                  return copy;
+                });
+              }
+            }
+          }
+
+          setMessages(prev => {
+            const copy = [...prev];
+            if (streamMsgIdx < copy.length) {
+              copy[streamMsgIdx] = {
+                role: "assistant",
+                content: fullText2 || originalText || "Empty response",
+                toolCalls: toolCallData,
+              };
+            }
+            return copy;
+          });
+        } else {
+          setMessages(prev => {
+            const copy = [...prev];
+            if (streamMsgIdx < copy.length) {
+              copy[streamMsgIdx] = { role: "assistant", content: fullText || "Empty response" };
+            }
+            return copy;
+          });
+        }
 
         return;
       }
@@ -342,6 +436,7 @@ export default function AIAssistantPanel() {
       setMessages(prev => [...prev, { role: "assistant", content: `Error: ${e.message}` }]);
     } finally {
       setIsLoading(false);
+      setExecutingSql(false);
       abortRef.current = null;
     }
   }, [role, user, streamMode]);
@@ -432,7 +527,7 @@ export default function AIAssistantPanel() {
         </div>
       )}
       {messages.map((msg, i) => {
-        if (isLoading && msg.role === "assistant" && !msg.content && streamMode === "collect") return null;
+        if (msg.role === "assistant" && !msg.content) return null;
         const isNewAssistant = !isLoading && msg.role === "assistant" && i === messages.length - 1 && i > 0 && messages[i - 1].role === "user";
         const isCopied = copiedId === i;
         return (
@@ -491,11 +586,19 @@ export default function AIAssistantPanel() {
           </div>
         );
       })}
-      {isLoading && streamMode === "collect" && (messages.length === 0 || !messages[messages.length - 1].content || messages[messages.length - 1].role !== "assistant") && (
+      {isLoading && (!messages.length || !messages[messages.length - 1].content || messages[messages.length - 1].role !== "assistant") && (
         <div className="flex justify-start">
           <div className="rounded-lg px-3 py-2 bg-muted text-sm flex items-center gap-1.5">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
             <span>Thinking{dots}</span>
+          </div>
+        </div>
+      )}
+      {executingSql && (
+        <div className="flex justify-start">
+          <div className="rounded-lg px-3 py-2 bg-muted text-sm flex items-center gap-1.5">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <span>Executing SQL{dots}</span>
           </div>
         </div>
       )}
@@ -540,17 +643,16 @@ export default function AIAssistantPanel() {
         >
           <div className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${streamMode === "stream" ? "opacity-100" : "opacity-0"} bg-gradient-to-b from-green-800 to-green-950`} />
           <div className={`relative z-10 flex items-center justify-between border-b px-3 py-2.5 ${streamMode === "stream" ? "border-green-500/20" : ""}`}>
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5" /> A.R.C.H.O.N. <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">BETA</span>
+            <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
+              <img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5 shrink-0" /> <span className="truncate">A.R.C.H.O.N.</span> <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">BETA</span>
               <button
                 onClick={() => setStreamMode(s => s === "collect" ? "stream" : "collect")}
-                className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${streamMode === "stream" ? "bg-green-500/10 text-green-500 border-green-500/30" : "bg-muted text-muted-foreground border-border"}`}
+                className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors shrink-0 ${streamMode === "stream" ? "bg-green-500/10 text-green-500 border-green-500/30" : "bg-muted text-muted-foreground border-border"}`}
               >
                 {streamMode === "stream" ? "Streaming" : "Collect"}
               </button>
-              <small className="text-xs text-muted-foreground">(Administrative Resource Coordinator for Harmonious Execution Nexus)</small>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
               {messages.length > 0 && (
                 <Button variant="ghost" size="sm" onClick={clearChat} className={`text-xs h-7 px-2 ${streamMode === "stream" ? "text-green-500 hover:text-green-400 hover:bg-green-500/10" : "text-muted-foreground"}`}>
                   Clear
@@ -597,9 +699,8 @@ export default function AIAssistantPanel() {
                   {streamMode === "stream" ? "Streaming" : "Collect"}
                 </button>
               </span>
-              <small className="text-[10px] text-muted-foreground">(Administrative Resource Coordinator for Harmonious Execution Nexus)</small>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
               {messages.length > 0 && (
                 <Button variant="ghost" size="sm" onClick={clearChat} className={`text-xs h-7 px-2 ${streamMode === "stream" ? "text-green-500 hover:text-green-400 hover:bg-green-500/10" : "text-muted-foreground"}`}>
                   Clear

@@ -227,7 +227,12 @@ export default function AdminDashboard() {
           <div className="relative">
             <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2">
               <Shield className="h-6 w-6 text-primary" />
-              {greeting}, {userProfile?.full_name || (isAdmin ? "Admin" : "Co-Admin")}
+
+              {greeting},{" "}
+
+              <span className="bg-gradient-to-r from-primary to-[hsl(195_100%_65%)] bg-clip-text text-transparent">
+                {userProfile?.full_name || (isAdmin ? "Admin" : "Co-Admin")}
+              </span>
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {isAdmin ? "Full platform management and financial overview" : "Platform oversight with limited management access"}
