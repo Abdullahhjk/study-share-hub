@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CohereClientV2 } from "cohere-ai";
-import { Bot, X, Send, Loader2, PanelRightClose, Sparkles, ThumbsUp, ThumbsDown, Square, Copy, Check, Pen } from "lucide-react";
+import { X, Send, Loader2, PanelRightClose, Sparkles, ThumbsUp, ThumbsDown, Square, Copy, Check, Pen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -425,7 +425,8 @@ export default function AIAssistantPanel() {
     <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-3 space-y-3">
       {messages.length === 0 && (
         <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground px-4">
-          <Sparkles className="h-8 w-8 mb-2 opacity-40" />
+          <img src="/ARCHON.png" alt="ARCHON" className="h-20 w-20 mb-2" />
+          <p className="text-sm font-bold text-xl">A.R.C.H.O.N</p>
           <p className="text-sm font-medium">At your service.</p>
           <p className="text-xs mt-1">Ask about users, notes, payments, or any platform feature.</p>
         </div>
@@ -490,137 +491,143 @@ export default function AIAssistantPanel() {
           </div>
         );
       })}
-              {isLoading && streamMode === "collect" && (messages.length === 0 || !messages[messages.length - 1].content || messages[messages.length - 1].role !== "assistant") && (
-                <div className="flex justify-start">
-                  <div className="rounded-lg px-3 py-2 bg-muted text-sm flex items-center gap-1.5">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span>Thinking{dots}</span>
-                  </div>
-                </div>
-              )}
-              <div ref={bottomRef} />
-            </div>
-            );
+      {isLoading && streamMode === "collect" && (messages.length === 0 || !messages[messages.length - 1].content || messages[messages.length - 1].role !== "assistant") && (
+        <div className="flex justify-start">
+          <div className="rounded-lg px-3 py-2 bg-muted text-sm flex items-center gap-1.5">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <span>Thinking{dots}</span>
+          </div>
+        </div>
+      )}
+      <div ref={bottomRef} />
+    </div>
+  );
 
-            const chatInput = (
-            <div className={`border-t p-3 flex gap-2 shrink-0 items-center ${streamMode === "stream" ? "border-green-500/20" : ""}`}>
-              <Textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ask anything..." disabled={isLoading || !initialized} className={`flex-1 min-h-[40px] border-[3px] max-h-[120px] resize-none ${streamMode === "stream" ? "bg-green-500/5 border-green-500/20 focus-visible:ring-green-500/50 focus-visible:border-green-500" : ""}`} rows={3} />
-              {editingIndex !== null ? (
-                <Button
-                  onClick={() => { setEditingIndex(null); setInput(""); }}
-                  size="icon"
-                  variant="outline"
-                  className="h-full w-9 shrink-0 border-red-300 text-red-400 hover:bg-red-50"
-                  title="Cancel edit"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              ) : null}
-              {isLoading ? (
-                <Button onClick={handleStop} size="icon" className={`h-full w-9 shrink-0 ${streamMode === "stream" ? "bg-green-600 hover:bg-green-700 text-white" : ""}`} variant={streamMode === "stream" ? "default" : "destructive"}>
-                  <Square className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Button onClick={sendMessage} disabled={!input.trim() || !initialized} size="icon" className={`h-full w-9 shrink-0 ${streamMode === "stream" ? "bg-green-500 hover:bg-green-600 text-white" : ""}`}>
-                  <Send className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-            );
+  const chatInput = (
+    <div className={`border-t p-3 flex gap-2 shrink-0 items-center ${streamMode === "stream" ? "border-green-500/20" : ""}`}>
+      <Textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ask anything..." disabled={isLoading || !initialized} className={`flex-1 min-h-[40px] border-[3px] max-h-[120px] resize-none ${streamMode === "stream" ? "bg-green-500/5 border-green-500/20 focus-visible:ring-green-500/50 focus-visible:border-green-500" : ""}`} rows={3} />
+      {editingIndex !== null ? (
+        <Button
+          onClick={() => { setEditingIndex(null); setInput(""); }}
+          size="icon"
+          variant="outline"
+          className="h-full w-9 shrink-0 border-red-300 text-red-400 hover:bg-red-50"
+          title="Cancel edit"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      ) : null}
+      {isLoading ? (
+        <Button onClick={handleStop} size="icon" className={`h-full w-9 shrink-0 ${streamMode === "stream" ? "bg-green-600 hover:bg-green-700 text-white" : ""}`} variant={streamMode === "stream" ? "default" : "destructive"}>
+          <Square className="h-4 w-4" />
+        </Button>
+      ) : (
+        <Button onClick={sendMessage} disabled={!input.trim() || !initialized} size="icon" className={`h-full w-9 shrink-0 ${streamMode === "stream" ? "bg-green-500 hover:bg-green-600 text-white" : ""}`}>
+          <Send className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
 
-            if (isMobile) {
+  if (isMobile) {
     return (
-            <>
-              <div
-                ref={panelRef}
-                className={`fixed inset-0 z-[60] flex flex-col transition-all duration-300 ease-in-out ${streamMode === "stream" ? "bg-gradient-to-b from-green-500/[0.04] to-green-800/[0.15]" : "bg-background"} ${open ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
-                onMouseEnter={() => { isHoveringRef.current = true; }}
-                onMouseLeave={() => { isHoveringRef.current = false; }}
-              >
-                <div className={`flex items-center justify-between border-b px-3 py-2.5 ${streamMode === "stream" ? "border-green-500/20" : ""}`}>
-                  <div className="flex items-center gap-2 text-sm font-semibold">
-                    <Bot className="h-4 w-4 text-primary" /> A.R.C.H.O.N. <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">BETA</span>
-                    <button
-                      onClick={() => setStreamMode(s => s === "collect" ? "stream" : "collect")}
-                      className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${streamMode === "stream" ? "bg-green-500/10 text-green-500 border-green-500/30" : "bg-muted text-muted-foreground border-border"}`}
-                    >
-                      {streamMode === "stream" ? "Streaming" : "Collect"}
-                    </button>
-                    <small className="text-xs text-muted-foreground">(Administrative Resource Coordinator for Harmonious Execution Nexus)</small>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {messages.length > 0 && (
-                      <Button variant="ghost" size="sm" onClick={clearChat} className={`text-xs h-7 px-2 ${streamMode === "stream" ? "text-green-500 hover:text-green-400 hover:bg-green-500/10" : "text-muted-foreground"}`}>
-                        Clear
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="icon" className={`h-7 w-7 ${streamMode === "stream" ? "text-green-500 hover:text-green-400 hover:bg-green-500/10" : ""}`} onClick={() => setOpen(false)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                {msgList}
-                {chatInput}
-              </div>
+      <>
+        <div
+          ref={panelRef}
+          className={`fixed inset-0 z-[60] flex flex-col bg-background transition-transform duration-300 ease-in-out ${open ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
+          onMouseEnter={() => { isHoveringRef.current = true; }}
+          onMouseLeave={() => { isHoveringRef.current = false; }}
+        >
+          <div className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${streamMode === "stream" ? "opacity-100" : "opacity-0"} bg-gradient-to-b from-green-800 to-green-950`} />
+          <div className={`relative z-10 flex items-center justify-between border-b px-3 py-2.5 ${streamMode === "stream" ? "border-green-500/20" : ""}`}>
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5" /> A.R.C.H.O.N. <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">BETA</span>
               <button
-                onClick={() => setOpen(true)}
-                className={`fixed bottom-12 right-5 z-[61] h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-all duration-300 ease-in-out ${open ? "opacity-0 pointer-events-none scale-75" : "opacity-100 scale-100"}`}
-                title="Open A.R.C.H.O.N."
+                onClick={() => setStreamMode(s => s === "collect" ? "stream" : "collect")}
+                className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${streamMode === "stream" ? "bg-green-500/10 text-green-500 border-green-500/30" : "bg-muted text-muted-foreground border-border"}`}
               >
-                <Bot className="h-5 w-5" />
+                {streamMode === "stream" ? "Streaming" : "Collect"}
               </button>
-            </>
-            );
+              <small className="text-xs text-muted-foreground">(Administrative Resource Coordinator for Harmonious Execution Nexus)</small>
+            </div>
+            <div className="flex items-center gap-1">
+              {messages.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearChat} className={`text-xs h-7 px-2 ${streamMode === "stream" ? "text-green-500 hover:text-green-400 hover:bg-green-500/10" : "text-muted-foreground"}`}>
+                  Clear
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" className={`h-7 w-7 ${streamMode === "stream" ? "text-green-500 hover:text-green-400 hover:bg-green-500/10" : ""}`} onClick={() => setOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="relative z-10 flex flex-col flex-1 min-h-0">
+            {msgList}
+            {chatInput}
+          </div>
+        </div>
+        <button
+          onClick={() => setOpen(true)}
+          className={`fixed bottom-12 right-5 z-[61] h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-all duration-300 ease-in-out ${open ? "opacity-0 pointer-events-none scale-75" : "opacity-100 scale-100"}`}
+          title="Open A.R.C.H.O.N."
+        >
+          <img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5" />
+        </button>
+      </>
+    );
   }
 
-            return (
-            <>
-              <div
-                ref={panelRef}
-                className={`fixed right-0 top-0 bottom-0 z-40 w-[28.571%] border-l flex flex-col shadow-lg transition-all duration-300 ease-in-out ${streamMode === "stream" ? "bg-gradient-to-b from-green-500/[0.04] to-green-800/[0.15] border-green-500/20" : "bg-background border-border"} ${open ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
-                onMouseEnter={() => { isHoveringRef.current = true; }}
-                onMouseLeave={() => { isHoveringRef.current = false; }}
-              >
-                <div className={`flex items-center justify-between border-b px-3 py-2.5 shrink-0 ${streamMode === "stream" ? "border-green-500/20" : ""}`}>
-                  <div className="flex flex-col items-start gap-1 text-sm font-semibold">
-                    <span className="flex items-center gap-2"><Bot className="h-4 w-4 text-primary" /> A.R.C.H.O.N. <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">BETA</span>
-                      <button
-                        onClick={() => setStreamMode(s => s === "collect" ? "stream" : "collect")}
-                        className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${streamMode === "stream" ? "bg-green-500/10 text-green-500 border-green-500/30" : "bg-muted text-muted-foreground border-border"}`}
-                      >
-                        {streamMode === "stream" ? "Streaming" : "Collect"}
-                      </button>
-                    </span>
-                    <small className="text-[10px] text-muted-foreground">(Administrative Resource Coordinator for Harmonious Execution Nexus)</small>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {messages.length > 0 && (
-                      <Button variant="ghost" size="sm" onClick={clearChat} className={`text-xs h-7 px-2 ${streamMode === "stream" ? "text-green-500 hover:text-green-400 hover:bg-green-500/10" : "text-muted-foreground"}`}>
-                        Clear
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="icon" className={`h-7 w-7 ${streamMode === "stream" ? "text-green-500 hover:text-green-400 hover:bg-green-500/10" : ""}`} onClick={() => setOpen(false)}>
-                      <PanelRightClose className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                {msgList}
-                {chatInput}
-              </div>
-              <button
-                onClick={() => setOpen(true)}
-                className={`fixed right-0 top-1/2 -translate-y-1/2 z-30 rounded-l-md border border-r-0 bg-background px-1.5 py-4 shadow-md hover:bg-accent flex flex-col items-center gap-1 transition-all duration-300 ease-in-out group ${open ? "opacity-0 pointer-events-none" : "opacity-100"
-                  }`}
-                title="Open A.R.C.H.O.N."
-              >
-                <Bot className="h-4 w-4 text-primary rotate-90 transition-transform duration-300 group-hover:rotate-0" />
+  return (
+    <>
+      <div
+        ref={panelRef}
+        className={`fixed right-0 top-0 bottom-0 z-40 w-[28.571%] border-l flex flex-col shadow-lg bg-background transition-transform duration-300 ease-in-out ${streamMode === "stream" ? "border-green-500/20" : "border-border"} ${open ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
+        onMouseEnter={() => { isHoveringRef.current = true; }}
+        onMouseLeave={() => { isHoveringRef.current = false; }}
+      >
+        <div className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${streamMode === "stream" ? "opacity-100" : "opacity-0"} bg-gradient-to-b from-green-500/[0.04] to-green-800/[0.15]`} />
+        <div className="relative z-10 flex flex-col flex-1 min-h-0">
+          <div className={`flex items-center justify-between border-b px-3 py-2.5 shrink-0 ${streamMode === "stream" ? "border-green-500/20" : ""}`}>
+            <div className="flex flex-col items-start gap-1 text-sm font-semibold">
+              <span className="flex items-center gap-2"><img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5" /> A.R.C.H.O.N. <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">BETA</span>
+                <button
+                  onClick={() => setStreamMode(s => s === "collect" ? "stream" : "collect")}
+                  className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${streamMode === "stream" ? "bg-green-500/10 text-green-500 border-green-500/30" : "bg-muted text-muted-foreground border-border"}`}
+                >
+                  {streamMode === "stream" ? "Streaming" : "Collect"}
+                </button>
+              </span>
+              <small className="text-[10px] text-muted-foreground">(Administrative Resource Coordinator for Harmonious Execution Nexus)</small>
+            </div>
+            <div className="flex items-center gap-1">
+              {messages.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearChat} className={`text-xs h-7 px-2 ${streamMode === "stream" ? "text-green-500 hover:text-green-400 hover:bg-green-500/10" : "text-muted-foreground"}`}>
+                  Clear
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" className={`h-7 w-7 ${streamMode === "stream" ? "text-green-500 hover:text-green-400 hover:bg-green-500/10" : ""}`} onClick={() => setOpen(false)}>
+                <PanelRightClose className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          {msgList}
+          {chatInput}
+        </div>
+      </div>
+      <button
+        onClick={() => setOpen(true)}
+        className={`fixed right-0 top-1/2 -translate-y-1/2 z-30 rounded-l-md border border-r-0 bg-background px-1.5 py-4 shadow-md hover:bg-accent flex flex-col items-center gap-1 transition-all duration-300 ease-in-out group ${open ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
+        title="Open A.R.C.H.O.N."
+      >
+        <img src="/ARCHON.png" alt="ARCHON" className="h-4 w-4 rotate-90 transition-transform duration-300 group-hover:rotate-0" />
 
-                <span className="text-[10px] font-medium text-muted-foreground tracking-wider flex flex-col items-center leading-none">
-                  {"ARCHON".split("").map((c, i) => (
-                    <span key={i}>{c}</span>
-                  ))}
-                </span>
-              </button>
-            </>
-            );
+        <span className="text-[10px] font-medium text-muted-foreground tracking-wider flex flex-col items-center leading-none">
+          {"ARCHON".split("").map((c, i) => (
+            <span key={i}>{c}</span>
+          ))}
+        </span>
+      </button>
+    </>
+  );
 }
