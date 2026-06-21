@@ -1,5 +1,5 @@
 export const CODEBASE_INFO = {
   files: "140+",
-  lines: "28700+",
-  chars: "1041300+",
+  lines: "29200+",
+  chars: "1056200+",
 } as const;

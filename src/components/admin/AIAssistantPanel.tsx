@@ -86,9 +86,12 @@ export default function AIAssistantPanel() {
   const isMobile = useIsMobile();
   const { open, setOpen, panelWidth, setPanelWidth } = useAIPanel();
   const [user, setUser] = useState<any>(null);
+  const [avatar, setAvatar] = useState<string>("/user.png");
+  const [isColorBlind, setIsColorBlind] = useState(false);
   const [role, setRole] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
   const [initialized, setInitialized] = useState(false);
+  const [initStatus, setInitStatus] = useState<"idle" | "initializing" | "done">("idle");
   const [messages, setMessages] = useState<ChatMessage[]>(loadMessages);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -116,6 +119,7 @@ export default function AIAssistantPanel() {
       if (data?.error) throw new Error(data.error);
       configRef.current = { apiKey: data.apiKey, systemPrompt: data.systemPrompt, model: data.model };
       setInitialized(true);
+      setInitStatus("done");
     } catch (e: any) {
       setError(`Init failed: ${e.message}`);
     }
@@ -126,6 +130,8 @@ export default function AIAssistantPanel() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setChecking(false); return; }
       setUser(session.user);
+      const { data: avatar_url } = await supabase.from("profiles").select("avatar_url").eq("id", session.user.id).maybeSingle();
+      setAvatar(avatar_url?.avatar_url || "/user.png");
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
@@ -138,6 +144,21 @@ export default function AIAssistantPanel() {
     };
     check();
   }, [initAgent]);
+
+  useEffect(() => {
+    const check = () => setIsColorBlind(document.documentElement.classList.contains("colorblind-mode"));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (initStatus === "done") {
+      const t = setTimeout(() => setInitStatus("idle"), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [initStatus]);
 
   useEffect(() => {
     saveMessages(messages);
@@ -522,12 +543,18 @@ export default function AIAssistantPanel() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
-  const clearChat = () => {
+  const handleInit = async () => {
     setMessages([]);
     clearMessages();
     setError("");
     setEditingIndex(null);
-    initAgent();
+    setInitStatus("initializing");
+    try {
+      await initAgent();
+      setInitStatus("done");
+    } catch {
+      setInitStatus("idle");
+    }
   };
 
   const handleCopy = async (text: string, id: number) => {
@@ -550,74 +577,163 @@ export default function AIAssistantPanel() {
   const msgList = (
     <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-3 space-y-3">
       {messages.length === 0 && (
-        <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground px-4">
+        <div className="flex flex-col items-center justify-center h-[90%] text-center text-muted-foreground px-4">
           <img src="/ARCHON.png" alt="ARCHON" className="h-20 w-20 mb-2" />
           <p className="text-sm font-bold text-xl">A.R.C.H.O.N</p>
           <p className="text-sm font-medium">At your service.</p>
           <p className="text-xs mt-1">Ask about users, notes, payments, or any platform feature.</p>
         </div>
       )}
+      {initStatus === "done" && (
+        <div className="flex justify-center animate-fade-in">
+          <div className="bg-success text-success-foreground text-xs font-medium px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-md">
+            <span>Initialized</span>
+          </div>
+        </div>
+      )}
       {messages.map((msg, i) => {
         if (msg.role === "assistant" && !msg.content) return null;
-        const isNewAssistant = !isLoading && msg.role === "assistant" && i === messages.length - 1 && i > 0 && messages[i - 1].role === "user";
+
+        const isNewAssistant =
+          !isLoading &&
+          msg.role === "assistant" &&
+          i === messages.length - 1 &&
+          i > 0 &&
+          messages[i - 1].role === "user";
+
         const isCopied = copiedId === i;
+
         return (
-          <div key={i} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
-            <div className={`min-w-[50%] max-w-[95%] rounded-lg px-3 py-2 text-sm group relative ${msg.role === "user"
-              ? streamMode === "stream"
-                ? "bg-green-600 dark:bg-green-700 text-white dark:text-green-50"
-                : "bg-primary dark:bg-primary text-primary-foreground dark:text-primary-foreground"
-              : streamMode === "stream"
-                ? "bg-green-500/10 dark:bg-green-900/40 text-foreground dark:text-green-100 border border-green-500/20 dark:border-green-700/30"
-                : "bg-muted"
-              } ${isNewAssistant ? "animate-fade-in" : ""} ${editingIndex === i ? "ring-2 ring-green-400" : ""}`}>
+          <div
+            key={i}
+            className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"
+              }`}
+          >
+            <div
+              className={`min-w-[50%] max-w-[95%] rounded-2xl px-4 py-3 text-sm group relative backdrop-blur-sm transition-all duration-200 ${msg.role === "user" && streamMode === "stream"
+                ? "bg-success/70 text-foreground border border-success/20"
+                : msg.role === "user" && streamMode === "collect"
+                  ? "bg-primary/70 text-foreground border border-primary/20"
+                  : "bg-muted border border-border/40"
+                } ${isNewAssistant ? "animate-fade-in" : ""
+                } ${editingIndex === i ? "ring-2 ring-success/60" : ""
+                }`}
+            >
               {msg.role === "user" ? (
-                <AIMarkdown content={msg.content} />
+                <>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="h-8 w-8 rounded-full bg-success/20 border border-success/30 flex items-center justify-center shrink-0">
+                      <img src={avatar || "/user.png"} alt="User" className="h-5 w-5 rounded-full" />
+                    </div>
+
+                    <div className="flex flex-col leading-none">
+                      <span className="text-sm font-semibold tracking-wide uppercase text-foreground">
+                        {user?.user_metadata.full_name}
+                      </span>
+
+                      <span className="text-[10px] text-muted-foreground tracking-[0.2em] uppercase">
+                        Operator
+                      </span>
+                    </div>
+                  </div>
+
+                  <AIMarkdown content={msg.content} />
+                </>
               ) : (
                 <>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="h-8 w-8 rounded-full items-center justify-center bg-primary/20 border border-primary/30 flex items-center justify-center shadow-sm shrink-0">
+                      <img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5 rounded-full" />
+                    </div>
+
+                    <div className="flex flex-col leading-none">
+                      <span className="text-sm font-semibold tracking-[0.12em] uppercase text-foreground">
+                        ARCHON
+                      </span>
+
+                      <span className="text-[10px] text-muted-foreground tracking-[0.2em] uppercase">
+                        Synthetic Intelligence
+                      </span>
+                    </div>
+                  </div>
+
                   <AIMarkdown content={msg.content} />
+
                   {msg.toolCalls && msg.toolCalls.length > 0 && (
                     <ToolCallSection calls={msg.toolCalls} />
                   )}
                 </>
               )}
-              <div className={`grid grid-rows-[0fr] group-hover:grid-rows-[1fr] opacity-0 group-hover:opacity-100 transition-all duration-200 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+
+              <div
+                className={`grid grid-rows-[0fr] group-hover:grid-rows-[1fr] opacity-0 group-hover:opacity-100 transition-all duration-200 ${msg.role === "user" ? "justify-end" : "justify-start"
+                  }`}
+              >
                 <div className="overflow-hidden min-h-0">
-                  <div className={`flex gap-1 pt-1.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className={`flex gap-1 pt-2 ${msg.role === "user"
+                      ? "justify-end"
+                      : "justify-start"
+                      }`}
+                  >
                     {msg.role === "user" && (
                       <button
                         onClick={() => handleEdit(i)}
-                        className="h-5 w-5 flex items-center justify-center rounded text-[10px]"
+                        className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-black/10 transition-colors"
                         title="Edit"
                       >
-                        <Pen className="h-3 w-3" />
+                        <Pen className="h-3.5 w-3.5" />
                       </button>
                     )}
+
                     <button
                       onClick={() => handleCopy(msg.content, i)}
-                      className="h-5 w-5 flex items-center justify-center rounded hover:bg-black/10 text-[10px]"
+                      className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-black/10 transition-colors"
                       title={isCopied ? "Copied" : "Copy"}
                     >
-                      {isCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                      {isCopied ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
                     </button>
                   </div>
                 </div>
               </div>
             </div>
-            {msg.role === "assistant" && i === messages.length - 1 && !isLoading && msg.toolCalls && msg.toolCalls.length > 0 && asksApproval(msg.content) && (
-              <div className="flex gap-2 mt-2 animate-fade-in">
-                <Button size="sm" onClick={handleApprove} className="gap-1.5 text-xs h-8">
-                  <ThumbsUp className="h-3.5 w-3.5" /> Yes
-                </Button>
-                <Button size="sm" variant="outline" onClick={handleReject} className="gap-1.5 text-xs h-8">
-                  <ThumbsDown className="h-3.5 w-3.5" /> No
-                </Button>
-              </div>
-            )}
+
+            {msg.role === "assistant" &&
+              i === messages.length - 1 &&
+              !isLoading &&
+              msg.toolCalls &&
+              msg.toolCalls.length > 0 &&
+              asksApproval(msg.content) && (
+                <div className="flex gap-2 mt-2 animate-fade-in">
+                  <Button
+                    size="sm"
+                    onClick={handleApprove}
+                    className="gap-1.5 text-xs h-8"
+                  >
+                    <ThumbsUp className="h-3.5 w-3.5" />
+                    Yes
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleReject}
+                    className="gap-1.5 text-xs h-8"
+                  >
+                    <ThumbsDown className="h-3.5 w-3.5" />
+                    No
+                  </Button>
+                </div>
+              )}
           </div>
         );
       })}
-      {isLoading && (!messages.length || !messages[messages.length - 1].content || messages[messages.length - 1].role !== "assistant") && (
+
+      {isLoading && !executingSql && (!messages.length || !messages[messages.length - 1].content || messages[messages.length - 1].role !== "assistant") && (
         <div className="flex justify-start">
           <div className="rounded-lg px-3 py-2 bg-muted text-sm flex items-center gap-1.5">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -638,25 +754,25 @@ export default function AIAssistantPanel() {
   );
 
   const chatInput = (
-    <div className={`border-t p-3 flex gap-2 shrink-0 items-center ${streamMode === "stream" ? "border-green-500/20" : ""}`}>
-      <Textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ask anything..." disabled={isLoading || !initialized} className={`flex-1 min-h-[40px] border-[3px] max-h-[120px] resize-none ${streamMode === "stream" ? "bg-green-500/5 border-green-500/20 focus-visible:ring-green-500/50 focus-visible:border-green-500" : ""}`} rows={3} />
+    <div className={`border-t p-3 flex gap-2 shrink-0 items-center ${streamMode === "stream" && !isMobile ? "border-success/20" : ""}`}>
+      <Textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ask anything..." disabled={isLoading || !initialized} className={`flex-1 min-h-[40px] border-[3px] max-h-[120px] resize-none ${streamMode === "stream" && !isMobile ? "bg-success/5 border-success/20 focus-visible:ring-success/50 focus-visible:border-success" : ""} ${isColorBlind ? "border-success/40" : ""}`} rows={3} />
       {editingIndex !== null ? (
         <Button
           onClick={() => { setEditingIndex(null); setInput(""); }}
           size="icon"
           variant="outline"
-          className="h-full w-9 shrink-0 border-red-300 text-red-400 hover:bg-red-50"
+          className="h-full w-9 shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10"
           title="Cancel edit"
         >
           <X className="h-4 w-4" />
         </Button>
       ) : null}
       {isLoading ? (
-        <Button onClick={handleStop} size="icon" className={`h-full w-9 shrink-0 ${streamMode === "stream" ? "bg-green-600 hover:bg-green-700 text-white" : ""}`} variant={streamMode === "stream" ? "default" : "destructive"}>
+        <Button onClick={handleStop} size="icon" className={`h-full w-9 shrink-0 ${streamMode === "stream" && !isMobile ? "bg-success hover:bg-success/90 text-success-foreground" : ""}`} variant={streamMode === "stream" && !isMobile ? "default" : "destructive"}>
           <Square className="h-4 w-4" />
         </Button>
       ) : (
-        <Button onClick={sendMessage} disabled={!input.trim() || !initialized} size="icon" className={`h-full w-9 shrink-0 ${streamMode === "stream" ? "bg-green-500 hover:bg-green-600 text-white" : ""}`}>
+        <Button onClick={sendMessage} disabled={!input.trim() || !initialized} size="icon" className={`h-full w-9 shrink-0 ${streamMode === "stream" && !isMobile ? "bg-success hover:bg-success/90 text-success-foreground" : ""}`}>
           <Send className="h-4 w-4" />
         </Button>
       )}
@@ -672,30 +788,31 @@ export default function AIAssistantPanel() {
           onMouseEnter={() => { isHoveringRef.current = true; }}
           onMouseLeave={() => { isHoveringRef.current = false; }}
         >
-          <div className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${streamMode === "stream" ? "opacity-100" : "opacity-0"} bg-gradient-to-b from-green-800 to-green-950`} />
-          <div className={`relative z-10 flex items-center justify-between border-b px-3 py-2.5 ${streamMode === "stream" ? "border-green-500/20" : ""}`}>
+          <div className="flex items-center justify-between border-b px-3 py-2.5">
             <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
               <img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5 shrink-0" /> <span className="truncate">A.R.C.H.O.N.</span>
               <button
                 onClick={() => setStreamMode(s => s === "collect" ? "stream" : "collect")}
-                className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors shrink-0 ${streamMode === "stream" ? "bg-green-500/10 text-green-500 border-green-500/30" : "bg-muted text-muted-foreground border-border"}`}
+                className="ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors shrink-0 bg-muted text-muted-foreground border-border"
               >
-                {streamMode === "stream" ? "Streaming" : "Collect"}
+                {streamMode === "stream" ? "Streaming" : "Collection"}
               </button>
 
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              {messages.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearChat} className={`text-xs h-7 px-2 ${streamMode === "stream" ? "text-green-500 hover:text-green-400 hover:bg-green-500/10" : "text-muted-foreground"}`}>
-                  Clear
-                </Button>
-              )}
-              <Button variant="ghost" size="icon" className={`h-7 w-7 ${streamMode === "stream" ? "text-green-500 hover:text-green-400 hover:bg-green-500/10" : ""}`} onClick={() => setOpen(false)}>
+              <Button variant="ghost" size="sm" onClick={handleInit} disabled={initStatus === "initializing"} className="text-xs h-7 px-2 text-muted-foreground">
+                {initStatus === "initializing" ? (
+                  <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Init</>
+                ) : (
+                  "Init"
+                )}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(false)}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
           </div>
-          <div className="relative z-10 flex flex-col flex-1 min-h-0">
+          <div className="flex flex-col flex-1 min-h-0">
             {msgList}
             {chatInput}
           </div>
@@ -716,7 +833,7 @@ export default function AIAssistantPanel() {
       <div
         ref={panelRef}
         style={{ width: `${panelWidth}%` }}
-        className={`fixed right-0 top-0 bottom-0 z-40 border-l flex flex-col shadow-lg bg-background transition-transform duration-300 ease-in-out ${streamMode === "stream" ? "border-green-500/20" : "border-border"} ${open ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
+        className={`fixed right-0 top-0 bottom-0 z-40 border-l flex flex-col shadow-lg bg-background transition-transform duration-300 ease-in-out ${streamMode === "stream" ? "border-success/20" : "border-border"} ${open ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
         onMouseEnter={() => { isHoveringRef.current = true; }}
         onMouseLeave={() => { isHoveringRef.current = false; }}
       >
@@ -727,26 +844,28 @@ export default function AIAssistantPanel() {
           <div className="h-full w-1.5" />
           <div className="absolute top-1/2 -translate-y-1/2 w-2 h-10 rounded-full bg-border/60 group-hover:bg-primary/50 group-active:bg-primary/60 transition-colors" />
         </div>
-        <div className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${streamMode === "stream" ? "opacity-100" : "opacity-0"} bg-gradient-to-b from-green-500/[0.04] to-green-800/[0.15]`} />
+        <div className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${streamMode === "stream" ? "opacity-100" : "opacity-0"} bg-gradient-to-b from-success/[0.04] to-success/[0.15] ${isColorBlind ? "hidden" : ""}`} />
         <div className="relative z-10 flex flex-col flex-1 min-h-0">
-          <div className={`flex items-center justify-between border-b px-3 py-2.5 shrink-0 ${streamMode === "stream" ? "border-green-500/20" : ""}`}>
+          <div className={`flex items-center justify-between border-b px-3 py-2.5 shrink-0 ${streamMode === "stream" ? "border-success/20" : ""}`}>
             <div className="flex flex-col items-start gap-1 text-sm font-semibold">
               <span className="flex items-center gap-2"><img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5" /> A.R.C.H.O.N.
                 <button
                   onClick={() => setStreamMode(s => s === "collect" ? "stream" : "collect")}
-                  className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${streamMode === "stream" ? "bg-green-500/10 text-green-500 border-green-500/30" : "bg-muted text-muted-foreground border-border"}`}
+                  className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${streamMode === "stream" ? "bg-success/10 text-success border-success/30" : "bg-muted text-muted-foreground border-border"}`}
                 >
-                {streamMode === "stream" ? "Streaming" : "Collect"}
+                  {streamMode === "stream" ? "Streaming" : "Collect"}
                 </button>
               </span>
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              {messages.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearChat} className={`text-xs h-7 px-2 ${streamMode === "stream" ? "text-green-500 hover:text-green-400 hover:bg-green-500/10" : "text-muted-foreground"}`}>
-                  Clear
-                </Button>
-              )}
-              <Button variant="ghost" size="icon" className={`h-7 w-7 ${streamMode === "stream" ? "text-green-500 hover:text-green-400 hover:bg-green-500/10" : ""}`} onClick={() => setOpen(false)}>
+              <Button variant="ghost" size="sm" onClick={handleInit} disabled={initStatus === "initializing"} className="text-xs h-7 px-2 text-muted-foreground">
+                {initStatus === "initializing" ? (
+                  <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Init</>
+                ) : (
+                  "Init"
+                )}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(false)}>
                 <PanelRightClose className="h-4 w-4" />
               </Button>
             </div>

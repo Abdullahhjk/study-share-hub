@@ -162,7 +162,7 @@ const AIMarkdown = memo(({ content }: { content: string }) => {
         </td>
       ),
       blockquote: ({ children }: { children: React.ReactNode }) => (
-        <blockquote className="border-l-4 border-green-400 dark:border-green-500 pl-4 py-1 my-4 italic opacity-80 bg-green-500/5 dark:bg-green-900/20 rounded-r-lg">
+        <blockquote className="border-l-4 border-success/50 pl-4 py-1 my-4 italic opacity-80 bg-success/5 rounded-r-lg">
           {children}
         </blockquote>
       ),
