@@ -101,6 +101,14 @@ export default function CoadminDashboard() {
   }, [userRole, navigate, isCoadmin]);
 
   useEffect(() => {
+    const handleBeforeUnload = () => {
+      localStorage.clear();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
+  useEffect(() => {
     if (!rawTab || !validTabs.has(rawTab)) {
       setActiveTab("overview");
       return;

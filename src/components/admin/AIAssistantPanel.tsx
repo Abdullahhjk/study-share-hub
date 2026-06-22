@@ -2,13 +2,17 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CohereClientV2 } from "cohere-ai";
-import { X, Send, Loader2, PanelRightClose, Sparkles, ThumbsUp, ThumbsDown, Square, Copy, Check, Pen } from "lucide-react";
+import { X, Send, Loader2, PanelRightClose, Sparkles, ThumbsUp, ThumbsDown, Square, Copy, Check, Pen, DollarSign, Landmark, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAIPanel } from "./AIPanelContext";
 import AIMarkdown from "./chat/AIMarkdown";
 import { loadMessages, saveMessages, clearMessages, STORAGE_KEY, ChatMessage, ToolCallData } from "./chat/chat-store";
+import {
+  Dialog, DialogContent, DialogHeader,
+  DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
 
 function ToolCallSection({ calls }: { calls: ToolCallData[] }) {
   const [open, setOpen] = useState(false);
@@ -102,6 +106,10 @@ export default function AIAssistantPanel() {
   const [executingSql, setExecutingSql] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [hasFunding, setHasFunding] = useState(false);
+  const [fundingDialogOpen, setFundingDialogOpen] = useState(false);
+  const [paymentAccounts, setPaymentAccounts] = useState<any[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const thinkingTimerRef = useRef<number>(0);
@@ -136,11 +144,11 @@ export default function AIAssistantPanel() {
         .from("user_roles")
         .select("role")
         .eq("user_id", session.user.id)
-        .eq("role", "admin")
+        .in("role", ["admin", "coadmin"])
         .maybeSingle();
       setRole(roleData?.role || null);
       setChecking(false);
-      await initAgent();
+      if (hasFunding) await initAgent();
     };
     check();
   }, [initAgent]);
@@ -521,7 +529,7 @@ export default function AIAssistantPanel() {
 
   const sendMessage = useCallback(() => {
     const text = input.trim();
-    if (!text || isLoading || !initialized) return;
+    if (!text || isLoading || !initialized || !hasFunding) return;
     setInput("");
     setEditingIndex(null);
 
@@ -570,13 +578,106 @@ export default function AIAssistantPanel() {
     setEditingIndex(id);
   };
 
+  const handleFundAI = useCallback(async () => {
+    setFundingDialogOpen(true);
+    setLoadingAccounts(true);
+    try {
+      const { data } = await supabase
+        .from("payment_credentials")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order");
+      setPaymentAccounts(data || []);
+    } catch {
+      setPaymentAccounts([]);
+    } finally {
+      setLoadingAccounts(false);
+    }
+  }, []);
+
   if (checking || !role || isOnAiTab) return null;
+
+  const fundingDialog = (
+    <Dialog open={fundingDialogOpen} onOpenChange={setFundingDialogOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-success" /> Fund AI Assistant
+          </DialogTitle>
+          <DialogDescription className="space-y-2">
+            <div>
+              Select a payment method to send your contribution. All listed accounts are active.
+            </div>
+
+            <div className="text-xs text-muted-foreground">
+              Contributions are processed as a one-time payment.
+            </div>
+
+            <div className="text-xs text-muted-foreground">
+              Any amount is appreciated.
+            </div>
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          {loadingAccounts ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : paymentAccounts.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No active payment credentials found.
+            </p>
+          ) : (
+            paymentAccounts.map(acct => (
+              <div key={acct.id} className="flex items-start gap-3 rounded-lg border p-3">
+                <div className="mt-0.5 shrink-0">
+                  {acct.type === "bank" ? (
+                    <Building2 className="h-5 w-5 text-primary" />
+                  ) : (
+                    <Landmark className="h-5 w-5 text-primary" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">{acct.name}</p>
+                  {acct.account_holder && (
+                    <p className="text-xs text-muted-foreground">{acct.account_holder}</p>
+                  )}
+                  {acct.account_number && (
+                    <p className="text-xs font-mono text-muted-foreground">{acct.account_number}</p>
+                  )}
+                  {acct.iban && (
+                    <p className="text-xs font-mono text-muted-foreground">{acct.iban}</p>
+                  )}
+                  {acct.bank_name && (
+                    <p className="text-xs text-muted-foreground">{acct.bank_name}</p>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 
   const dots = ".".repeat(thinkingStage);
 
   const msgList = (
     <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-3 space-y-3">
-      {messages.length === 0 && (
+      {messages.length === 0 && !hasFunding && (
+        <div className="flex flex-col items-center justify-center h-[90%] text-center text-muted-foreground px-4">
+          <img src="/ARCHON.png" alt="ARCHON" className="h-20 w-20 mb-2 opacity-40" />
+          <p className="text-xl font-bold text-destructive">AI Development Lost Funding</p>
+          <p className="text-sm mt-2 max-w-xs text-muted-foreground">
+            ARCHON operations are suspended due to lack of development funding.
+            Contribute to restore AI assistant capabilities.
+          </p>
+          <Button onClick={handleFundAI} className="mt-5 gap-1.5" size="lg">
+            <DollarSign className="h-4 w-4" /> Fund AI Assistant
+          </Button>
+        </div>
+      )}
+      {messages.length === 0 && hasFunding && (
         <div className="flex flex-col items-center justify-center h-[90%] text-center text-muted-foreground px-4">
           <img src="/ARCHON.png" alt="ARCHON" className="h-20 w-20 mb-2" />
           <p className="text-sm font-bold text-xl">A.R.C.H.O.N</p>
@@ -755,7 +856,7 @@ export default function AIAssistantPanel() {
 
   const chatInput = (
     <div className={`border-t p-3 flex gap-2 shrink-0 items-center ${streamMode === "stream" && !isMobile ? "border-success/20" : ""}`}>
-      <Textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ask anything..." disabled={isLoading || !initialized} className={`flex-1 min-h-[40px] border-[3px] max-h-[120px] resize-none ${streamMode === "stream" && !isMobile ? "bg-success/5 border-success/20 focus-visible:ring-success/50 focus-visible:border-success" : ""} ${isColorBlind ? "border-success/40" : ""}`} rows={3} />
+      <Textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder={hasFunding ? "Ask anything..." : "Funding required..."} disabled={isLoading || !initialized || !hasFunding} className={`flex-1 min-h-[40px] border-[3px] max-h-[120px] resize-none ${streamMode === "stream" && !isMobile ? "bg-success/5 border-success/20 focus-visible:ring-success/50 focus-visible:border-success" : ""} ${isColorBlind ? "border-success/40" : ""}`} rows={3} />
       {editingIndex !== null ? (
         <Button
           onClick={() => { setEditingIndex(null); setInput(""); }}
@@ -772,7 +873,7 @@ export default function AIAssistantPanel() {
           <Square className="h-4 w-4" />
         </Button>
       ) : (
-        <Button onClick={sendMessage} disabled={!input.trim() || !initialized} size="icon" className={`h-full w-9 shrink-0 ${streamMode === "stream" && !isMobile ? "bg-success hover:bg-success/90 text-success-foreground" : ""}`}>
+        <Button onClick={sendMessage} disabled={!input.trim() || !initialized || !hasFunding} size="icon" className={`h-full w-9 shrink-0 ${streamMode === "stream" && !isMobile ? "bg-success hover:bg-success/90 text-success-foreground" : ""}`}>
           <Send className="h-4 w-4" />
         </Button>
       )}
@@ -782,6 +883,7 @@ export default function AIAssistantPanel() {
   if (isMobile) {
     return (
       <>
+        {fundingDialog}
         <div
           ref={panelRef}
           className={`fixed inset-0 z-[60] flex flex-col bg-background transition-transform duration-300 ease-in-out ${open ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
@@ -792,15 +894,16 @@ export default function AIAssistantPanel() {
             <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
               <img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5 shrink-0" /> <span className="truncate">A.R.C.H.O.N.</span>
               <button
+                disabled={!hasFunding}
                 onClick={() => setStreamMode(s => s === "collect" ? "stream" : "collect")}
-                className="ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors shrink-0 bg-muted text-muted-foreground border-border"
+                className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors shrink-0 bg-muted text-muted-foreground border-border ${!hasFunding ? "cursor-not-allowed" : ""}`}
               >
                 {streamMode === "stream" ? "Streaming" : "Collection"}
               </button>
 
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              <Button variant="ghost" size="sm" onClick={handleInit} disabled={initStatus === "initializing"} className="text-xs h-7 px-2 text-muted-foreground">
+              <Button variant="ghost" size="sm" onClick={handleInit} disabled={initStatus === "initializing" || !hasFunding} className={`text-xs h-7 px-2 text-muted-foreground ${!hasFunding ? "cursor-not-allowed" : ""}`}>
                 {initStatus === "initializing" ? (
                   <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Init</>
                 ) : (
@@ -830,6 +933,7 @@ export default function AIAssistantPanel() {
 
   return (
     <>
+      {fundingDialog}
       <div
         ref={panelRef}
         style={{ width: `${panelWidth}%` }}
@@ -850,15 +954,16 @@ export default function AIAssistantPanel() {
             <div className="flex flex-col items-start gap-1 text-sm font-semibold">
               <span className="flex items-center gap-2"><img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5" /> A.R.C.H.O.N.
                 <button
+                  disabled={!hasFunding}
                   onClick={() => setStreamMode(s => s === "collect" ? "stream" : "collect")}
-                  className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${streamMode === "stream" ? "bg-success/10 text-success border-success/30" : "bg-muted text-muted-foreground border-border"}`}
+                  className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${streamMode === "stream" ? "bg-success/10 text-success border-success/30" : "bg-muted text-muted-foreground border-border"} ${!hasFunding ? "cursor-not-allowed" : ""}`}
                 >
-                  {streamMode === "stream" ? "Streaming" : "Collect"}
+                  {streamMode === "stream" ? "Streaming" : "Collection"}
                 </button>
               </span>
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              <Button variant="ghost" size="sm" onClick={handleInit} disabled={initStatus === "initializing"} className="text-xs h-7 px-2 text-muted-foreground">
+              <Button variant="ghost" size="sm" onClick={handleInit} disabled={initStatus === "initializing" || !hasFunding} className={`text-xs h-7 px-2 text-muted-foreground ${!hasFunding ? "cursor-not-allowed" : ""}`}>
                 {initStatus === "initializing" ? (
                   <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Init</>
                 ) : (

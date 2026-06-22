@@ -9,6 +9,7 @@ import { ColorblindFilters } from "@/components/ColorblindFilters";
 import { CurrencyProvider } from "@/components/providers/CurrencyProvider";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import DevNotice from "@/components/DevNotice";
 import AIAssistantPanel from "@/components/admin/AIAssistantPanel";
 import { AIPanelProvider, useAIPanel } from "@/components/admin/AIPanelContext";
 import Index from "./pages/Index";
@@ -56,10 +57,11 @@ function AppContent() {
       <Toaster />
       <Sonner />
 
-        <div style={{
-          maxWidth: panelOpen ? `${100 - panelWidth}vw` : "100%",
-        }}>
-          <Routes>
+      <div style={{
+        maxWidth: panelOpen ? `${100 - panelWidth}vw` : "100%",
+      }}>
+        <DevNotice />
+        <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -78,10 +80,10 @@ function AppContent() {
           <Route path="/unsubscribe" element={<Unsubscribe />} />
           <Route path="/upcoming" element={<UpcomingFeatures />} />
           <Route path="*" element={<NotFound />} />
-          </Routes>
-        </div>
-        <AIAssistantPanel />
-      </BrowserRouter>
+        </Routes>
+      </div>
+      <AIAssistantPanel />
+    </BrowserRouter>
   );
 }
 
