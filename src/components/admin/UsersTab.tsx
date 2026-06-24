@@ -30,53 +30,6 @@ function canModify(userRole: string | undefined, targetRole: string): boolean {
   return false;
 }
 
-function UserActions({ u, currentUser, openEdit, setStatsUser, setDeleteUserId, setDeleteUserDialogOpen, openImpersonate, userRole }: any) {
-  const isProtected = !canModify(userRole, u.role);
-  return (
-    <div className="flex gap-1 flex-wrap">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => openEdit(u)} disabled={isProtected && u.user_id !== currentUser?.id}>
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{isProtected && u.user_id !== currentUser?.id ? "Cannot edit admin/coadmin accounts" : "Edit User"}</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setStatsUser(u)}>
-            <Database className="h-3.5 w-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Data Usage & Stats</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => openImpersonate(u)} disabled={isProtected}>
-            <LogIn className="h-3.5 w-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{isProtected ? "Cannot impersonate admin/coadmin" : "Login as User"}</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            size="icon"
-            variant={u.role === "admin" ? "outline" : "destructive"}
-            className="h-8 w-8"
-            onClick={() => { setDeleteUserId(u.user_id); setDeleteUserDialogOpen(true); }}
-            disabled={u.user_id === currentUser?.id || isProtected}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          {u.user_id === currentUser?.id ? "You can't remove yourself" : isProtected ? "Cannot delete admin/coadmin" : "Delete This User & All Data"}
-        </TooltipContent>
-      </Tooltip>
-    </div>
-  );
-}
 
 function UserActionsMobile({ u, currentUser, openEdit, setStatsUser, setDeleteUserId, setDeleteUserDialogOpen, openImpersonate, userRole }: any) {
   const isProtected = !canModify(userRole, u.role);
@@ -344,7 +297,7 @@ export default function UsersTab({ userRole }: UsersTabProps) {
                       <TableRow key={u.user_id}>
                         <TableCell className="font-medium">{u.profile?.full_name || "Unknown"}</TableCell>
                         <TableCell className="text-xs">{u.profile?.email || "N/A"}</TableCell>
-                        <TableCell>{u.profile?.school_name || <span className="text-muted-foreground">—</span>}</TableCell>
+                        <TableCell className="truncate max-w-[200px]">{u.profile?.school_name || <span className="text-muted-foreground">—</span>}</TableCell>
                         <TableCell>
                           <Badge variant={u.role === "admin" ? "default" : u.role === "coadmin" ? "default" : u.role === "teacher" ? "secondary" : "outline"}>
                             {u.role === "coadmin" ? "Coadmin" : u.role.slice(0, 1).toUpperCase() + u.role.slice(1)}
@@ -352,7 +305,7 @@ export default function UsersTab({ userRole }: UsersTabProps) {
                         </TableCell>
                         <TableCell className="text-xs">{u.profile?.created_at ? format(new Date(u.profile.created_at), "MMM d, yyyy") : "N/A"}</TableCell>
                         <TableCell>
-                          <UserActions u={u} currentUser={currentUser} openEdit={openEdit} setStatsUser={setStatsUser} setDeleteUserId={setDeleteUserId} setDeleteUserDialogOpen={setDeleteUserDialogOpen} openImpersonate={openImpersonate} userRole={userRole} />
+                          <UserActionsMobile u={u} currentUser={currentUser} openEdit={openEdit} setStatsUser={setStatsUser} setDeleteUserId={setDeleteUserId} setDeleteUserDialogOpen={setDeleteUserDialogOpen} openImpersonate={openImpersonate} userRole={userRole} />
                         </TableCell>
                       </TableRow>
                     ))}

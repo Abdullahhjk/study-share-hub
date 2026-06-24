@@ -257,6 +257,39 @@ export type Database = {
         }
         Relationships: []
       }
+      cohere_api_keys: {
+        Row: {
+          api_key_name: string
+          request_count: number
+          uuid: string
+        }
+        Insert: {
+          api_key_name: string
+          request_count?: number
+          uuid?: string
+        }
+        Update: {
+          api_key_name?: string
+          request_count?: number
+          uuid?: string
+        }
+        Relationships: []
+      }
+      cohere_daily_quota: {
+        Row: {
+          quota_date: string
+          request_count: number
+        }
+        Insert: {
+          quota_date?: string
+          request_count?: number
+        }
+        Update: {
+          quota_date?: string
+          request_count?: number
+        }
+        Relationships: []
+      }
       deleted_avatars: {
         Row: {
           avatar_url: string
@@ -1378,6 +1411,7 @@ export type Database = {
         Args: { p_reason: string; p_record_id: string }
         Returns: undefined
       }
+      reset_all_api_key_counts: { Args: never; Returns: undefined }
       submit_payment_proof: {
         Args: {
           p_month: number
@@ -1408,12 +1442,12 @@ export type Database = {
     Enums: {
       app_role:
         | "admin"
-        | "coadmin"
         | "teacher"
         | "pending"
         | "deleted"
         | "blocked"
         | "rejected"
+        | "coadmin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1543,12 +1577,12 @@ export const Constants = {
     Enums: {
       app_role: [
         "admin",
-        "coadmin",
         "teacher",
         "pending",
         "deleted",
         "blocked",
         "rejected",
+        "coadmin",
       ],
     },
   },

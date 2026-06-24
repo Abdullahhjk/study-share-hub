@@ -22,6 +22,8 @@ import {
   Send,
   Wallet,
   AlertTriangle,
+  Cpu,
+  Database,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -34,6 +36,8 @@ import ReportsTab from "@/components/admin/ReportsTab";
 import BuildReportTab from "@/components/admin/BuildReportTab";
 import FeedbackTab from "@/components/admin/FeedbackTab";
 import UpcomingFeaturesTab from "@/components/admin/UpcomingFeaturesTab";
+import CohereQuotaTab from "@/components/admin/CohereQuotaTab";
+import DbBackupTab from "@/components/admin/DbBackupTab";
 
 interface TabItem {
   value: string;
@@ -42,7 +46,7 @@ interface TabItem {
   adminOnly?: boolean;
 }
 
-const restrictedTabs = new Set(["buildReport", "upcomingFeatures"]);
+const restrictedTabs = new Set(["buildReport", "upcomingFeatures", "aiQuota", "dbBackup"]);
 
 export default function AdminDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -53,13 +57,15 @@ export default function AdminDashboard() {
   const validTabs = new Set([
     "overview",
     "users",
-    "notifications",
-    "payments",
-    "reports",
-    "feedback",
     "activity",
+    "feedback",
+    "reports",
+    "payments",
+    "notifications",
     "buildReport",
     "upcomingFeatures",
+    "aiQuota",
+    "dbBackup",
   ]);
 
   const safeTab = rawTab && validTabs.has(rawTab) ? rawTab : "overview";
@@ -153,31 +159,24 @@ export default function AdminDashboard() {
 
   const allTabs: TabItem[] = [
     { value: "overview", label: "Overview", icon: <BarChart3 className="h-4 w-4" /> },
+
     { value: "users", label: "Users", icon: <Users className="h-4 w-4" /> },
-    { value: "notifications", label: "Notifications", icon: <Bell className="h-4 w-4" /> },
-    { value: "payments", label: "Payments", icon: <DollarSign className="h-4 w-4" /> },
-    { value: "reports", label: "Reports", icon: <Flag className="h-4 w-4" /> },
-    { value: "feedback", label: "Feedback", icon: <MessageSquare className="h-4 w-4" /> },
     { value: "activity", label: "Activity", icon: <Activity className="h-4 w-4" /> },
+    { value: "feedback", label: "Feedback", icon: <MessageSquare className="h-4 w-4" /> },
+    { value: "reports", label: "Reports", icon: <Flag className="h-4 w-4" /> },
+
+    { value: "payments", label: "Payments", icon: <DollarSign className="h-4 w-4" /> },
+    { value: "notifications", label: "Notifications", icon: <Bell className="h-4 w-4" /> },
+
+    { value: "aiQuota", label: "AI Quota", icon: <Cpu className="h-4 w-4" />, adminOnly: true },
+    { value: "dbBackup", label: "DB Backup", icon: <Database className="h-4 w-4" />, adminOnly: true },
+
     { value: "buildReport", label: "Build ChangeLog", icon: <Hammer className="h-4 w-4" />, adminOnly: true },
     { value: "upcomingFeatures", label: "Upcoming", icon: <Rocket className="h-4 w-4" />, adminOnly: true },
-
   ];
 
   const tabs = allTabs.filter(t => isAdmin || !t.adminOnly);
 
-  const sidebarDescriptions: Record<string, string> = {
-    overview: "Platform metrics & insights",
-    users: "Manage accounts & roles",
-    notifications: "Send & manage alerts",
-    payments: "Transaction history",
-    reports: "Flagged content & users",
-    feedback: "User-submitted feedback",
-    activity: "Recent platform activity",
-    buildReport: "Track changes & releases",
-    upcomingFeatures: "Plan upcoming features",
-
-  };
 
   const quickActions = [
     { label: "Create User", icon: <Plus className="h-4 w-4" />, tab: "users", adminOnly: true },
@@ -197,14 +196,15 @@ export default function AdminDashboard() {
     switch (activeTab) {
       case "overview": return <OverviewTab />;
       case "users": return <UsersTab userRole={userRole} />;
-      case "notifications": return <NotificationsTab />;
-      case "payments": return <PaymentsTab userRole={userRole} />;
-      case "reports": return <ReportsTab />;
-      case "feedback": return <FeedbackTab />;
       case "activity": return <ActivityLogs isAdmin />;
+      case "feedback": return <FeedbackTab />;
+      case "reports": return <ReportsTab />;
+      case "payments": return <PaymentsTab userRole={userRole} />;
+      case "notifications": return <NotificationsTab />;
       case "buildReport": return isAdmin ? <BuildReportTab /> : null;
       case "upcomingFeatures": return isAdmin ? <UpcomingFeaturesTab /> : null;
-
+      case "aiQuota": return isAdmin ? <CohereQuotaTab /> : null;
+      case "dbBackup": return isAdmin ? <DbBackupTab /> : null;
       default: return null;
     }
   };
@@ -276,12 +276,6 @@ export default function AdminDashboard() {
                     {tab.icon}
                     <span>{tab.label}</span>
                   </div>
-                  <span className={cn(
-                    "text-[10px] leading-tight mt-0.5 ml-7",
-                    activeTab === tab.value ? "text-primary-foreground/70" : "text-muted-foreground/60"
-                  )}>
-                    {sidebarDescriptions[tab.value]}
-                  </span>
                 </button>
               ))}
             </nav>

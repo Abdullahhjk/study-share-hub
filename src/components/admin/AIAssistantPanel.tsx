@@ -2,55 +2,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CohereClientV2 } from "cohere-ai";
-import { X, Send, Loader2, PanelRightClose, Sparkles, ThumbsUp, ThumbsDown, Square, Copy, Check, Pen, DollarSign, Landmark, Building2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { X } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAIPanel } from "./AIPanelContext";
-import AIMarkdown from "./chat/AIMarkdown";
+import ChatMessageList from "./chat/ChatMessageList";
+import ChatInput from "./chat/ChatInput";
+import AIPanelHeader from "./chat/AIPanelHeader";
 import { loadMessages, saveMessages, clearMessages, STORAGE_KEY, ChatMessage, ToolCallData } from "./chat/chat-store";
-import {
-  Dialog, DialogContent, DialogHeader,
-  DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
-
-function ToolCallSection({ calls }: { calls: ToolCallData[] }) {
-  const [open, setOpen] = useState(false);
-
-  if (!calls.length) return null;
-
-  return (
-    <div className="mt-3 border-t border-border pt-2">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full text-left"
-      >
-        {open ? "▼" : "▶"} {calls.length} SQL {calls.length === 1 ? "Query" : "Queries"}
-      </button>
-      {open && (
-        <div className="mt-2 rounded-md border border-border bg-background p-3 space-y-3">
-          {calls.map((call, i) => (
-            <div key={i}>
-              {i > 0 && <div className="h-px bg-border my-3" />}
-              <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-                Query {i + 1}
-              </div>
-              <pre className="bg-[#1e1e2e] text-[13px] leading-relaxed rounded p-2.5 overflow-x-auto mb-2">
-                <code>{call.query}</code>
-              </pre>
-              <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-                Output
-              </div>
-              <pre className="bg-[#1e1e2e] text-[13px] leading-relaxed rounded p-2.5 overflow-x-auto">
-                <code>{JSON.stringify(call.result, null, 2)}</code>
-              </pre>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 const TOOLS = [
   {
@@ -106,26 +64,70 @@ export default function AIAssistantPanel() {
   const [executingSql, setExecutingSql] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [hasFunding, setHasFunding] = useState(false);
-  const [fundingDialogOpen, setFundingDialogOpen] = useState(false);
-  const [paymentAccounts, setPaymentAccounts] = useState<any[]>([]);
-  const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [isQuotaExhausted, setIsQuotaExhausted] = useState(false);
+  const [resetAt, setResetAt] = useState<string | null>(null);
+  const [timeUntilReset, setTimeUntilReset] = useState("");
+  const [quotaBannerDismissed, setQuotaBannerDismissed] = useState(false);
+  useEffect(() => {
+    if (!resetAt) return;
+    const update = () => {
+      const diff = new Date(resetAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeUntilReset("");
+        setIsQuotaExhausted(false);
+        setResetAt(null);
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      setTimeUntilReset(`${h}h ${m}m`);
+    };
+    update();
+    const id = setInterval(update, 60000);
+    return () => clearInterval(id);
+  }, [resetAt]);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const thinkingTimerRef = useRef<number>(0);
-  const configRef = useRef<{ apiKey: string; systemPrompt: string; model: string } | null>(null);
+  const configRef = useRef<{
+    apiKey: string;
+    systemPrompt: string;
+    model: string;
+    quota: number;
+    keyName: string;
+    secondaryApiKey?: string;
+    nextKeyName?: string;
+    secondaryQuota?: number;
+    isFinalBatch: boolean;
+    message?: string;
+  } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const isHoveringRef = useRef(false);
   const resizeRef = useRef({ isResizing: false, startX: 0, startWidth: 0 });
+  const quotaUsedRef = useRef(0);
+  const secondaryUsedRef = useRef(0);
 
   const initAgent = useCallback(async () => {
     try {
       const { data, error: fnError } = await supabase.functions.invoke("cohere-agent", { body: { action: "init" } });
       if (fnError) throw new Error(fnError.message);
       if (data?.error) throw new Error(data.error);
-      configRef.current = { apiKey: data.apiKey, systemPrompt: data.systemPrompt, model: data.model };
+      if (data?.rateLimited) {
+        setIsQuotaExhausted(true);
+        setResetAt(data.resetAt);
+        setError(`ARCHON is rate limited until ${new Date(data.resetAt).toLocaleString()} (midnight UTC). All available AI request quotas have been exhausted for this cycle.`);
+        setInitialized(true);
+        setInitStatus("done");
+        return;
+      }
+      configRef.current = { apiKey: data.apiKey, systemPrompt: data.systemPrompt, model: data.model, quota: data.quota, keyName: data.keyName, secondaryApiKey: data.secondaryApiKey, nextKeyName: data.nextKeyName, secondaryQuota: data.secondaryQuota, isFinalBatch: data.isFinalBatch, message: data.message };
+      quotaUsedRef.current = 0;
+      secondaryUsedRef.current = 0;
+      setIsQuotaExhausted(false);
+      setResetAt(null);
       setInitialized(true);
       setInitStatus("done");
     } catch (e: any) {
@@ -148,7 +150,7 @@ export default function AIAssistantPanel() {
         .maybeSingle();
       setRole(roleData?.role || null);
       setChecking(false);
-      if (hasFunding) await initAgent();
+      if (!isQuotaExhausted) await initAgent();
     };
     check();
   }, [initAgent]);
@@ -238,6 +240,84 @@ export default function AIAssistantPanel() {
     };
   }, []);
 
+  const ensureQuota = useCallback(async (): Promise<string> => {
+    const config = configRef.current;
+    if (!config || !config.apiKey) {
+      throw new Error("AI not initialized");
+    }
+
+    const tryIncrement = async (keyName: string): Promise<{ ok: boolean; rateLimited?: boolean; resetAt?: string }> => {
+      const { data } = await supabase.functions.invoke("cohere-agent", {
+        body: { action: "increment", keyName },
+      });
+      if (!data) return { ok: false };
+      if (data.rateLimited) {
+        return { ok: false, rateLimited: true, resetAt: data.resetAt };
+      }
+      if (data.success) return { ok: true };
+      return { ok: false };
+    };
+
+    if (quotaUsedRef.current < (config.quota || 0)) {
+      const result = await tryIncrement(config.keyName);
+      if (result.ok) {
+        quotaUsedRef.current++;
+        return config.apiKey;
+      }
+      if (result.rateLimited) {
+        setIsQuotaExhausted(true);
+        setResetAt(result.resetAt!);
+        setError(`Daily quota exhausted. ARCHON resumes at midnight (${new Date(result.resetAt!).toLocaleString()}).`);
+        throw new Error("Rate limited");
+      }
+      quotaUsedRef.current = config.quota || 0;
+    }
+
+    if (config.secondaryApiKey && config.nextKeyName && secondaryUsedRef.current < (config.secondaryQuota || 0)) {
+      const result = await tryIncrement(config.nextKeyName);
+      if (result.ok) {
+        secondaryUsedRef.current++;
+        return config.secondaryApiKey;
+      }
+      if (result.rateLimited) {
+        setIsQuotaExhausted(true);
+        setResetAt(result.resetAt!);
+        setError(`Daily quota exhausted. ARCHON resumes at midnight (${new Date(result.resetAt!).toLocaleString()}).`);
+        throw new Error("Rate limited");
+      }
+      secondaryUsedRef.current = config.secondaryQuota || 0;
+    }
+
+    const { data: initData, error: initError } = await supabase.functions.invoke("cohere-agent", { body: { action: "init" } });
+    if (initError) throw new Error(initError.message);
+    if (initData?.error) throw new Error(initData.error);
+    if (initData?.rateLimited) {
+      setIsQuotaExhausted(true);
+      setResetAt(initData.resetAt);
+      setError(`ARCHON is rate limited. All API quotas exhausted. Resets at ${new Date(initData.resetAt).toLocaleString()}.`);
+      throw new Error("Rate limited");
+    }
+
+    configRef.current = { apiKey: initData.apiKey, systemPrompt: initData.systemPrompt, model: initData.model, quota: initData.quota, keyName: initData.keyName, secondaryApiKey: initData.secondaryApiKey, nextKeyName: initData.nextKeyName, secondaryQuota: initData.secondaryQuota, isFinalBatch: initData.isFinalBatch, message: initData.message };
+    quotaUsedRef.current = 0;
+    secondaryUsedRef.current = 0;
+
+    const { data: incData } = await supabase.functions.invoke("cohere-agent", {
+      body: { action: "increment", keyName: initData.keyName },
+    });
+    if (incData?.success) {
+      quotaUsedRef.current = 1;
+      return initData.apiKey;
+    }
+    if (incData?.rateLimited) {
+      setIsQuotaExhausted(true);
+      setResetAt(incData.resetAt);
+      setError(`Daily quota exhausted. ARCHON resumes at midnight (${new Date(incData.resetAt).toLocaleString()}).`);
+      throw new Error("Rate limited");
+    }
+    throw new Error("Failed to acquire API quota");
+  }, []);
+
   const invokeAgent = useCallback(async (history: ChatMessage[]) => {
     const config = configRef.current;
     if (!config) { setMessages(prev => [...prev, { role: "assistant", content: "AI not initialized. Please refresh." }]); return; }
@@ -255,9 +335,7 @@ export default function AIAssistantPanel() {
         "\n\nCurrent Date: " +
         new Date().toLocaleDateString("en-CA") +
         "\n\nCurrent Time: " +
-        new Date().toLocaleTimeString("en-GB", {
-          hour12: false,
-        }) +
+        new Date().toLocaleTimeString("en-GB", { hour12: false }) +
         "\n\nCurrent Time Zone: " +
         Intl.DateTimeFormat().resolvedOptions().timeZone +
         "\n\nUser Current URL: " +
@@ -275,7 +353,8 @@ export default function AIAssistantPanel() {
     try {
       // ── STREAM MODE ──────────────────────────────────────────
       if (streamMode === "stream") {
-        const client = new CohereClientV2({ token: config.apiKey });
+        const apiKey = await ensureQuota();
+        const client = new CohereClientV2({ token: apiKey });
 
         const streamMsgIdx = history.length;
         setMessages(prev => [...prev, { role: "assistant", content: "" }]);
@@ -368,6 +447,9 @@ export default function AIAssistantPanel() {
           });
 
           // ── Second streaming request with tool results ──
+          const apiKey2 = await ensureQuota();
+          const client2 = new CohereClientV2({ token: apiKey2 });
+
           const toolMessages = [
             ...sanitize(history),
             { role: "assistant" as const, toolCalls: toolCallsFromStream, content: originalText || "" },
@@ -378,7 +460,7 @@ export default function AIAssistantPanel() {
             })),
           ];
 
-          const streamResp2 = await client.chatStream({
+          const streamResp2 = await client2.chatStream({
             model: config.model,
             messages: [systemMsg, ...toolMessages],
             tools: TOOLS,
@@ -427,8 +509,9 @@ export default function AIAssistantPanel() {
         return;
       }
 
-      // ── COLLECT MODE (existing 2-step tool flow) ─────────────
-      const client = new CohereClientV2({ token: config.apiKey });
+      // ── COLLECT MODE ───────────────────────────────────────────
+      const collectKey = await ensureQuota();
+      const client = new CohereClientV2({ token: collectKey });
 
       const firstResp = await client.chat({
         model: config.model,
@@ -465,7 +548,10 @@ export default function AIAssistantPanel() {
         return { query: args.query, result: data };
       });
 
-      const secondResp = await client.chat({
+      const secondKey = await ensureQuota();
+      const client2 = new CohereClientV2({ token: secondKey });
+
+      const secondResp = await client2.chat({
         model: config.model,
         messages: [
           systemMsg,
@@ -499,7 +585,7 @@ export default function AIAssistantPanel() {
       setExecutingSql(false);
       abortRef.current = null;
     }
-  }, [role, user, streamMode]);
+  }, [role, user, streamMode, ensureQuota]);
 
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
@@ -529,7 +615,7 @@ export default function AIAssistantPanel() {
 
   const sendMessage = useCallback(() => {
     const text = input.trim();
-    if (!text || isLoading || !initialized || !hasFunding) return;
+    if (!text || isLoading || !initialized || isQuotaExhausted) return;
     setInput("");
     setEditingIndex(null);
 
@@ -578,343 +664,111 @@ export default function AIAssistantPanel() {
     setEditingIndex(id);
   };
 
-  const handleFundAI = useCallback(async () => {
-    setFundingDialogOpen(true);
-    setLoadingAccounts(true);
-    try {
-      const { data } = await supabase
-        .from("payment_credentials")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order");
-      setPaymentAccounts(data || []);
-    } catch {
-      setPaymentAccounts([]);
-    } finally {
-      setLoadingAccounts(false);
-    }
-  }, []);
-
   if (checking || !role || isOnAiTab) return null;
-
-  const fundingDialog = (
-    <Dialog open={fundingDialogOpen} onOpenChange={setFundingDialogOpen}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-success" /> Fund AI Assistant
-          </DialogTitle>
-          <DialogDescription className="space-y-2">
-            <div>
-              Select a payment method to send your contribution. All listed accounts are active.
-            </div>
-
-            <div className="text-xs text-muted-foreground">
-              Contributions are processed as a one-time payment.
-            </div>
-
-            <div className="text-xs text-muted-foreground">
-              Any amount is appreciated.
-            </div>
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3 py-2">
-          {loadingAccounts ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : paymentAccounts.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No active payment credentials found.
-            </p>
-          ) : (
-            paymentAccounts.map(acct => (
-              <div key={acct.id} className="flex items-start gap-3 rounded-lg border p-3">
-                <div className="mt-0.5 shrink-0">
-                  {acct.type === "bank" ? (
-                    <Building2 className="h-5 w-5 text-primary" />
-                  ) : (
-                    <Landmark className="h-5 w-5 text-primary" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">{acct.name}</p>
-                  {acct.account_holder && (
-                    <p className="text-xs text-muted-foreground">{acct.account_holder}</p>
-                  )}
-                  {acct.account_number && (
-                    <p className="text-xs font-mono text-muted-foreground">{acct.account_number}</p>
-                  )}
-                  {acct.iban && (
-                    <p className="text-xs font-mono text-muted-foreground">{acct.iban}</p>
-                  )}
-                  {acct.bank_name && (
-                    <p className="text-xs text-muted-foreground">{acct.bank_name}</p>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
 
   const dots = ".".repeat(thinkingStage);
 
   const msgList = (
-    <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-3 space-y-3">
-      {messages.length === 0 && !hasFunding && (
-        <div className="flex flex-col items-center justify-center h-[90%] text-center text-muted-foreground px-4">
-          <img src="/ARCHON.png" alt="ARCHON" className="h-20 w-20 mb-2 opacity-40" />
-          <p className="text-xl font-bold text-destructive">AI Development Lost Funding</p>
-          <p className="text-sm mt-2 max-w-xs text-muted-foreground">
-            ARCHON operations are suspended due to lack of development funding.
-            Contribute to restore AI assistant capabilities.
-          </p>
-          <Button onClick={handleFundAI} className="mt-5 gap-1.5" size="lg">
-            <DollarSign className="h-4 w-4" /> Fund AI Assistant
-          </Button>
-        </div>
-      )}
-      {messages.length === 0 && hasFunding && (
-        <div className="flex flex-col items-center justify-center h-[90%] text-center text-muted-foreground px-4">
-          <img src="/ARCHON.png" alt="ARCHON" className="h-20 w-20 mb-2" />
-          <p className="text-sm font-bold text-xl">A.R.C.H.O.N</p>
-          <p className="text-sm font-medium">At your service.</p>
-          <p className="text-xs mt-1">Ask about users, notes, payments, or any platform feature.</p>
-        </div>
-      )}
-      {initStatus === "done" && (
-        <div className="flex justify-center animate-fade-in">
-          <div className="bg-success text-success-foreground text-xs font-medium px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-md">
-            <span>Initialized</span>
-          </div>
-        </div>
-      )}
-      {messages.map((msg, i) => {
-        if (msg.role === "assistant" && !msg.content) return null;
-
-        const isNewAssistant =
-          !isLoading &&
-          msg.role === "assistant" &&
-          i === messages.length - 1 &&
-          i > 0 &&
-          messages[i - 1].role === "user";
-
-        const isCopied = copiedId === i;
-
-        return (
-          <div
-            key={i}
-            className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"
-              }`}
-          >
-            <div
-              className={`min-w-[50%] max-w-[95%] rounded-2xl px-4 py-3 text-sm group relative backdrop-blur-sm transition-all duration-200 ${msg.role === "user" && streamMode === "stream"
-                ? "bg-success/70 text-foreground border border-success/20"
-                : msg.role === "user" && streamMode === "collect"
-                  ? "bg-primary/70 text-foreground border border-primary/20"
-                  : "bg-muted border border-border/40"
-                } ${isNewAssistant ? "animate-fade-in" : ""
-                } ${editingIndex === i ? "ring-2 ring-success/60" : ""
-                }`}
-            >
-              {msg.role === "user" ? (
-                <>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="h-8 w-8 rounded-full bg-success/20 border border-success/30 flex items-center justify-center shrink-0">
-                      <img src={avatar || "/user.png"} alt="User" className="h-5 w-5 rounded-full" />
-                    </div>
-
-                    <div className="flex flex-col leading-none">
-                      <span className="text-sm font-semibold tracking-wide uppercase text-foreground">
-                        {user?.user_metadata.full_name}
-                      </span>
-
-                      <span className="text-[10px] text-muted-foreground tracking-[0.2em] uppercase">
-                        Operator
-                      </span>
-                    </div>
-                  </div>
-
-                  <AIMarkdown content={msg.content} />
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="h-8 w-8 rounded-full items-center justify-center bg-primary/20 border border-primary/30 flex items-center justify-center shadow-sm shrink-0">
-                      <img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5 rounded-full" />
-                    </div>
-
-                    <div className="flex flex-col leading-none">
-                      <span className="text-sm font-semibold tracking-[0.12em] uppercase text-foreground">
-                        ARCHON
-                      </span>
-
-                      <span className="text-[10px] text-muted-foreground tracking-[0.2em] uppercase">
-                        Synthetic Intelligence
-                      </span>
-                    </div>
-                  </div>
-
-                  <AIMarkdown content={msg.content} />
-
-                  {msg.toolCalls && msg.toolCalls.length > 0 && (
-                    <ToolCallSection calls={msg.toolCalls} />
-                  )}
-                </>
-              )}
-
-              <div
-                className={`grid grid-rows-[0fr] group-hover:grid-rows-[1fr] opacity-0 group-hover:opacity-100 transition-all duration-200 ${msg.role === "user" ? "justify-end" : "justify-start"
-                  }`}
-              >
-                <div className="overflow-hidden min-h-0">
-                  <div
-                    className={`flex gap-1 pt-2 ${msg.role === "user"
-                      ? "justify-end"
-                      : "justify-start"
-                      }`}
-                  >
-                    {msg.role === "user" && (
-                      <button
-                        onClick={() => handleEdit(i)}
-                        className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-black/10 transition-colors"
-                        title="Edit"
-                      >
-                        <Pen className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => handleCopy(msg.content, i)}
-                      className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-black/10 transition-colors"
-                      title={isCopied ? "Copied" : "Copy"}
-                    >
-                      {isCopied ? (
-                        <Check className="h-3.5 w-3.5" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {msg.role === "assistant" &&
-              i === messages.length - 1 &&
-              !isLoading &&
-              msg.toolCalls &&
-              msg.toolCalls.length > 0 &&
-              asksApproval(msg.content) && (
-                <div className="flex gap-2 mt-2 animate-fade-in">
-                  <Button
-                    size="sm"
-                    onClick={handleApprove}
-                    className="gap-1.5 text-xs h-8"
-                  >
-                    <ThumbsUp className="h-3.5 w-3.5" />
-                    Yes
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleReject}
-                    className="gap-1.5 text-xs h-8"
-                  >
-                    <ThumbsDown className="h-3.5 w-3.5" />
-                    No
-                  </Button>
-                </div>
-              )}
-          </div>
-        );
-      })}
-
-      {isLoading && !executingSql && (!messages.length || !messages[messages.length - 1].content || messages[messages.length - 1].role !== "assistant") && (
-        <div className="flex justify-start">
-          <div className="rounded-lg px-3 py-2 bg-muted text-sm flex items-center gap-1.5">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <span>Thinking{dots}</span>
-          </div>
-        </div>
-      )}
-      {executingSql && (
-        <div className="flex justify-start">
-          <div className="rounded-lg px-3 py-2 bg-muted text-sm flex items-center gap-1.5">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <span>Executing SQL{dots}</span>
-          </div>
-        </div>
-      )}
-      <div ref={bottomRef} />
-    </div>
+    <ChatMessageList
+      messages={messages}
+      isLoading={isLoading}
+      isQuotaExhausted={isQuotaExhausted}
+      error={error}
+      timeUntilReset={timeUntilReset}
+      executingSql={executingSql}
+      user={user}
+      avatar={avatar}
+      copiedId={copiedId}
+      editingIndex={editingIndex}
+      streamMode={streamMode}
+      initStatus={initStatus}
+      containerRef={containerRef as React.RefObject<HTMLDivElement>}
+      bottomRef={bottomRef as React.RefObject<HTMLDivElement>}
+      handleScroll={handleScroll}
+      handleApprove={handleApprove}
+      handleReject={handleReject}
+      handleCopy={handleCopy}
+      handleEdit={handleEdit}
+      asksApproval={asksApproval}
+      dots={dots}
+    />
   );
 
   const chatInput = (
-    <div className={`border-t p-3 flex gap-2 shrink-0 items-center ${streamMode === "stream" && !isMobile ? "border-success/20" : ""}`}>
-      <Textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder={hasFunding ? "Ask anything..." : "Funding required..."} disabled={isLoading || !initialized || !hasFunding} className={`flex-1 min-h-[40px] border-[3px] max-h-[120px] resize-none ${streamMode === "stream" && !isMobile ? "bg-success/5 border-success/20 focus-visible:ring-success/50 focus-visible:border-success" : ""} ${isColorBlind ? "border-success/40" : ""}`} rows={3} />
-      {editingIndex !== null ? (
-        <Button
-          onClick={() => { setEditingIndex(null); setInput(""); }}
-          size="icon"
-          variant="outline"
-          className="h-full w-9 shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10"
-          title="Cancel edit"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      ) : null}
-      {isLoading ? (
-        <Button onClick={handleStop} size="icon" className={`h-full w-9 shrink-0 ${streamMode === "stream" && !isMobile ? "bg-success hover:bg-success/90 text-success-foreground" : ""}`} variant={streamMode === "stream" && !isMobile ? "default" : "destructive"}>
-          <Square className="h-4 w-4" />
-        </Button>
-      ) : (
-        <Button onClick={sendMessage} disabled={!input.trim() || !initialized || !hasFunding} size="icon" className={`h-full w-9 shrink-0 ${streamMode === "stream" && !isMobile ? "bg-success hover:bg-success/90 text-success-foreground" : ""}`}>
-          <Send className="h-4 w-4" />
-        </Button>
-      )}
+    <ChatInput
+      input={input}
+      setInput={setInput}
+      isLoading={isLoading}
+      initialized={initialized}
+      isQuotaExhausted={isQuotaExhausted}
+      editingIndex={editingIndex}
+      setEditingIndex={setEditingIndex}
+      streamMode={streamMode}
+      isMobile={isMobile}
+      isColorBlind={isColorBlind}
+      textareaRef={textareaRef as React.RefObject<HTMLTextAreaElement>}
+      sendMessage={sendMessage}
+      handleStop={handleStop}
+      handleKeyDown={handleKeyDown}
+    />
+  );
+
+  const remaining = (configRef.current?.quota || 0) - quotaUsedRef.current
+    + ((configRef.current?.secondaryQuota || 0) - secondaryUsedRef.current);
+  const dailyUsed = 130 - remaining;
+  const showQuotaBanner = !isQuotaExhausted && configRef.current && !quotaBannerDismissed;
+  const canDismiss = remaining > 15;
+
+  const quotaBanner = showQuotaBanner && (
+    <div className="px-3 py-2 border-b border-border bg-muted/40">
+      <div className="flex items-center gap-3 text-xs">
+        {configRef.current?.isFinalBatch ? (
+          <div className="flex-1 flex items-center gap-2 text-destructive font-medium">
+            <span className="text-lg">⚠</span>
+            <span>{configRef.current?.message || `Final batch: ${configRef.current?.quota || 0} requests remaining.`}</span>
+          </div>
+        ) : (
+          <>
+            <span className="text-muted-foreground">
+              Quota: <span className="font-medium text-foreground">{dailyUsed}/130</span>
+            </span>
+            <span className="text-muted-foreground ml-auto">
+              <span className="font-medium text-foreground">{remaining}</span> remaining
+            </span>
+          </>
+        )}
+        {canDismiss && (
+          <button
+            onClick={() => setQuotaBannerDismissed(true)}
+            className="ml-1 h-5 w-5 flex items-center justify-center rounded hover:bg-black/10 transition-colors shrink-0"
+            title="Dismiss"
+          >
+            <X className="h-3 w-3 text-muted-foreground" />
+          </button>
+        )}
+      </div>
     </div>
   );
 
   if (isMobile) {
     return (
       <>
-        {fundingDialog}
         <div
           ref={panelRef}
           className={`fixed inset-0 z-[60] flex flex-col bg-background transition-transform duration-300 ease-in-out ${open ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
           onMouseEnter={() => { isHoveringRef.current = true; }}
           onMouseLeave={() => { isHoveringRef.current = false; }}
         >
-          <div className="flex items-center justify-between border-b px-3 py-2.5">
-            <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
-              <img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5 shrink-0" /> <span className="truncate">A.R.C.H.O.N.</span>
-              <button
-                disabled={!hasFunding}
-                onClick={() => setStreamMode(s => s === "collect" ? "stream" : "collect")}
-                className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors shrink-0 bg-muted text-muted-foreground border-border ${!hasFunding ? "cursor-not-allowed" : ""}`}
-              >
-                {streamMode === "stream" ? "Streaming" : "Collection"}
-              </button>
-
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <Button variant="ghost" size="sm" onClick={handleInit} disabled={initStatus === "initializing" || !hasFunding} className={`text-xs h-7 px-2 text-muted-foreground ${!hasFunding ? "cursor-not-allowed" : ""}`}>
-                {initStatus === "initializing" ? (
-                  <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Init</>
-                ) : (
-                  "Init"
-                )}
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          <AIPanelHeader
+            isMobile={true}
+            streamMode={streamMode}
+            isQuotaExhausted={isQuotaExhausted}
+            initStatus={initStatus}
+            setStreamMode={setStreamMode}
+            handleInit={handleInit}
+            setOpen={setOpen}
+          />
+          {quotaBanner}
           <div className="flex flex-col flex-1 min-h-0">
             {msgList}
             {chatInput}
@@ -933,7 +787,6 @@ export default function AIAssistantPanel() {
 
   return (
     <>
-      {fundingDialog}
       <div
         ref={panelRef}
         style={{ width: `${panelWidth}%` }}
@@ -950,31 +803,16 @@ export default function AIAssistantPanel() {
         </div>
         <div className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${streamMode === "stream" ? "opacity-100" : "opacity-0"} bg-gradient-to-b from-success/[0.04] to-success/[0.15] ${isColorBlind ? "hidden" : ""}`} />
         <div className="relative z-10 flex flex-col flex-1 min-h-0">
-          <div className={`flex items-center justify-between border-b px-3 py-2.5 shrink-0 ${streamMode === "stream" ? "border-success/20" : ""}`}>
-            <div className="flex flex-col items-start gap-1 text-sm font-semibold">
-              <span className="flex items-center gap-2"><img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5" /> A.R.C.H.O.N.
-                <button
-                  disabled={!hasFunding}
-                  onClick={() => setStreamMode(s => s === "collect" ? "stream" : "collect")}
-                  className={`ml-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${streamMode === "stream" ? "bg-success/10 text-success border-success/30" : "bg-muted text-muted-foreground border-border"} ${!hasFunding ? "cursor-not-allowed" : ""}`}
-                >
-                  {streamMode === "stream" ? "Streaming" : "Collection"}
-                </button>
-              </span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <Button variant="ghost" size="sm" onClick={handleInit} disabled={initStatus === "initializing" || !hasFunding} className={`text-xs h-7 px-2 text-muted-foreground ${!hasFunding ? "cursor-not-allowed" : ""}`}>
-                {initStatus === "initializing" ? (
-                  <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Init</>
-                ) : (
-                  "Init"
-                )}
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(false)}>
-                <PanelRightClose className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          <AIPanelHeader
+            isMobile={false}
+            streamMode={streamMode}
+            isQuotaExhausted={isQuotaExhausted}
+            initStatus={initStatus}
+            setStreamMode={setStreamMode}
+            handleInit={handleInit}
+            setOpen={setOpen}
+          />
+          {quotaBanner}
           {msgList}
           {chatInput}
         </div>

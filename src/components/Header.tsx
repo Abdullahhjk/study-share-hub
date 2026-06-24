@@ -134,6 +134,8 @@ export function Header() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    localStorage.clear()
+    sessionStorage.clear()
     window.location.reload();
     navigate("/");
   };
@@ -270,7 +272,7 @@ export function Header() {
                         </span>
 
                         {isAdmin && (
-                          <Badge variant="secondary" className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1.5 mt-1">
+                          <Badge variant="secondary" className="text-center w-fit mx-auto border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1.5 mt-1">
                             <Crown className="h-3.5 w-3.5" />
                             {userRole === "coadmin" ? "Co-Admin" : "Administrator"}
                           </Badge>

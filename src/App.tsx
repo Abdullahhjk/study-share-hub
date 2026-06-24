@@ -59,6 +59,7 @@ function AppContent() {
 
       <div style={{
         maxWidth: panelOpen ? `${100 - panelWidth}vw` : "100%",
+        transition: "max-width 200ms ease-in-out",
       }}>
         <DevNotice />
         <Routes>

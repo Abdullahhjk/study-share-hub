@@ -29,7 +29,7 @@ export default class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-4 text-center">
-          <h1>Error Boundry</h1>
+          <h1 className="text-3xl font-bold text-destructive">Error Boundry</h1>
           <ShieldAlert className="h-12 w-12 text-destructive" />
           <h1 className="text-xl font-bold">Something went wrong</h1>
           <p className="max-w-md text-sm text-muted-foreground">

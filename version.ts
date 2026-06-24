@@ -1,3 +1,3 @@
-export const VERSION = 'v1.00.8.4';
+export const VERSION = 'v1.00.8.5';
 
-export const UPDATE_TIME = new Date('2026-06-22T13:46:36.449Z');
+export const UPDATE_TIME = new Date('2026-06-24T22:20:06.144Z');

@@ -548,6 +548,43 @@ async function executeSql(args: Record<string, unknown>) {
   }
 }
 
+async function ensureDailyQuotaTable(client: pg.Client) {
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS cohere_daily_quota (
+      quota_date DATE PRIMARY KEY DEFAULT CURRENT_DATE,
+      request_count INT NOT NULL DEFAULT 0
+    )
+  `);
+}
+
+async function getDailyRemaining(client: pg.Client): Promise<number> {
+  await ensureDailyQuotaTable(client);
+  const result = await client.query(
+    `SELECT request_count FROM cohere_daily_quota WHERE quota_date = CURRENT_DATE`,
+  );
+  if (result.rows.length === 0) return 130;
+  return Math.max(0, 130 - result.rows[0].request_count);
+}
+
+async function consumeDailyQuota(client: pg.Client): Promise<{ ok: boolean; remaining: number }> {
+  await ensureDailyQuotaTable(client);
+  const result = await client.query(`
+    INSERT INTO cohere_daily_quota (quota_date, request_count)
+    VALUES (CURRENT_DATE, 1)
+    ON CONFLICT (quota_date)
+    DO UPDATE SET request_count = cohere_daily_quota.request_count + 1
+    WHERE cohere_daily_quota.request_count < 130
+    RETURNING request_count
+  `);
+  if (result.rows.length === 0) {
+    const current = await client.query(
+      `SELECT request_count FROM cohere_daily_quota WHERE quota_date = CURRENT_DATE`,
+    );
+    return { ok: false, remaining: 0 };
+  }
+  return { ok: true, remaining: 130 - result.rows[0].request_count };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -579,13 +616,93 @@ Deno.serve(async (req) => {
     const { action } = body;
 
     if (action === "init") {
-      const apiKey = Deno.env.get("COHERE_API_KEY_2");
-      if (!apiKey) {
-        return new Response(JSON.stringify({ error: "COHERE_API_KEY_2 not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const DATABASE_URL = Deno.env.get("DATABASE_URL");
+      if (!DATABASE_URL) return new Response(JSON.stringify({ error: "DATABASE_URL not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      const pgClient = new pg.Client({ connectionString: DATABASE_URL });
+      await pgClient.connect();
+
+      const dailyRemaining = await getDailyRemaining(pgClient);
+      if (dailyRemaining <= 0) {
+        await pgClient.end();
+        const now = new Date();
+        const midnight = new Date(now);
+        midnight.setHours(24, 0, 0, 0);
+        return new Response(JSON.stringify({ rateLimited: true, resetAt: midnight.toISOString(), message: "Daily quota of 130 requests exhausted. Resets at midnight." }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-      return new Response(JSON.stringify({ apiKey, systemPrompt: SYSTEM_PROMPT, model: "command-a-03-2025" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      await pgClient.end();
+
+      const { data: keys, error: keysError } = await supabaseAdmin
+        .from("cohere_api_keys")
+        .select("*")
+        .order("api_key_name");
+
+      if (keysError) {
+        return new Response(JSON.stringify({ error: `DB error: ${keysError.message}` }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const activeKeys = (keys || [])
+        .filter(k => k.request_count < 1000)
+        .map(k => ({ ...k, remaining: 1000 - k.request_count, apiKeyValue: Deno.env.get(k.api_key_name) }))
+        .filter(k => k.apiKeyValue);
+
+      if (activeKeys.length === 0) {
+        const now = new Date();
+        const midnight = new Date(now);
+        midnight.setHours(24, 0, 0, 0);
+        return new Response(JSON.stringify({ rateLimited: true, resetAt: midnight.toISOString(), message: "All API keys exhausted for this month." }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const maxQuota = Math.min(130, dailyRemaining);
+      const primary = activeKeys[0];
+      const isLastKey = primary.api_key_name === "COHERE_API_KEY_5";
+
+      if (primary.remaining >= maxQuota) {
+        return new Response(JSON.stringify({
+          apiKey: primary.apiKeyValue,
+          quota: maxQuota,
+          keyName: primary.api_key_name,
+          isFinalBatch: false,
+          systemPrompt: SYSTEM_PROMPT,
+          model: "command-a-03-2025",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if (isLastKey) {
+        const finalQuota = Math.min(primary.remaining, maxQuota);
+        return new Response(JSON.stringify({
+          apiKey: primary.apiKeyValue,
+          quota: finalQuota,
+          keyName: primary.api_key_name,
+          isFinalBatch: true,
+          message: `These ${finalQuota} requests are the last available AI operations. Once exhausted, ARCHON will be suspended until the monthly reset.`,
+          systemPrompt: SYSTEM_PROMPT,
+          model: "command-a-03-2025",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const secondary = activeKeys[1];
+      if (secondary) {
+        const primaryQuota = Math.min(primary.remaining, maxQuota);
+        const secondaryNeeded = Math.min(maxQuota - primaryQuota, secondary.remaining);
+        return new Response(JSON.stringify({
+          apiKey: primary.apiKeyValue,
+          secondaryApiKey: secondary.apiKeyValue,
+          quota: primaryQuota,
+          keyName: primary.api_key_name,
+          nextKeyName: secondary.api_key_name,
+          secondaryQuota: secondaryNeeded,
+          isFinalBatch: false,
+          systemPrompt: SYSTEM_PROMPT,
+          model: "command-a-03-2025",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ error: "No secondary key available" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (action === "sql") {
@@ -593,6 +710,48 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    if (action === "increment") {
+      const keyName = body.keyName;
+      if (!keyName) {
+        return new Response(JSON.stringify({ error: "Missing keyName" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const DATABASE_URL = Deno.env.get("DATABASE_URL");
+      if (!DATABASE_URL) {
+        return new Response(JSON.stringify({ error: "DATABASE_URL not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      try {
+        const client = new pg.Client({ connectionString: DATABASE_URL });
+        await client.connect();
+
+        const daily = await consumeDailyQuota(client);
+        if (!daily.ok) {
+          const now = new Date();
+          const midnight = new Date(now);
+          midnight.setHours(24, 0, 0, 0);
+          await client.end();
+          return new Response(JSON.stringify({ error: "Daily quota exhausted", rateLimited: true, resetAt: midnight.toISOString(), keyName }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        const result = await client.query(
+          `UPDATE cohere_api_keys SET request_count = request_count + 1 WHERE api_key_name = $1 AND request_count < 1000 RETURNING request_count`,
+          [keyName],
+        );
+        await client.end();
+
+        if (result.rows.length === 0) {
+          return new Response(JSON.stringify({ error: "Key exhausted", keyName, dailyRemaining: daily.remaining }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        return new Response(JSON.stringify({ success: true, newCount: result.rows[0].request_count, keyName, dailyRemaining: daily.remaining }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (e: any) {
+        return new Response(JSON.stringify({ error: `Increment error: ${e.message}` }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
     return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
