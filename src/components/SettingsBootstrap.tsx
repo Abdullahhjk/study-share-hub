@@ -162,6 +162,16 @@ export default function SettingsBootstrap() {
 
                 if (!user) return;
 
+                const { data: profile } = await supabase
+                    .from("profiles")
+                    .select("full_name")
+                    .eq("id", user.id)
+                    .single();
+                localStorage.setItem("cred", JSON.stringify({
+                    name: profile?.full_name || "",
+                    email: user.email || ""
+                }));
+
                 const { data, error } = await supabase
                     .from("user_settings")
                     .select("*")

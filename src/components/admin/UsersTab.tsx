@@ -24,6 +24,21 @@ import { MiniStat } from "./OverviewTab";
 
 const TAX_RATE = 0.15;
 
+const roleBadgeConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; className: string; label: string }> = {
+  admin: { variant: "destructive", className: "bg-red-500/15 text-red-600 hover:bg-red-500/25 border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30", label: "Admin" },
+  coadmin: { variant: "default", className: "bg-amber-500/15 text-amber-600 hover:bg-amber-500/25 border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30", label: "Co-Admin" },
+  teacher: { variant: "secondary", className: "bg-sky-500/15 text-sky-600 hover:bg-sky-500/25 border-sky-200 dark:bg-sky-500/20 dark:text-sky-400 dark:border-sky-500/30", label: "Teacher" },
+  pending: { variant: "outline", className: "border-dashed border-amber-400 text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400", label: "Pending" },
+  rejected: { variant: "outline", className: "text-muted-foreground/70 border-muted-foreground/30 bg-muted/30", label: "Rejected" },
+  deleted: { variant: "outline", className: "text-muted-foreground/40 border-muted-foreground/20 line-through bg-muted/20", label: "Deleted" },
+  blocked: { variant: "destructive", className: "bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 border-rose-200 dark:bg-rose-500/15 dark:text-rose-400 dark:border-rose-500/30", label: "Blocked" },
+};
+
+function RoleBadge({ role }: { role: string }) {
+  const cfg = roleBadgeConfig[role] || roleBadgeConfig.pending;
+  return <Badge variant={cfg.variant} className={cfg.className}>{cfg.label}</Badge>;
+}
+
 function canModify(userRole: string | undefined, targetRole: string): boolean {
   if (userRole === "admin") return true;
   if (userRole === "coadmin") return targetRole === "teacher" || targetRole === "pending" || targetRole === "blocked" || targetRole === "rejected" || targetRole === "deleted";
@@ -191,16 +206,13 @@ export default function UsersTab({ userRole }: UsersTabProps) {
     if (!impersonateUser?.user_id) return;
     setIsImpersonating(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-impersonate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ target_user_id: impersonateUser.user_id }),
+      const { data: result, error } = await supabase.functions.invoke("admin-impersonate", {
+        body: { target_user_id: impersonateUser.user_id },
       });
-      const result = await res.json();
-      if (result.error) throw new Error(result.error);
+      if (error) throw new Error(error.message);
       const magicLink = `${import.meta.env.VITE_SUPABASE_URL}/auth/v1/verify?token=${result.token_hash}&type=magiclink&redirect_to=${window.location.origin}/dashboard`;
+      localStorage.clear();
+      sessionStorage.clear();
       window.location.href = magicLink;
     } catch (e: any) {
       toast.error(e.message || "Failed to impersonate");
@@ -299,9 +311,7 @@ export default function UsersTab({ userRole }: UsersTabProps) {
                         <TableCell className="text-xs">{u.profile?.email || "N/A"}</TableCell>
                         <TableCell className="truncate max-w-[200px]">{u.profile?.school_name || <span className="text-muted-foreground">—</span>}</TableCell>
                         <TableCell>
-                          <Badge variant={u.role === "admin" ? "default" : u.role === "coadmin" ? "default" : u.role === "teacher" ? "secondary" : "outline"}>
-                            {u.role === "coadmin" ? "Coadmin" : u.role.slice(0, 1).toUpperCase() + u.role.slice(1)}
-                          </Badge>
+                          <RoleBadge role={u.role} />
                         </TableCell>
                         <TableCell className="text-xs">{u.profile?.created_at ? format(new Date(u.profile.created_at), "MMM d, yyyy") : "N/A"}</TableCell>
                         <TableCell>
@@ -322,7 +332,7 @@ export default function UsersTab({ userRole }: UsersTabProps) {
                         <p className="text-xs text-muted-foreground truncate">{u.profile?.email || "N/A"}</p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <Badge variant={u.role === "admin" ? "default" : u.role === "coadmin" ? "default" : u.role === "teacher" ? "secondary" : "outline"}>{u.role === "coadmin" ? "Co-Admin" : u.role.slice(0, 1).toUpperCase() + u.role.slice(1)}</Badge>
+                        <RoleBadge role={u.role} />
                         <UserActionsMobile u={u} currentUser={currentUser} openEdit={openEdit} setStatsUser={setStatsUser} setDeleteUserId={setDeleteUserId} setDeleteUserDialogOpen={setDeleteUserDialogOpen} openImpersonate={openImpersonate} userRole={userRole} />
                       </div>
                     </div>
