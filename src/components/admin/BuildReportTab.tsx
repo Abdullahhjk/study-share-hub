@@ -66,19 +66,33 @@ export default function BuildReportTab() {
         onSuccess: () => { toast.success("Removed"); qc.invalidateQueries({ queryKey: ["newsletter-subscribers"] }); },
     });
 
-    const ACTIVEPIECES_WEBHOOK = import.meta.env.VITE_ACTIVEPIECES_WEBHOOK || "";
+    const wrapInTemplate = useMutation({
+        mutationFn: async () => {
+            if (!html) throw new Error("Generate HTML first");
+            const { data, error } = await supabase.functions.invoke("email-template", {
+                body: { type: "newsletter", content: html, subject },
+            });
+            if (error) throw error;
+            if (!data?.html) throw new Error("Template generation returned no HTML");
+            return data.html as string;
+        },
+        onSuccess: (wrappedHtml) => {
+            setHtml(wrappedHtml);
+            toast.success("Content wrapped in newsletter template");
+        },
+        onError: (e: any) => toast.error("Template wrapping failed", { description: e.message }),
+    });
 
-    const sendViaActivepieces = useMutation({
+    const sendViaFunction = useMutation({
         mutationFn: async () => {
             if (!subject || !html) throw new Error("Generate subject + HTML first");
             const emails = (subscribers as any[]).filter(s => s.is_active !== false).map(s => s.email);
             if (!emails.length) throw new Error("No active subscribers");
-            const res = await fetch(ACTIVEPIECES_WEBHOOK, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ html, subject, emails }),
+            const { data, error } = await supabase.functions.invoke("send-emails", {
+                body: { html, subject, emails },
             });
-            if (!res.ok) throw new Error(`Webhook failed: ${res.status} ${await res.text()}`);
+            if (error) throw error;
+            if (!data?.success) throw new Error(data?.error || "Send failed");
             // Save report and mark sent
             const { data: { user } } = await supabase.auth.getUser();
             await supabase.from("build_reports").insert({
@@ -149,17 +163,27 @@ export default function BuildReportTab() {
                         <div className="flex flex-wrap gap-2">
                             <Button variant="outline" onClick={copyHtml}><Copy className="h-4 w-4 mr-1" /> Copy HTML</Button>
                             <Button variant="outline" onClick={mailtoAll} disabled={!subscribers.length}>
-                                <Send className="h-4 w-4 mr-1" /> Open mail client (BCC {subscribers.length})
+                                <Send className="h-4 w-4 mr-1" /> Open mail client (BCC {subscribers.filter((s: any) => s.is_active !== false).length})
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                onClick={() => wrapInTemplate.mutate()}
+                                disabled={wrapInTemplate.isPending || !html}
+                            >
+                                {wrapInTemplate.isPending
+                                    ? <Loader2 className="h-4 w-4 animate-spin mr-1 inline-block" />
+                                    : <Mail className="h-4 w-4 mr-1" />}
+                                Wrap in template
                             </Button>
                             <Button
                                 variant="default"
-                                onClick={() => sendViaActivepieces.mutate()}
-                                disabled={sendViaActivepieces.isPending || !subscribers.length || !html || !subject}
+                                onClick={() => sendViaFunction.mutate()}
+                                disabled={sendViaFunction.isPending || !subscribers.length || !html || !subject}
                             >
-                                {sendViaActivepieces.isPending
+                                {sendViaFunction.isPending
                                     ? <Loader2 className="h-4 w-4 animate-spin mr-1 inline-block" />
                                     : <Rocket className="h-4 w-4 mr-1" />}
-                                Send via ActivePieces ({(subscribers as any[]).filter(s => s.is_active !== false).length})
+                                Send to {(subscribers as any[]).filter(s => s.is_active !== false).length} subscribers
                             </Button>
                             <Button onClick={() => saveReport.mutate()} disabled={saveReport.isPending}>
                                 {saveReport.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1 inline-block" /> : null}
@@ -172,14 +196,14 @@ export default function BuildReportTab() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Mail className="h-4 w-4" /> Subscribers <Badge variant="secondary">{subscribers.length}</Badge></CardTitle>
+                    <CardTitle className="flex items-center gap-2"><Mail className="h-4 w-4" /> Subscribers <Badge variant="secondary">{subscribers.filter((s: any) => s.is_active !== false).length}</Badge></CardTitle>
                 </CardHeader>
                 <CardContent>
                     {subscribers.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No subscribers yet.</p>
                     ) : (
                         <div className="space-y-1 max-h-72 overflow-y-auto">
-                            {subscribers.map((s: any) => (
+                            {subscribers.filter((s: any) => s.is_active !== false).map((s: any) => (
                                 <div key={s.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
                                     <span>{s.email}</span>
                                     <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive"

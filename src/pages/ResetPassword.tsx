@@ -47,6 +47,17 @@ export default function ResetPassword() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (showLoggedInNotice) {
+      toast({
+        title: "Note: You are now logged in",
+        description: "You can now reset your password.",
+        variant: "default",
+        className: "bg-warning text-warning-foreground",
+      });
+    }
+  }, [showLoggedInNotice])
+
   const {
     register,
     handleSubmit,
@@ -97,7 +108,7 @@ export default function ResetPassword() {
           .select("full_name")
           .eq("id", user.id)
           .single();
-        
+
         localStorage.setItem("cred", JSON.stringify({
           name: profile?.full_name || "",
           email: user.email || ""
@@ -146,7 +157,7 @@ export default function ResetPassword() {
             to="/"
             className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary"
           >
-            <BookOpen className="h-6 w-6 text-primary-foreground" />
+            <img src="/preview.png" alt="Logo" className="h-10 w-10 rounded-md" />
           </Link>
           <CardTitle className="mt-4 font-display text-2xl">
             Set New Password

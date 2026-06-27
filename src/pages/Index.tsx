@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { SearchFilters } from "@/components/SearchFilters";
 import { NotesCarousel } from "@/components/NotesCarousel";
@@ -21,6 +21,12 @@ import { Footer } from "@/components/Footer";
 import { useCurrency } from "@/hooks/useCurrency";
 
 const Index = () => {
+  const hash = window.location.hash;
+  const params = new URLSearchParams(hash.substring(1));
+  const paramError = params.get('error');
+  const paramErrorCode = params.get('error_code');
+  const paramDescription = params.get('error_description');
+
   const { formatPrice } = useCurrency();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTeacher, setSelectedTeacher] = useState("");
@@ -34,6 +40,16 @@ const Index = () => {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (paramError) {
+      toast({
+        title: paramError.replace(/_/g, " ").slice(0, 1).toUpperCase() + paramError.replace(/_/g, " ").slice(1),
+        description: paramDescription || paramErrorCode || "An error occurred",
+        variant: "destructive",
+      });
+    }
+  }, [paramError, paramErrorCode, paramDescription, toast]);
 
   const {
     data: notes,

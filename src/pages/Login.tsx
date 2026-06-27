@@ -303,7 +303,6 @@ export default function Login() {
       });
       if (error) throw error;
       ActivityLogger.signup();
-      // For signup, store both name and email
       localStorage.setItem("cred", JSON.stringify({
         name: data.fullName || "",
         email: data.email
@@ -321,10 +320,10 @@ export default function Login() {
     setIsLoading(true);
     try {
       await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: "https://scholar-share.netlify.app/reset-password",
       });
     } finally {
-      toast({ title: "If that email is registered, a password reset link has been sent." });
+      toast({ title: "If that email is registered, a password reset link has been sent. You may have to navigate to reset-password page manually." });
       setView("auth");
       setIsLoading(false);
     }
