@@ -1,3 +1,5 @@
+import "./utils/domDebugger";
+
 import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "next-themes";
 

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,6 +59,7 @@ interface SettingsState {
   appearance: string;
   showDropdown: boolean;
   autoCurrency: boolean;
+  adminMode: boolean;
 }
 
 interface SettingsDialogProps {
@@ -77,6 +79,7 @@ function readLocalStorage(): SettingsState {
     appearance: localStorage.getItem("theme") || "light",
     showDropdown: localStorage.getItem("show-dropdown") === "true",
     autoCurrency: localStorage.getItem(AUTO_CURRENCY_KEY) === "true",
+    adminMode: window.__DOM_DEBUGGER__?.status() || false,
   };
 }
 const defaultSettings: SettingsState = {
@@ -89,6 +92,7 @@ const defaultSettings: SettingsState = {
   appearance: "light",
   showDropdown: false,
   autoCurrency: false,
+  adminMode: false,
 };
 
 function writeLocalStorage(s: SettingsState) {
@@ -118,9 +122,12 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
   const [current, setCurrent] = useState<SettingsState>(readLocalStorage);
   const [showUnsavedAlert, setShowUnsavedAlert] = useState(false);
   const [showAutoCurrencyConfirm, setShowAutoCurrencyConfirm] = useState(false);
+  const [showDeveloperModeConfirm, setShowDeveloperModeConfirm] = useState(false);
   const [isAutoDetecting, setIsAutoDetecting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
+  const isAdmin = userRole === "admin" || userRole === "coadmin";
   const isDirty = JSON.stringify(saved) !== JSON.stringify(current);
 
   const reset = (persist = false) => {
@@ -201,7 +208,18 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
       setSaved(fresh);
       setCurrent(fresh);
     }
-  }, [open]);
+
+    if (open && user) {
+      supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle()
+        .then(({ data }) => setUserRole(data?.role ?? null));
+    } else if (!open) {
+      setUserRole(null);
+    }
+  }, [open, user]);
 
   // ── DOM side-effects (live preview while dialog is open) ────────────────────
 
@@ -257,6 +275,12 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
       localStorage.setItem(AUTO_CURRENCY_KEY, "false");
       patch({ autoCurrency: false });
     }
+  };
+
+  const confirmDeveloperMode = () => {
+    setShowDeveloperModeConfirm(false);
+    patch({ adminMode: true });
+    window.__DOM_DEBUGGER__?.start();
   };
 
   const confirmAutoCurrency = async () => {
@@ -315,6 +339,11 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
 
   // Intercept the dialog's own close triggers (X button, backdrop click, Escape).
   const handleOpenChange = (next: boolean) => {
+    // Block closing while debugger is active
+    if (!next && window.__DOM_DEBUGGER__?.status()) {
+      return;
+    }
+
     // Block ALL closing while saving
     if (!next && isSaving) {
       return;
@@ -402,6 +431,93 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
               </div>
             </div>
 
+            {isAdmin && (
+              <div className="rounded-xl border bg-card/80 backdrop-blur-sm p-5 space-y-4 shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold tracking-tight">
+                        Developer Show Mode
+                      </span>
+
+                      <span className="rounded-md border border-warning bg-warning px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-warning-foreground dark:text-warning-foreground">
+                        Experimental
+                      </span>
+                    </div>
+
+                    <p className="max-w-[420px] text-xs leading-relaxed text-muted-foreground">
+                      Visualizes all live DOM nodes with debug outlines and labels. Can
+                      heavily impact rendering performance on large pages.
+                    </p>
+                  </div>
+
+                  <Switch
+                    checked={current.adminMode}
+                    onCheckedChange={(v) => {
+                      if (v) {
+                        setShowDeveloperModeConfirm(true);
+                      } else {
+                        patch({ adminMode: false });
+
+                        window.__DOM_DEBUGGER__?.stop();
+                      }
+                    }}
+                  />
+                </div>
+
+                {current.adminMode && (
+                  <div className="space-y-3">
+                    <Alert
+                      variant="destructive"
+                      className="border-red-500/30 bg-red-500/10"
+                    >
+                      <AlertTriangle className="h-4 w-4" />
+
+                      <AlertTitle>
+                        High DOM Activity
+                      </AlertTitle>
+
+                      <AlertDescription className="space-y-2">
+                        <p>
+                          This mode continuously tracks DOM mutations, layout shifts,
+                          scrolling, and dynamic rendering updates.
+                        </p>
+
+                        <ul className="list-disc space-y-1 pl-4 text-xs">
+                          <li>Increases CPU and GPU usage</li>
+                          <li>May reduce animation smoothness</li>
+                          <li>Can cause thermal throttling on low-end devices</li>
+                          <li>Not recommended during production profiling</li>
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.__DOM_DEBUGGER__?.start();
+                        }}
+                        className="inline-flex items-center rounded-md border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-muted"
+                      >
+                        Start Debugger
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.__DOM_DEBUGGER__?.stop();
+                        }}
+                        className="inline-flex items-center rounded-md border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-muted"
+                      >
+                        Stop Debugger
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="rounded-lg border bg-card p-4 space-y-3">
               <AccessibilitySection
                 fontSize={current.fontSize}
@@ -459,6 +575,25 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showDeveloperModeConfirm} onOpenChange={setShowDeveloperModeConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enable Developer Show Mode?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This is a beta feature. It highlights every DOM element with outlines and labels,
+              which may cause performance degradation and device overheating on complex pages.
+              Only enable if you understand the risks.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeveloperMode}>
+              I understand, enable it
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={showAutoCurrencyConfirm} onOpenChange={setShowAutoCurrencyConfirm}>
         <AlertDialogContent>
