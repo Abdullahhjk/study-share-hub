@@ -489,6 +489,41 @@ Current date: \${new Date().toISOString().split("T")[0]}
 Current time: \${new Date().toLocaleTimeString()}
 Timezone: \${Intl.DateTimeFormat().resolvedOptions().timeZone}
 `;
+
+function getSystemPrompt(role: string): string {
+  if (role === "admin") return SYSTEM_PROMPT;
+
+  const adminOnlyLines = [
+    "Create cron jobs", "Fetch cron jobs", "Update cron jobs", "Delete cron jobs",
+    "Pause scheduled tasks", "Resume scheduled tasks",
+    "Create triggers", "Delete triggers", "Read triggers", "Execute triggers",
+    "Manage automations",
+    "Query databases", "Create records", "Update records", "Delete records",
+    "Manage queues", "Retry failed jobs", "Process background tasks",
+  ];
+
+  const adminRules = [
+    "5. If scheduling is required, create or modify cron jobs automatically.",
+    "6. If unscheduling is required, delete or disable the relevant cron jobs automatically.",
+    "7. If triggers are needed, create them automatically.",
+    "8. If workflows already exist, discover and reuse them.",
+  ];
+
+  let prompt = SYSTEM_PROMPT
+    .replace(/\n\nDATABASE SCHEMA:\n[\s\S]*?(?=\n\n# CAPABILITIES & OUTPUT FORMAT)/, "")
+    .replace(/\n## 1\. SQL Execution[\s\S]*?(?=\n## 2\.)/, "");
+
+  for (const line of adminOnlyLines) {
+    prompt = prompt.replace(`\n- ${line}`, "");
+  }
+
+  for (const rule of adminRules) {
+    prompt = prompt.replace(`\n${rule}`, "");
+  }
+
+  return prompt;
+}
+
 const TOOLS = [
   {
     type: "function",
@@ -608,9 +643,11 @@ Deno.serve(async (req) => {
     }
 
     const { data: roleRow } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", user.id).single();
-    if (!roleRow || !["admin"].includes(roleRow.role)) {
+    if (!roleRow || !["admin", "coadmin"].includes(roleRow.role)) {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    const isAdmin = roleRow.role === "admin";
 
     const body = await req.json();
     const { action } = body;
@@ -667,8 +704,9 @@ Deno.serve(async (req) => {
           quota: maxQuota,
           keyName: primary.api_key_name,
           isFinalBatch: false,
-          systemPrompt: SYSTEM_PROMPT,
+          systemPrompt: getSystemPrompt(roleRow.role),
           model: "command-a-03-2025",
+          role: roleRow.role,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -680,8 +718,9 @@ Deno.serve(async (req) => {
           keyName: primary.api_key_name,
           isFinalBatch: true,
           message: `These ${finalQuota} requests are the last available AI operations. Once exhausted, ARCHON will be suspended until the monthly reset.`,
-          systemPrompt: SYSTEM_PROMPT,
+          systemPrompt: getSystemPrompt(roleRow.role),
           model: "command-a-03-2025",
+          role: roleRow.role,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -697,8 +736,9 @@ Deno.serve(async (req) => {
           nextKeyName: secondary.api_key_name,
           secondaryQuota: secondaryNeeded,
           isFinalBatch: false,
-          systemPrompt: SYSTEM_PROMPT,
+          systemPrompt: getSystemPrompt(roleRow.role),
           model: "command-a-03-2025",
+          role: roleRow.role,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -706,6 +746,9 @@ Deno.serve(async (req) => {
     }
 
     if (action === "sql") {
+      if (!isAdmin) {
+        return new Response(JSON.stringify({ error: "Coadmins cannot execute SQL queries." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       const result = await executeSql({ query: body.query, confirmed: body.confirmed });
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

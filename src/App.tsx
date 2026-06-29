@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster as Sonner, toast } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -31,6 +31,7 @@ import Unsubscribe from "./pages/Unsubscribe";
 import UpcomingFeatures from "./pages/UpcomingFeatures";
 import NotesLoading from "@/components/NotesLoading";
 import { fetchNotesQuery } from "@/hooks/useNotes";
+import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
 const env = import.meta.env.MODE;
@@ -49,6 +50,59 @@ function AppContent() {
     const timer = setTimeout(() => setInitialLoading(false), 6720);
     return () => clearTimeout(timer);
   }, [client]);
+
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const checkBlocked = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      if (roleRow && ["blocked", "deleted", "rejected"].includes(roleRow.role)) {
+        await supabase.auth.signOut();
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.reload();
+        return;
+      }
+
+      channel = supabase
+        .channel("user-role-changes")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "user_roles",
+            filter: `user_id=eq.${session.user.id}`,
+          },
+          async (payload: any) => {
+            const newRole = payload.new?.role;
+            if (["teacher", "admin", "coadmin"].includes(newRole)) {
+              window.location.reload();
+              return;
+            }
+            await supabase.auth.signOut();
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.reload();
+          },
+        )
+        .subscribe();
+    };
+
+    checkBlocked();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, []);
 
   if (initialLoading) return <NotesLoading />;
 
@@ -71,7 +125,7 @@ function AppContent() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/help" element={<UserManual />} />
           <Route path="/coadmin" element={<ProtectedRoute requiredRole="coadmin"><CoadminDashboard /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute requiredRole="coadmin"><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
           {env === "development" &&
             <Route path="/test" element={<QATesting />} />
           }

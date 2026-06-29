@@ -333,6 +333,7 @@ export default function Dashboard() {
         <button
           key={tab.value}
           onClick={() => handleTabChange(tab.value)}
+          disabled={isPending || isDenied || isDeleted}
           className={cn(
             "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
             activeTab === tab.value
@@ -373,7 +374,7 @@ export default function Dashboard() {
             <Clock className="h-4 w-4 text-warning" />
             <AlertTitle>Notes Disabled</AlertTitle>
             <AlertDescription>
-              You cannot access notes until your account is approved by an admin.
+              You cannot access settings at the moment. {isPending ? "Your account is pending approval." : isDenied ? "Your account is rejected." : "Your account is deleted."}
             </AlertDescription>
           </Alert>
         ) : (
@@ -394,7 +395,7 @@ export default function Dashboard() {
                 <Clock className="h-4 w-4 text-warning" />
                 <AlertTitle>Upload Disabled</AlertTitle>
                 <AlertDescription>
-                  You cannot upload notes until your account is approved by an admin.
+                  You cannot access settings at the moment. {isPending ? "Your account is pending approval." : isDenied ? "Your account is rejected." : "Your account is deleted."}
                 </AlertDescription>
               </Alert>
             ) : (
@@ -409,7 +410,7 @@ export default function Dashboard() {
             <Clock className="h-4 w-4 text-warning" />
             <AlertTitle>Categories Disabled</AlertTitle>
             <AlertDescription>
-              You cannot manage categories until your account is approved by an admin.
+              You cannot access settings at the moment. {isPending ? "Your account is pending approval." : isDenied ? "Your account is rejected." : "Your account is deleted."}
             </AlertDescription>
           </Alert>
         ) : (
@@ -417,7 +418,17 @@ export default function Dashboard() {
         );
 
       case "settings":
-        return <ProfileSettings userId={user?.id} />;
+        return isPending || isDenied || isDeleted ? (
+          <Alert className="border-warning bg-warning/10">
+            <Clock className="h-4 w-4 text-warning" />
+            <AlertTitle>Settings Disabled</AlertTitle>
+            <AlertDescription>
+              You cannot access settings at the moment. {isPending ? "Your account is pending approval." : isDenied ? "Your account is rejected." : "Your account is deleted."}
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <ProfileSettings userId={user?.id} />
+        );
       case "activity":
         return <ActivityLogs userId={user?.id} />;
       case "notifications":
@@ -491,7 +502,7 @@ export default function Dashboard() {
             <AlertDescription className="ml-6">
               Your teacher account has been deleted. An email with more details
               regarding this decision will be sent to your registered email
-              address. All of your data was deleted.
+              address. All of your data was deleted. <br /> You can still access this site to buy notes but access to this account will be revoked soon.
             </AlertDescription>
           </Alert>
         )}

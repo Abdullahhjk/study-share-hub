@@ -10,23 +10,21 @@ import ChatInput from "./chat/ChatInput";
 import AIPanelHeader from "./chat/AIPanelHeader";
 import { loadMessages, saveMessages, clearMessages, STORAGE_KEY, ChatMessage, ToolCallData } from "./chat/chat-store";
 
-const TOOLS = [
-  {
-    type: "function" as const,
-    function: {
-      name: "run_sql",
-      description: "Execute a SQL query against the database. Supports SELECT, INSERT, UPDATE, DELETE. For SELECT queries, execute with confirmed=true. For INSERT/UPDATE/DELETE, first show the user the query and get approval, then call again with confirmed=true.",
-      parameters: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "The SQL query to execute." },
-          confirmed: { type: "boolean", description: "Set to true to confirm execution of DML queries." },
-        },
-        required: ["query"],
+const SQL_TOOL = {
+  type: "function" as const,
+  function: {
+    name: "run_sql",
+    description: "Execute a SQL query against the database. Supports SELECT, INSERT, UPDATE, DELETE. For SELECT queries, execute with confirmed=true. For INSERT/UPDATE/DELETE, first show the user the query and get approval, then call again with confirmed=true.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "The SQL query to execute." },
+        confirmed: { type: "boolean", description: "Set to true to confirm execution of DML queries." },
       },
+      required: ["query"],
     },
   },
-];
+};
 
 function extractText(content: unknown): string | null {
   if (!content) return null;
@@ -350,6 +348,8 @@ export default function AIAssistantPanel() {
 
     const sanitize = (msgs: ChatMessage[]) => msgs.map(({ toolCalls: _, ...rest }) => rest);
 
+    const tools = role === "admin" ? [SQL_TOOL] : [];
+
     try {
       // ── STREAM MODE ──────────────────────────────────────────
       if (streamMode === "stream") {
@@ -371,7 +371,7 @@ export default function AIAssistantPanel() {
           const streamResp = await client.chatStream({
             model: config.model,
             messages: [systemMsg, ...sanitize(history)],
-            tools: TOOLS,
+            tools,
           }, { abortSignal: controller.signal });
 
           const stream = await streamResp;
@@ -463,7 +463,7 @@ export default function AIAssistantPanel() {
           const streamResp2 = await client2.chatStream({
             model: config.model,
             messages: [systemMsg, ...toolMessages],
-            tools: TOOLS,
+            tools,
           }, { abortSignal: controller.signal });
 
           const stream2 = await streamResp2;
@@ -516,7 +516,7 @@ export default function AIAssistantPanel() {
       const firstResp = await client.chat({
         model: config.model,
         messages: [systemMsg, ...sanitize(history)],
-        tools: TOOLS,
+        tools,
       }, { abortSignal: controller.signal });
 
       const firstMsg = firstResp.message;
@@ -563,7 +563,7 @@ export default function AIAssistantPanel() {
             content: JSON.stringify(data),
           })),
         ],
-        tools: TOOLS,
+        tools,
       }, { abortSignal: controller.signal });
 
       const assistantText = extractText(secondResp.message.content) ?? "Empty response";

@@ -263,7 +263,12 @@ export default function Login() {
         .single();
       if (roleRow && ["deleted", "blocked", "rejected"].includes(roleRow.role)) {
         await supabase.auth.signOut();
-        toast({ title: "Access denied", description: "Your account has been " + roleRow.role + ".", variant: "destructive" });
+        const message = roleRow.role === "blocked"
+          ? "Your account has been blocked. It will be deleted soon."
+          : roleRow.role === "deleted"
+            ? "Your account has been deleted. You can not login now."
+            : "Your account application has been rejected and is being deleted."
+        toast({ title: "Access denied", description: message, variant: "destructive" });
         setIsLoading(false);
         return;
       }

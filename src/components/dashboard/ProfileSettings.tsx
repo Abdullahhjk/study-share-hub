@@ -339,7 +339,7 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Button
-                type="button"
+                type="submit"
                 className="w-full gap-2"
                 disabled={!isDirty || updateProfile.isPending}
               >
