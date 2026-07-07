@@ -58,7 +58,7 @@ export default function AIAssistantPanel() {
   const [error, setError] = useState("");
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const [thinkingStage, setThinkingStage] = useState(0);
-  const [streamMode, setStreamMode] = useState<"collect" | "stream">("collect");
+  const [streamMode, setStreamMode] = useState<"collect" | "stream">("stream");
   const [executingSql, setExecutingSql] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);

@@ -45,7 +45,7 @@ export default function DevNotice() {
             <DialogTitle>Notice</DialogTitle>
             <DialogDescription className="space-y-2">
               <p>
-                This app is being developed by a <strong>team of developers</strong>.
+                This app is being developed by a <strong>small team of developers</strong>.
                 Any contribution will be appreciated.
               </p>
               <p>
@@ -63,7 +63,7 @@ export default function DevNotice() {
       {showBanner && (
         <div className="relative bg-muted/80 px-4 py-2.5 text-center text-xs sm:text-sm text-foreground border-b">
           <span>
-            Built by a <strong>team of developers</strong> &mdash; any contribution will be appreciated.
+            Built by a <strong>small team of developers</strong> &mdash; any contribution will be appreciated.
             Feedback?{" "}
             <strong>Footer &rarr; Stay Connected &rarr; Feedback</strong>
           </span>

@@ -196,7 +196,7 @@ function LoadingSteps() {
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
-    const totalDuration = 5720;
+    const totalDuration = 6720;
     const stepDuration = totalDuration / steps.length;
 
     const interval = setInterval(() => {
