@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { format } from "date-fns";
-import { Users, DollarSign, TrendingUp, BarChart3, Loader2, RefreshCw } from "lucide-react";
+import { Users, DollarSign, TrendingUp, BarChart3, Loader2, RefreshCw, Copy, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -183,6 +183,48 @@ export default function OverviewTab() {
                 )}
                 Refresh
               </Button>
+              {(() => {
+                const CopyRatesButton = () => {
+                  const [copied, setCopied] = useState(false);
+
+                  const handleCopy = () => {
+                    if (!data.fxRate?.rates) return;
+                    const rates = data.fxRate.rates as Record<string, number>;
+                    const markdown = [
+                      "These rates are fetched with respect to Pakistani Rupee (PKR).",
+                      "| Currency | Rate |",
+                      "|---|---|",
+                      ...Object.entries(rates)
+                        .sort()
+                        .map(([key, rate]) => {
+                          const currency = key.replace("PKR", "");
+                          return `| ${currency} | ${rate} |`;
+                        })
+                    ].join("\n");
+                    navigator.clipboard.writeText(markdown);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  };
+
+                  return (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopy}
+                      className="h-7 gap-1 text-xs w-28"
+                    >
+                      {copied ? (
+                        <Check className="h-3 w-3" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                      {copied ? "Copied" : "Copy Rates"}
+                    </Button>
+                  );
+                };
+                return <CopyRatesButton />;
+              })()}
+
             </div>
           </CardHeader>
 

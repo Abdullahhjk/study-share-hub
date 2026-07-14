@@ -37,6 +37,7 @@ export interface Note {
   subcategory_id: string;
   school_name: string | null;
   deleted_at: string | null;
+  purged_at: string | null;
   created_at: string;
   updated_at: string;
   teacher?: Teacher;

@@ -14,27 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      _edge_one_shots: {
-        Row: {
-          fired_at: string | null
-          job_name: string
-          payload: Json
-          run_at: string
-        }
-        Insert: {
-          fired_at?: string | null
-          job_name: string
-          payload?: Json
-          run_at: string
-        }
-        Update: {
-          fired_at?: string | null
-          job_name?: string
-          payload?: Json
-          run_at?: string
-        }
-        Relationships: []
-      }
       access_codes: {
         Row: {
           code: string
@@ -259,16 +238,19 @@ export type Database = {
       }
       cohere_api_keys: {
         Row: {
+          api_key: string | null
           api_key_name: string
           request_count: number
           uuid: string
         }
         Insert: {
+          api_key?: string | null
           api_key_name: string
           request_count?: number
           uuid?: string
         }
         Update: {
+          api_key?: string | null
           api_key_name?: string
           request_count?: number
           uuid?: string
@@ -1260,7 +1242,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      dearmor: { Args: { "": string }; Returns: string }
       delete_old_purged_rows: { Args: never; Returns: undefined }
+      gen_random_uuid: { Args: never; Returns: string }
+      gen_salt: { Args: { "": string }; Returns: string }
       generate_monthly_payment_record: {
         Args: { p_month: number; p_teacher_id: string; p_year: number }
         Returns: string
@@ -1391,6 +1376,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      pgp_armor_headers: {
+        Args: { "": string }
+        Returns: Record<string, unknown>[]
+      }
       record_client_hit: {
         Args: { p_action: string; p_fp_hash: string; p_ip_hash: string }
         Returns: undefined
@@ -1411,7 +1400,6 @@ export type Database = {
         Args: { p_reason: string; p_record_id: string }
         Returns: undefined
       }
-      reset_all_api_key_counts: { Args: never; Returns: undefined }
       submit_payment_proof: {
         Args: {
           p_month: number

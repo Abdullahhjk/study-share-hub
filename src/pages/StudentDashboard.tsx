@@ -69,21 +69,18 @@ interface RequestData {
   contact_type: string;
   download_code: string | null;
   download_code_used_at: string | null;
-  teacher?: {
-    full_name: string;
-    email: string;
-    phone: string | null;
-  };
+  teacher_id: string;
+  teacher_full_name: string;
+  teacher_email: string;
+  teacher_phone: string | null;
 }
 
 interface RequestNote {
   id: string;
+  request_id: string;
   note_id: string;
-  notes: {
-    id: string;
-    title: string;
-    price: number | null;
-  };
+  note_title: string;
+  note_price: number | null;
 }
 
 export default function StudentDashboard() {
@@ -122,20 +119,9 @@ export default function StudentDashboard() {
     queryFn: async () => {
       if (storedIds.length === 0) return [];
 
-      const { data, error } = await supabase
-        .from("note_requests")
-        .select(
-          `
-          *,
-          teacher:profiles (
-            full_name,
-            email,
-            phone
-          )
-        `
-        )
-        .in("request_id", storedIds)
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.rpc("get_student_requests" as any, {
+        p_request_ids: storedIds,
+      });
 
       if (error) throw error;
       return data as unknown as RequestData[];
@@ -148,31 +134,17 @@ export default function StudentDashboard() {
     queryFn: async () => {
       if (!requests || requests.length === 0) return {};
 
-      const { data, error } = await supabase
-        .from("request_notes")
-        .select(
-          `
-          id,
-          request_id,
-          note_id,
-          notes (
-            id,
-            title,
-            price
-          )
-        `
-        )
-        .in(
-          "request_id",
-          requests.map((r) => r.id)
-        );
+      const { data, error } = await supabase.rpc("get_student_request_notes" as any, {
+        p_request_db_ids: requests.map((r) => r.id),
+      });
 
       if (error) throw error;
 
       const grouped: Record<string, RequestNote[]> = {};
       (data as any[]).forEach((item) => {
-        if (!grouped[item.request_id]) grouped[item.request_id] = [];
-        grouped[item.request_id].push(item);
+        const reqId = item.request_id;
+        if (!grouped[reqId]) grouped[reqId] = [];
+        grouped[reqId].push(item);
       });
       return grouped;
     },
@@ -455,17 +427,17 @@ export default function StudentDashboard() {
     ];
     requests.forEach((req) => {
       const notes = requestNotes?.[req.id] || [];
-      const titles = notes.map((n) => n.notes.title).join(" | ");
-      const prices = notes.map((n) => formatPrice(n.notes.price ?? 0)).join(" | ");
+      const titles = notes.map((n) => n.note_title).join(" | ");
+      const prices = notes.map((n) => formatPrice(n.note_price ?? 0)).join(" | ");
 
       rows.push([
         req.request_id,
         req.status,
         format(new Date(req.created_at), "PPP 'at' p"),
         formatPrice(req.total_amount),
-        req.teacher?.full_name ?? "",
-        req.teacher?.email ?? "",
-        req.teacher?.phone ?? "",
+        req.teacher_full_name ?? "",
+        req.teacher_email ?? "",
+        req.teacher_phone ?? "",
         titles,
         prices,
       ]);
@@ -583,7 +555,7 @@ export default function StudentDashboard() {
 
                   <CardContent className="space-y-5">
                     {/* Info Section */}
-                    {request.teacher && (
+                    {request.teacher_full_name && (
                       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                         {/* Teacher */}
                         <div className="rounded-xl border bg-muted/20 p-4 space-y-2">
@@ -596,22 +568,22 @@ export default function StudentDashboard() {
                               <span className="font-medium text-foreground">
                                 Name:
                               </span>{" "}
-                              {request.teacher.full_name}
+                              {request.teacher_full_name}
                             </p>
 
                             <p>
                               <span className="font-medium text-foreground">
                                 Email:
                               </span>{" "}
-                              {request.teacher.email}
+                              {request.teacher_email}
                             </p>
 
-                            {request.teacher.phone && (
+                            {request.teacher_phone && (
                               <p>
                                 <span className="font-medium text-foreground">
                                   Phone:
                                 </span>{" "}
-                                {request.teacher.phone}
+                                {request.teacher_phone}
                               </p>
                             )}
                           </div>
@@ -713,11 +685,11 @@ export default function StudentDashboard() {
                             className="flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3"
                           >
                             <span className="truncate text-sm font-medium">
-                              {rn.notes.title}
+                              {rn.note_title}
                             </span>
 
                             <span className="text-sm text-muted-foreground">
-                              {formatPrice(rn.notes.price ?? 0)}
+                              {formatPrice(rn.note_price ?? 0)}
                             </span>
                           </li>
                         )) || (

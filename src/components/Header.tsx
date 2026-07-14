@@ -16,6 +16,7 @@ import {
   Crown,
   Settings,
   ChevronDown,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +35,7 @@ import {
 import { RequestTracker } from "./dashboard/RequestTracker";
 import { SettingsDialog } from "./settings/SettingsDialog";
 import { Badge } from "./ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { toast } from "sonner";
 
 type Profile = {
@@ -67,6 +69,20 @@ export function Header() {
     },
     enabled: !!user?.id,
     refetchInterval: 30000,
+  });
+
+  const { data: newsletterSub = null } = useQuery({
+    queryKey: ["header-newsletter-subscribed", user?.email],
+    queryFn: async () => {
+      if (!user?.email) return null;
+      const { data } = await supabase
+        .from("newsletter_subscribers")
+        .select("id, is_active")
+        .eq("email", user.email)
+        .maybeSingle();
+      return data as { id: string; is_active: boolean } | null;
+    },
+    enabled: !!user?.email,
   });
 
   useEffect(() => {
@@ -271,12 +287,36 @@ export function Header() {
                           {user.email}
                         </span>
 
-                        {isAdmin && (
-                          <Badge variant="secondary" className="text-center w-fit mx-auto border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1.5 mt-1">
-                            <Crown className="h-3.5 w-3.5" />
-                            {userRole === "coadmin" ? "Co-Admin" : "Administrator"}
-                          </Badge>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center gap-1 mt-1 text-blue-600 dark:text-blue-400">
+                                  <Badge variant="secondary" title={userRole === "coadmin" ? "You are a Co-Administrator" : userRole === "admin" ? "You are an Administrator" : "You are a Teacher"} className={`text-center w-fit mx-auto font-semibold flex items-center gap-1.5 mt-1 ${userRole === "coadmin" ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400" : userRole === "admin" ? "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400" : "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400"}`}>
+                                    {userRole === "coadmin" ? <Shield className="h-3.5 w-3.5" /> : userRole === "admin" ? <Crown className="h-3.5 w-3.5" /> : <GraduationCap className="h-3.5 w-3.5" />}
+                                    {userRole === "coadmin" ? "Co-Admin" : userRole === "admin" ? "Administrator" : "Teacher"}
+                                  </Badge>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {userRole === "coadmin" ? "You are a Co-Administrator" : userRole === "admin" ? "You are an Administrator" : "You are a Teacher"}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          {newsletterSub && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-1 mt-1 text-blue-600 dark:text-blue-400">
+                                    <Bell className={`h-3.5 w-3.5 ${newsletterSub.is_active ? "animate-shake" : ""}`} />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>{newsletterSub.is_active ? "You are subscribed for receiving newsletters" : "You are subscribed but would not receive newsletters"}</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
+
                       </div>
 
                     </Link>

@@ -27,6 +27,7 @@ import {
   Trash2,
   MapPin,
   Pencil,
+  Copy,
   Loader2,
 } from "lucide-react";
 
@@ -106,6 +107,24 @@ export function TeacherNotesList({ teacherId }: TeacherNotesListProps) {
     },
   });
 
+  const duplicateNote = useMutation({
+    mutationFn: async (note: Note) => {
+      const { id, created_at, updated_at, deleted_at, purged_at, ...rest } = note;
+      const { error } = await supabase.from("notes").insert({
+        ...rest,
+        title: `${rest.title} (Copy)`,
+        created_at: undefined,
+        updated_at: undefined,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["teacher-notes", teacherId] });
+      toast.success("Note duplicated successfully");
+    },
+    onError: () => toast.error("Failed to duplicate note"),
+  });
+
   const handleEditClick = (note: Note) => {
     setEditingNote(note);
     setEditDialogOpen(true);
@@ -164,6 +183,38 @@ export function TeacherNotesList({ teacherId }: TeacherNotesListProps) {
     });
   }, [notes, searchQuery, priceFilter, categoryFilter, subcategoryFilter]);
 
+  const exportNotes = () => {
+    if (filteredNotes.length === 0) return;
+
+    const rows: string[][] = [
+      ["Title", "Description", "Category", "Subcategory", "School", "Price", "Status", "Created At"],
+    ];
+    filteredNotes.forEach((note) => {
+      rows.push([
+        note.title ?? "",
+        note.description ?? "",
+        note.subcategory?.category?.name ?? "",
+        note.subcategory?.name ?? "",
+        note.school_name ?? "",
+        String(note.price ?? 0),
+        note.is_free ? "Free" : "Paid",
+        note.created_at ?? "",
+      ]);
+    });
+
+    const csvContent = rows
+      .map((r) => r.map((c) => `"${c}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "notes.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -188,7 +239,13 @@ export function TeacherNotesList({ teacherId }: TeacherNotesListProps) {
     <>
       {/* FILTERS */}
       <div className="mb-4 space-y-2">
-        <h2 className="text-lg font-medium">Search Notes</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">Search Notes</h2>
+          <Button variant="outline" size="sm" onClick={exportNotes}>
+            <Download className="h-4 w-4 mr-1" />
+            Export CSV
+          </Button>
+        </div>
 
         <Input
           value={searchQuery}
@@ -259,27 +316,22 @@ export function TeacherNotesList({ teacherId }: TeacherNotesListProps) {
       </div>
 
       {/* GRID */}
-      <div className="grid gap-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
 
         {filteredNotes.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
             <FileText className="h-10 w-10 text-muted-foreground/50" />
             <p className="mt-3 text-sm text-muted-foreground">
-              No notes match your filters<br />
-
-              <strong>Search Query:</strong> {searchQuery || "None"}<br />
-
-              <strong>Prices:</strong>{" "}
-              {priceFilter.charAt(0).toUpperCase() + priceFilter.slice(1)}<br />
+              No notes match your filters
             </p>
           </div>
         ) : (
           filteredNotes.map((note) => (
-            <Card key={note.id} className="overflow-hidden">
-              <CardContent className="p-3 sm:p-4">
+            <Card key={note.id} className="overflow-hidden flex flex-col">
+              <CardContent className="p-4 flex flex-col flex-1">
 
                 {/* HEADER */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-sm sm:text-base break-words">
                       {note.title}
@@ -294,7 +346,7 @@ export function TeacherNotesList({ teacherId }: TeacherNotesListProps) {
 
                   <Badge
                     variant={note.is_free ? "secondary" : "default"}
-                    className="self-start text-xs"
+                    className="shrink-0 text-xs"
                   >
                     {note.is_free ? "Free" : formatPrice(note.price)}
                   </Badge>
@@ -310,57 +362,71 @@ export function TeacherNotesList({ teacherId }: TeacherNotesListProps) {
                 {/* SCHOOL */}
                 {note.school_name && (
                   <p className="flex items-center text-xs text-muted-foreground mt-2">
-                    <MapPin className="h-3 w-3 mr-1" />
-                    {note.school_name}
+                    <MapPin className="h-3 w-3 mr-1 shrink-0" />
+                    <span className="break-words">{note.school_name}</span>
                   </p>
                 )}
 
+                {/* SPACER */}
+                <div className="flex-1 min-h-2" />
+
                 {/* ACTIONS */}
-                <div className="mt-4 grid grid-cols-9 gap-1">
+                <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-border/50">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(note.file_url, "_blank")}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>View</span>
+                    </Button>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="col-span-3"
-                    onClick={() => window.open(note.file_url, "_blank")}
-                  >
-                    <Eye className="h-3 w-3" />
-                    <span className="sm:inline md:hidden lg:inline">View</span>
-                  </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                    >
+                      <a href={note.file_url} download>
+                        <Download className="h-3.5 w-3.5" />
+                        <span>Download</span>
+                      </a>
+                    </Button>
+                  </div>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="col-span-4"
-                    asChild
-                  >
-                    <a href={note.file_url} download>
-                      <Download className="h-3 w-3" />
-                      <span className="sm:inline md:hidden lg:inline">Download</span>
-                    </a>
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="Duplicate note"
+                      onClick={() => duplicateNote.mutate(note)}
+                      disabled={duplicateNote.isPending}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="col-span-1"
-                    onClick={() => handleEditClick(note)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleEditClick(note)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="col-span-1 text-destructive"
-                    onClick={() => {
-                      setDeleteNoteId(note.id);
-                      setDeleteDialogOpen(true);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => {
+                        setDeleteNoteId(note.id);
+                        setDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
               </CardContent>

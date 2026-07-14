@@ -1,14 +1,14 @@
-import { useState } from "react";
 import { X, PanelRightOpen } from "lucide-react";
 import { useAIPanel } from "@/components/admin/AIPanelContext";
 
 interface MobileNavSidebarProps {
   children: React.ReactNode;
   collapseToMobile?: boolean;
+  open: boolean;
+  setOpen: (open: boolean) => void;
 }
 
-export function MobileNavSidebar({ children, collapseToMobile = false }: MobileNavSidebarProps) {
-  const [open, setOpen] = useState(false);
+export function MobileNavSidebar({ children, collapseToMobile = false, open = false, setOpen }: MobileNavSidebarProps) {
   const { open: panelOpen, panelWidth } = useAIPanel();
 
   const visibility = collapseToMobile ? "" : "md:hidden";
@@ -45,7 +45,7 @@ export function MobileNavSidebar({ children, collapseToMobile = false }: MobileN
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="p-2 overflow-y-auto h-[calc(100%-48px)]" onClick={() => setOpen(false)}>
+        <div className="p-2 overflow-y-auto h-[calc(100%-48px)]">
           {children}
         </div>
       </div>

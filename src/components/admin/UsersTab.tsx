@@ -5,7 +5,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import {
   Users, Search, Pencil, Database, LogIn, Trash2,
   KeyRound, FileText, MessageSquare, DollarSign, TrendingUp, Activity,
-  School, Loader2, Plus, Eye, EyeOff, MoreVertical
+  School, Loader2, Plus, Eye, EyeOff, MoreVertical, ShieldOff, ShieldCheck
 } from "lucide-react";
 import { ActivityLogger } from "@/hooks/useActivityLogger";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -18,11 +18,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import { getTaxRate } from "@/lib/admin-settings";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { MiniStat } from "./OverviewTab";
 
-const TAX_RATE = 0.15;
+const TAX_RATE = getTaxRate();
 
 const roleBadgeConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; className: string; label: string }> = {
   admin: { variant: "destructive", className: "bg-red-500/15 text-red-600 hover:bg-red-500/25 border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30", label: "Admin" },
@@ -98,6 +100,9 @@ export default function UsersTab({ userRole }: UsersTabProps) {
   const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
   const [createUserForm, setCreateUserForm] = useState({ email: "", password: "", role: "teacher", full_name: "" });
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [bulkRoleDialogOpen, setBulkRoleDialogOpen] = useState(false);
+  const [bulkTargetRole, setBulkTargetRole] = useState("teacher");
 
   const { data: currentUser } = useQuery({
     queryKey: ["current-user"],
@@ -133,7 +138,8 @@ export default function UsersTab({ userRole }: UsersTabProps) {
       const completedRevenue = requests.filter(r => r.status === "completed").reduce((s, r) => s + (r.total_amount || 0), 0);
       const pendingRevenue = requests.filter(r => r.status === "pending").reduce((s, r) => s + (r.total_amount || 0), 0);
       const gross = completedRevenue;
-      return { totalNotes: notesRes.count || 0, totalRequests: requests.length, completedRevenue, pendingRevenue, gross, platformCharge: gross * TAX_RATE, net: gross - gross * TAX_RATE, activityCount: logsRes.count || 0 };
+      const taxRate = getTaxRate();
+      return { totalNotes: notesRes.count || 0, totalRequests: requests.length, completedRevenue, pendingRevenue, gross, taxRate, platformCharge: gross * taxRate, net: gross - gross * taxRate, activityCount: logsRes.count || 0 };
     },
     enabled: !!statsUser?.user_id,
   });
@@ -147,8 +153,15 @@ export default function UsersTab({ userRole }: UsersTabProps) {
       if (profileErr) throw profileErr;
       if (editForm.role !== editUser.role) {
         if (!canModify(userRole, editUser.role)) throw new Error("You don't have permission to change this user's role");
-        const { error: roleErr } = await supabase.from("user_roles").update({ role: editForm.role as any }).eq("user_id", uid);
-        if (roleErr) throw roleErr;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("Not authenticated");
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-change-role`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ target_user_id: uid, new_role: editForm.role }),
+        });
+        const result = await res.json();
+        if (result.error) throw new Error(result.error);
       }
     },
     onSuccess: () => {
@@ -201,6 +214,98 @@ export default function UsersTab({ userRole }: UsersTabProps) {
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const bulkBlock = useMutation({
+    mutationFn: async () => {
+      const ids = [...selectedUsers];
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const results = await Promise.allSettled(ids.map(uid =>
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-change-role`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ target_user_id: uid, new_role: "blocked" }),
+        }).then(r => r.json())
+      ));
+      const failures = results.filter((r): r is PromiseRejectedResult => r.status === "rejected").length;
+      if (failures === ids.length) throw new Error("All bulk block operations failed");
+      return { blocked: ids.length - failures, failures };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setSelectedUsers(new Set());
+      toast.success(`Blocked ${data.blocked} users`);
+      if (data.failures > 0) toast.warning(`${data.failures} users could not be blocked`);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const bulkDelete = useMutation({
+    mutationFn: async () => {
+      const ids = [...selectedUsers];
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const results = await Promise.allSettled(ids.map(uid =>
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-delete-user`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ target_user_id: uid }),
+        }).then(r => r.json())
+      ));
+      const failures = results.filter((r): r is PromiseRejectedResult => r.status === "rejected").length;
+      if (failures === ids.length) throw new Error("All bulk delete operations failed");
+      return { deleted: ids.length - failures, failures };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setSelectedUsers(new Set());
+      toast.success(`Deleted ${data.deleted} users`);
+      if (data.failures > 0) toast.warning(`${data.failures} users could not be deleted`);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const bulkChangeRole = useMutation({
+    mutationFn: async () => {
+      const ids = [...selectedUsers];
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const results = await Promise.allSettled(ids.map(uid =>
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-change-role`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ target_user_id: uid, new_role: bulkTargetRole }),
+        }).then(r => r.json())
+      ));
+      const failures = results.filter((r): r is PromiseRejectedResult => r.status === "rejected").length;
+      if (failures === ids.length) throw new Error("All bulk role change operations failed");
+      return { changed: ids.length - failures, failures };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setSelectedUsers(new Set());
+      setBulkRoleDialogOpen(false);
+      toast.success(`Changed ${data.changed} users to ${bulkTargetRole}`);
+      if (data.failures > 0) toast.warning(`${data.failures} users could not be changed`);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const toggleSelectAll = () => {
+    if (selectedUsers.size === filtered.length) {
+      setSelectedUsers(new Set());
+    } else {
+      setSelectedUsers(new Set(filtered.map(u => u.user_id)));
+    }
+  };
+
+  const toggleSelectUser = (uid: string) => {
+    setSelectedUsers(prev => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid); else next.add(uid);
+      return next;
+    });
+  };
 
   const handleImpersonate = async () => {
     if (!impersonateUser?.user_id) return;
@@ -292,10 +397,32 @@ export default function UsersTab({ userRole }: UsersTabProps) {
             <p className="text-center text-muted-foreground py-8">No users found.</p>
           ) : (
             <>
+              {selectedUsers.size > 0 && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <span className="text-sm font-medium">{selectedUsers.size} selected</span>
+                  <div className="flex gap-2 ml-auto flex-wrap">
+                    <Button size="sm" variant="outline" onClick={() => setBulkRoleDialogOpen(true)}>
+                      <ShieldCheck className="h-3.5 w-3.5 mr-1" /> Change Role
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => bulkBlock.mutate()} disabled={bulkBlock.isPending}>
+                      <ShieldOff className="h-3.5 w-3.5 mr-1" /> Block
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => bulkDelete.mutate()} disabled={bulkDelete.isPending}>
+                      <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedUsers(new Set())}>
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+              )}
               <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[50px]">
+                        <Checkbox checked={selectedUsers.size === filtered.length && filtered.length > 0} onCheckedChange={toggleSelectAll} />
+                      </TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>School</TableHead>
@@ -307,6 +434,9 @@ export default function UsersTab({ userRole }: UsersTabProps) {
                   <TableBody>
                     {filtered.map(u => (
                       <TableRow key={u.user_id}>
+                        <TableCell>
+                          <Checkbox checked={selectedUsers.has(u.user_id)} onCheckedChange={() => toggleSelectUser(u.user_id)} />
+                        </TableCell>
                         <TableCell className="font-medium">{u.profile?.full_name || "Unknown"}</TableCell>
                         <TableCell className="text-xs">{u.profile?.email || "N/A"}</TableCell>
                         <TableCell className="truncate max-w-[200px]">{u.profile?.school_name || <span className="text-muted-foreground">—</span>}</TableCell>
@@ -422,7 +552,7 @@ export default function UsersTab({ userRole }: UsersTabProps) {
               <MiniStat label="Completed Revenue" value={formatPrice(userStats.completedRevenue)} icon={<DollarSign className="h-3.5 w-3.5 text-success" />} />
               <MiniStat label="Pending Revenue" value={formatPrice(userStats.pendingRevenue)} icon={<DollarSign className="h-3.5 w-3.5 text-warning" />} />
               <MiniStat label="Gross Revenue" value={formatPrice(userStats.gross)} icon={<TrendingUp className="h-3.5 w-3.5" />} />
-              <MiniStat label="Platform Charge (15%)" value={formatPrice(userStats.platformCharge)} icon={<DollarSign className="h-3.5 w-3.5 text-destructive" />} />
+              <MiniStat label={`Platform Charge (${Math.round(userStats.taxRate * 100)}%)`} value={formatPrice(userStats.platformCharge)} icon={<DollarSign className="h-3.5 w-3.5 text-destructive" />} />
               <MiniStat label="Net Earnings" value={formatPrice(userStats.net)} icon={<TrendingUp className="h-3.5 w-3.5 text-primary" />} />
               <div className="col-span-2">
                 <MiniStat label="Activity Logs" value={userStats.activityCount} icon={<Activity className="h-3.5 w-3.5" />} />
@@ -525,6 +655,35 @@ export default function UsersTab({ userRole }: UsersTabProps) {
             >
               {createUser.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1 inline-block" /> : null}
               Create User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Bulk Role Change Dialog */}
+      <Dialog open={bulkRoleDialogOpen} onOpenChange={setBulkRoleDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Bulk Role Change</DialogTitle>
+            <DialogDescription>Change role for {selectedUsers.size} selected users.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>New Role</Label>
+              <Select value={bulkTargetRole} onValueChange={setBulkTargetRole}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {roleOptions.map(r => (
+                    <SelectItem key={r} value={r}>{r === "coadmin" ? "Co-Admin" : r.charAt(0).toUpperCase() + r.slice(1)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+            <Button onClick={() => bulkChangeRole.mutate()} disabled={bulkChangeRole.isPending}>
+              {bulkChangeRole.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1 inline-block" /> : null}
+              Apply to {selectedUsers.size} users
             </Button>
           </DialogFooter>
         </DialogContent>

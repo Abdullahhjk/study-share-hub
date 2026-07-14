@@ -875,7 +875,7 @@ export default function PaymentsTab({ userRole }: PaymentsTabProps) {
                       <option value="other">Other</option>
                     </select>
                   </div>
-                  <div className="space-y-1"><Label className="text-xs">Account Number</Label><Input value={credForm.account_number} onChange={e => setCredForm(f => ({ ...f, account_number: e.target.value }))} placeholder="03089148914" /></div>
+                  <div className="space-y-1"><Label className="text-xs">Account Number</Label><Input value={credForm.account_number} onChange={e => setCredForm(f => ({ ...f, account_number: e.target.value }))} placeholder="01234567890" /></div>
                   <div className="space-y-1"><Label className="text-xs">Account Holder</Label><Input value={credForm.account_holder} onChange={e => setCredForm(f => ({ ...f, account_holder: e.target.value }))} placeholder="John Doe" /></div>
                   {credForm.type === "bank" && (
                     <>

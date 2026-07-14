@@ -18,6 +18,7 @@ export default function BuildReportTab() {
     const [changelog, setChangelog] = useState("");
     const [subject, setSubject] = useState("");
     const [html, setHtml] = useState("");
+    const [showUnsubscribed, setShowUnsubscribed] = useState(false);
 
     const { data: subscribers = [] } = useQuery({
         queryKey: ["newsletter-subscribers"],
@@ -56,6 +57,23 @@ export default function BuildReportTab() {
         },
         onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["build-reports"] }); },
         onError: (e: any) => toast.error(e.message),
+    });
+
+    const toggleSubscriberActive = useMutation({
+        mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+            const { error } = await supabase.from("newsletter_subscribers").update({ is_active }).eq("id", id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ["newsletter-subscribers"] });
+            toast.dismiss("subscriber-152");
+            setTimeout(() => {
+                toast.success(`Subscriber status updated successfully!`, {
+                    id: `subscriber-152`,
+                });
+            }, 500);
+        },
+        onError: (e: any) => toast.error("Failed to update subscriber status", { description: e.message }),
     });
 
     const removeSubscriber = useMutation({
@@ -111,7 +129,7 @@ export default function BuildReportTab() {
         if (!subscribers.length || !subject) return;
         const bcc = subscribers.map((s: any) => s.email).join(",");
         const body = "View this email as HTML in your browser. Plain-text fallback:\n\n" + changelog;
-        window.location.href = `mailto:?to=${encodeURIComponent("noreply.webgradezapp@gmail.com")}&bcc=${encodeURIComponent(bcc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        window.location.href = `mailto:?to=${encodeURIComponent("scholarshare.noreply@gmail.com")}&bcc=${encodeURIComponent(bcc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     };
 
     const copyHtml = async () => {
@@ -196,20 +214,32 @@ export default function BuildReportTab() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Mail className="h-4 w-4" /> Subscribers <Badge variant="secondary">{subscribers.filter((s: any) => s.is_active !== false).length}</Badge></CardTitle>
+                    <CardTitle className="flex flex-col md:flex-row items-center gap-2"><Mail className="h-4 w-4" /> Subscribers <div className="flex items-center gap-2"><Badge variant="secondary">Active: {subscribers.filter((s: any) => s.is_active !== false).length}</Badge><Badge variant="secondary">Total: {subscribers.length}</Badge><Badge variant="default" className="hover:cursor-pointer" onClick={() => { setShowUnsubscribed(!showUnsubscribed) }}>Showing {showUnsubscribed ? "Unsubscribed" : "All"}</Badge></div></CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {subscribers.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No subscribers yet.</p>
+                    {subscribers.length === 0 || subscribers.filter((s: any) => !showUnsubscribed ? true : s.is_active === false).length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No {showUnsubscribed ? "Unsubscribed" : "Active"} subscribers yet.</p>
                     ) : (
                         <div className="space-y-1 max-h-72 overflow-y-auto">
-                            {subscribers.filter((s: any) => s.is_active !== false).map((s: any) => (
-                                <div key={s.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
-                                    <span>{s.email}</span>
-                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive"
-                                        onClick={() => removeSubscriber.mutate(s.id)}>
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
+                            {subscribers.filter((s: any) => !showUnsubscribed ? true : s.is_active === false).map((s: any, i: number) => (
+                                <div key={s.id} className="grid grid-cols-1 sm:grid-cols-2 items-center justify-between rounded-md border px-3 py-2 text-sm mr-4">
+                                    <span className="flex items-center gap-4 justify-start"><p className="font-semibold">{i + 1}.</p><p className="truncate">{s.email}</p></span>
+                                    <div className="flex items-center gap-2 justify-between sm:justify-end">
+                                        <Badge variant="secondary">
+                                            {new Date(s.created_at).toLocaleDateString()}
+                                        </Badge>
+                                        <Badge
+                                            variant={s.is_active ? "secondary" : "outline"}
+                                            className={`hover:cursor-pointer ${s.is_active ? "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30" : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"}`}
+                                            onClick={() => toggleSubscriberActive.mutate({ id: s.id, is_active: !s.is_active })}
+                                        >
+                                            {s.is_active ? "Active" : "Inactive"}
+                                        </Badge>
+                                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive"
+                                            onClick={() => removeSubscriber.mutate(s.id)}>
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
                                 </div>
                             ))}
                         </div>

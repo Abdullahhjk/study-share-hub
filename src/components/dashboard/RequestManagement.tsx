@@ -92,6 +92,8 @@ export function RequestManagement({ teacherId }: Props) {
     null
   );
   const [rejectionReason, setRejectionReason] = useState("");
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [approvingRequest, setApprovingRequest] = useState<NoteRequest | null>(null);
   const queryClient = useQueryClient();
 
   const { data: requests = [], isLoading } = useQuery({
@@ -191,6 +193,22 @@ export function RequestManagement({ teacherId }: Props) {
     setRejectingRequest(request);
     setRejectionReason("");
     setRejectDialogOpen(true);
+  };
+
+  const handleApproveClick = (request: NoteRequest) => {
+    setApprovingRequest(request);
+    setApproveDialogOpen(true);
+  };
+
+  const handleConfirmApprove = () => {
+    if (approvingRequest) {
+      updateStatus.mutate({
+        id: approvingRequest.id,
+        status: "completed",
+      });
+      setApproveDialogOpen(false);
+      setApprovingRequest(null);
+    }
   };
 
   const handleConfirmReject = () => {
@@ -380,10 +398,7 @@ export function RequestManagement({ teacherId }: Props) {
                           size="sm"
                           className="text-success hover:text-success"
                           onClick={() =>
-                            updateStatus.mutate({
-                              id: request.id,
-                              status: "completed",
-                            })
+                            handleApproveClick(request)
                           }
                           disabled={updateStatus.isPending}
                         >
@@ -561,10 +576,7 @@ export function RequestManagement({ teacherId }: Props) {
                     <Button
                       className="bg-success hover:bg-success/90"
                       onClick={() => {
-                        updateStatus.mutate({
-                          id: selectedRequest.id,
-                          status: "completed",
-                        });
+                        handleApproveClick(selectedRequest);
                         setSelectedRequest(null);
                       }}
                       disabled={updateStatus.isPending}
@@ -635,6 +647,52 @@ export function RequestManagement({ teacherId }: Props) {
                 Reject Request
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Approve Confirmation Dialog */}
+      <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-success">
+              <CheckCircle className="h-5 w-5" />
+              Approve Request
+            </DialogTitle>
+            <DialogDescription>
+              Approve request <strong>{approvingRequest?.request_id}</strong> and generate a download code for the student?
+            </DialogDescription>
+          </DialogHeader>
+
+          {approvingRequest && (
+            <div className="rounded-md border p-3 bg-muted/30 space-y-1 text-sm">
+              <p><span className="font-medium">Amount:</span> {formatPrice(approvingRequest.total_amount)}</p>
+              <p><span className="font-medium">Contact:</span> {approvingRequest.student_contact}</p>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setApproveDialogOpen(false);
+                setApprovingRequest(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-success hover:bg-success/90"
+              onClick={handleConfirmApprove}
+              disabled={updateStatus.isPending}
+            >
+              {updateStatus.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2 inline-block" />
+              ) : (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              )}
+              Approve & Generate Code
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -426,7 +426,7 @@ export default function TeacherPayments({ teacherId }: { teacherId: string }) {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="proofRef">EasyPaisa Transaction Reference</Label>
+              <Label htmlFor="proofRef">Transaction Reference</Label>
               <Input
                 id="proofRef"
                 value={proofReference}
@@ -434,7 +434,7 @@ export default function TeacherPayments({ teacherId }: { teacherId: string }) {
                 placeholder="Enter the transaction reference/ID"
               />
               <p className="text-[10px] text-muted-foreground">
-                Enter the transaction reference from your EasyPaisa payment.
+                Enter the transaction reference from your payment.
               </p>
             </div>
             <div className="space-y-2">
@@ -456,7 +456,7 @@ export default function TeacherPayments({ teacherId }: { teacherId: string }) {
                 </p>
               )}
               <p className="text-[10px] text-muted-foreground">
-                Upload a screenshot of your EasyPaisa payment for admin verification.
+                Upload a screenshot of your payment for admin verification.
               </p>
             </div>
           </div>

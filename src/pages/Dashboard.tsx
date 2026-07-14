@@ -16,6 +16,7 @@ import {
   Inbox,
   List,
   Undo2,
+  Trash2,
   RefreshCw,
   UserCheck,
   Clock,
@@ -29,6 +30,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UploadNoteForm } from "@/components/dashboard/UploadNoteForm";
 import { TeacherNotesList } from "@/components/dashboard/TeacherNotesList";
+import { DeletedNotesList } from "@/components/dashboard/DeletedNotesList";
 import { RequestManagement } from "@/components/dashboard/RequestManagement";
 import { ProfileSettings } from "@/components/dashboard/ProfileSettings";
 import { CategoryManagement } from "@/components/dashboard/CategoryManagement";
@@ -60,6 +62,7 @@ export default function Dashboard() {
     "upload",
     "requests",
     "refunds",
+    "trash",
     "analytics",
     "categories",
     "activity",
@@ -310,8 +313,9 @@ export default function Dashboard() {
   const tabs: TabItem[] = [
     { value: "notes", label: "My Notes", icon: <FileText className="h-4 w-4" /> },
     { value: "upload", label: "Upload", icon: <Upload className="h-4 w-4" /> },
-    { value: "requests", label: "Requests", icon: <Inbox className="h-4 w-4" /> },
+    { value: "requests", label: `Requests | ${stats?.pendingRequests && stats.pendingRequests > 0 ? stats.pendingRequests > 9 ? "9+" : stats.pendingRequests : ""}`, icon: <Inbox className="h-4 w-4" /> },
     { value: "refunds", label: `Refunds | ${rejected.total_length > 0 ? rejected.total_length > 9 ? "9+" : rejected.total_length : ""}`, icon: <Undo2 className="h-4 w-4" /> },
+    { value: "trash", label: "Trash", icon: <Trash2 className="h-4 w-4" /> },
     { value: "analytics", label: "Analytics", icon: <BarChart3 className="h-4 w-4" /> },
     { value: "categories", label: "Categories", icon: <List className="h-4 w-4" /> },
     { value: "activity", label: "Activity", icon: <Activity className="h-4 w-4" /> },
@@ -385,6 +389,18 @@ export default function Dashboard() {
         return <RequestManagement teacherId={user?.id} />;
       case "refunds":
         return <RefundManagement teacherId={user?.id} />;
+      case "trash":
+        return isPending || isDenied || isDeleted ? (
+          <Alert className="border-warning bg-warning/10">
+            <Clock className="h-4 w-4 text-warning" />
+            <AlertTitle>Access Disabled</AlertTitle>
+            <AlertDescription>
+              You cannot access the trash at the moment.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <DeletedNotesList teacherId={user?.id} />
+        );
       case "analytics":
         return <TeacherAnalytics teacherId={user?.id} />;
       case "upload":

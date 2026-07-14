@@ -16,11 +16,13 @@ import {
   BarChart3,
   Activity,
   Flag,
+  FileText,
   MessageSquare,
   Layers,
   UserCheck,
   Settings,
   Loader2,
+  ScrollText,
 } from "lucide-react";
 
 import { ActivityLogs } from "@/components/dashboard/ActivityLogs";
@@ -33,6 +35,8 @@ import NotificationsTab from "@/components/admin/NotificationsTab";
 import PaymentsTab from "@/components/admin/PaymentsTab";
 import ReportsTab from "@/components/admin/ReportsTab";
 import FeedbackTab from "@/components/admin/FeedbackTab";
+import AdminNotesTab from "@/components/admin/AdminNotesTab";
+import AdminAuditLog from "@/components/admin/AdminAuditLog";
 
 interface TabItem {
   value: string;
@@ -49,6 +53,7 @@ export default function CoadminDashboard() {
   const validTabs = new Set([
     "overview",
     "users",
+    "notes",
     "categories",
     "notifications",
     "payments",
@@ -57,6 +62,7 @@ export default function CoadminDashboard() {
     "activity",
     "approvals",
     "settings",
+    "auditLog",
   ]);
 
   const safeTab = rawTab && validTabs.has(rawTab) ? rawTab : "overview";
@@ -143,6 +149,7 @@ export default function CoadminDashboard() {
   const tabs: TabItem[] = [
     { value: "overview", label: "Overview", icon: <BarChart3 className="h-4 w-4" /> },
     { value: "users", label: "Users", icon: <Users className="h-4 w-4" /> },
+    { value: "notes", label: "Notes", icon: <FileText className="h-4 w-4" /> },
     { value: "categories", label: "Categories", icon: <Layers className="h-4 w-4" /> },
     { value: "notifications", label: "Notifications", icon: <Bell className="h-4 w-4" /> },
     { value: "payments", label: "Payments", icon: <DollarSign className="h-4 w-4" /> },
@@ -151,12 +158,14 @@ export default function CoadminDashboard() {
     { value: "activity", label: "Activity", icon: <Activity className="h-4 w-4" /> },
     { value: "approvals", label: "Approvals", icon: <UserCheck className="h-4 w-4" /> },
     { value: "settings", label: "Settings", icon: <Settings className="h-4 w-4" /> },
+    { value: "auditLog", label: "Audit Log", icon: <ScrollText className="h-4 w-4" /> },
   ];
 
   const renderContent = () => {
     switch (activeTab) {
       case "overview": return <OverviewTab />;
       case "users": return <UsersTab userRole={userRole} />;
+      case "notes": return <AdminNotesTab />;
       case "categories": return <CategoryManagement />;
       case "notifications": return <NotificationsTab />;
       case "payments": return <PaymentsTab userRole={userRole} />;
@@ -165,6 +174,7 @@ export default function CoadminDashboard() {
       case "activity": return <ActivityLogs isAdmin />;
       case "approvals": return <TeacherApprovalPanel />;
       case "settings": return <ProfileSettings userId={user?.id} />;
+      case "auditLog": return <AdminAuditLog />;
       default: return null;
     }
   };
