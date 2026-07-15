@@ -93,7 +93,7 @@ export default function FeatureFormDialog({
           <div className="flex items-start justify-between gap-4">
             <DialogHeader className="space-y-1">
               <DialogTitle>
-                {editingId ? "Edit Feature" : "Add Feature"} "{form.title}"
+                {editingId ? "Edit Feature" : "Add Feature"} {editingId ? `\"${form.title}\"` : ""}
               </DialogTitle>
               <DialogDescription>
                 {editingId

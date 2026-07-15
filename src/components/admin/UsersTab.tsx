@@ -523,7 +523,7 @@ export default function UsersTab({ userRole }: UsersTabProps) {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><KeyRound className="h-4 w-4" /> Impersonate User</DialogTitle>
-            <DialogDescription>Generate a login link for <strong>{impersonateUser?.profile?.email}</strong>. You will be logged in as this user.</DialogDescription>
+            <DialogDescription>Generate a login link for <strong>{impersonateUser?.profile?.email}</strong> ({impersonateUser?.role}). You will be logged in as this user.</DialogDescription>
           </DialogHeader>
           <p className="text-xs text-muted-foreground">Target user will not receive any email notification. A direct login link will be opened in your browser.</p>
           <DialogFooter className="flex-col gap-2">

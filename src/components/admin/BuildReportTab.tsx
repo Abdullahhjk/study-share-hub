@@ -84,23 +84,6 @@ export default function BuildReportTab() {
         onSuccess: () => { toast.success("Removed"); qc.invalidateQueries({ queryKey: ["newsletter-subscribers"] }); },
     });
 
-    const wrapInTemplate = useMutation({
-        mutationFn: async () => {
-            if (!html) throw new Error("Generate HTML first");
-            const { data, error } = await supabase.functions.invoke("email-template", {
-                body: { type: "newsletter", content: html, subject },
-            });
-            if (error) throw error;
-            if (!data?.html) throw new Error("Template generation returned no HTML");
-            return data.html as string;
-        },
-        onSuccess: (wrappedHtml) => {
-            setHtml(wrappedHtml);
-            toast.success("Content wrapped in newsletter template");
-        },
-        onError: (e: any) => toast.error("Template wrapping failed", { description: e.message }),
-    });
-
     const sendViaFunction = useMutation({
         mutationFn: async () => {
             if (!subject || !html) throw new Error("Generate subject + HTML first");
@@ -182,16 +165,6 @@ export default function BuildReportTab() {
                             <Button variant="outline" onClick={copyHtml}><Copy className="h-4 w-4 mr-1" /> Copy HTML</Button>
                             <Button variant="outline" onClick={mailtoAll} disabled={!subscribers.length}>
                                 <Send className="h-4 w-4 mr-1" /> Open mail client (BCC {subscribers.filter((s: any) => s.is_active !== false).length})
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                onClick={() => wrapInTemplate.mutate()}
-                                disabled={wrapInTemplate.isPending || !html}
-                            >
-                                {wrapInTemplate.isPending
-                                    ? <Loader2 className="h-4 w-4 animate-spin mr-1 inline-block" />
-                                    : <Mail className="h-4 w-4 mr-1" />}
-                                Wrap in template
                             </Button>
                             <Button
                                 variant="default"

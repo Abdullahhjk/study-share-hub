@@ -68,6 +68,7 @@ export default function CoadminDashboard() {
   const safeTab = rawTab && validTabs.has(rawTab) ? rawTab : "overview";
 
   const [user, setUser] = useState<any>(null);
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(safeTab);
 
@@ -184,7 +185,7 @@ export default function CoadminDashboard() {
       {tabs.map((tab) => (
         <button
           key={tab.value}
-          onClick={() => handleTabChange(tab.value)}
+          onClick={() => { handleTabChange(tab.value); setOpen(false) }}
           className={cn(
             "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
             activeTab === tab.value
@@ -237,7 +238,7 @@ export default function CoadminDashboard() {
           </div>
         </div>
 
-        <MobileNavSidebar collapseToMobile={collapseToMobile}>
+        <MobileNavSidebar collapseToMobile={collapseToMobile} open={open} setOpen={setOpen}>
           <div className="px-3 py-2 text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider md:hidden">
             Navigation
           </div>

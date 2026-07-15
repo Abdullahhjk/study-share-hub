@@ -4,8 +4,8 @@ import { useAIPanel } from "@/components/admin/AIPanelContext";
 interface MobileNavSidebarProps {
   children: React.ReactNode;
   collapseToMobile?: boolean;
-  open: boolean;
-  setOpen: (open: boolean) => void;
+  open?: boolean;
+  setOpen?: (open: boolean) => void;
 }
 
 export function MobileNavSidebar({ children, collapseToMobile = false, open = false, setOpen }: MobileNavSidebarProps) {

@@ -38,9 +38,14 @@ import { proxyImageUrl } from "@/lib/image-proxy";
 
 interface NoteWithTeacher extends Note {
   teacher?: {
+    avatar_url: string;
     id: string;
     full_name: string;
     email: string;
+    phone: string;
+    school_name: string;
+    created_at: string;
+    updated_at: string;
   };
 }
 
@@ -52,6 +57,7 @@ export default function AdminNotesTab() {
   const [priceFilter, setPriceFilter] = useState<"all" | "free" | "paid">("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [subcategoryFilter, setSubcategoryFilter] = useState("all");
+  const [teacherFilter, setTeacherFilter] = useState("all");
 
   const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -121,6 +127,15 @@ export default function AdminNotesTab() {
     return Array.from(map.values());
   }, [notes]);
 
+  const teachers = useMemo(() => {
+    const map = new Map();
+    notes.forEach((n) => {
+      const t = n.teacher;
+      if (t && !map.has(t.id)) map.set(t.id, t);
+    });
+    return Array.from(map.values());
+  }, [notes]);
+
   const filteredNotes = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
 
@@ -147,9 +162,13 @@ export default function AdminNotesTab() {
         subcategoryFilter === "all" ||
         note.subcategory?.id === subcategoryFilter;
 
-      return matchesSearch && matchesPrice && matchesCategory && matchesSubcategory;
+      const matchesTeacher =
+        teacherFilter === "all" ||
+        note.teacher?.id === teacherFilter;
+
+      return matchesSearch && matchesPrice && matchesCategory && matchesSubcategory && matchesTeacher;
     });
-  }, [notes, searchQuery, priceFilter, categoryFilter, subcategoryFilter]);
+  }, [notes, searchQuery, priceFilter, categoryFilter, subcategoryFilter, teacherFilter]);
 
   if (isLoading) {
     return (
@@ -163,6 +182,9 @@ export default function AdminNotesTab() {
     <>
       {/* HEADER */}
       <div className="mb-4">
+
+        <h2 className="flex text-lg font-semibold items-center gap-2"><FileText className="h-5 w-5" /> Notes Management</h2>
+        <p className="text-md mb-2 text-muted-foreground">View, edit, and manage all registered notes.</p>
         <p className="text-sm text-muted-foreground">
           {notes.length} total note{notes.length !== 1 ? "s" : ""} on the platform
         </p>
@@ -182,7 +204,7 @@ export default function AdminNotesTab() {
       </div>
 
       {/* FILTERS */}
-      <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
         <Select
           value={priceFilter}
           onValueChange={(value) =>
@@ -222,15 +244,32 @@ export default function AdminNotesTab() {
         <Select
           value={subcategoryFilter}
           onValueChange={setSubcategoryFilter}
+          disabled={categoryFilter === "all"}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Subcategory" />
+            <SelectValue placeholder={categoryFilter !== "all" ? "Subcategory" : "Select a category first"} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Subcategories</SelectItem>
-            {subcategories.map((sub) => (
+            <SelectItem value="all">{categoryFilter !== "all" ? "All Subcategories" : "Select a category first"}</SelectItem>
+            {subcategories.filter((sub) => sub.category_id === categoryFilter).map((sub) => (
               <SelectItem key={sub.id} value={sub.id}>
-                {sub.name}
+                {sub.name} ({sub.category?.name})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={teacherFilter}
+          onValueChange={setTeacherFilter}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Teacher" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Teachers</SelectItem>
+            {teachers.map((teacher) => (
+              <SelectItem key={teacher.id} value={teacher.id}>
+                {teacher.full_name}
               </SelectItem>
             ))}
           </SelectContent>
