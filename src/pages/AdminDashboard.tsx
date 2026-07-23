@@ -380,7 +380,7 @@ export default function AdminDashboard() {
         <div className="relative mb-6 overflow-hidden rounded-xl border bg-gradient-to-br from-primary/10 via-background to-accent/5 p-4 sm:p-6">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-primary/5 blur-3xl" />
           <div className="relative">
-            <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2">
+            <h1 className="font-display text-2xl sm:text-2xl md:text-3xl font-bold flex flex-col sm:flex-row items-center gap-2">
               <Shield className="h-6 w-6 text-primary" />
 
               {greeting},{" "}
@@ -393,7 +393,7 @@ export default function AdminDashboard() {
               {isAdmin ? "Full platform management and financial overview" : "Platform oversight with limited management access"}
             </p>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
             {quickActions.filter(a => isAdmin || !a.adminOnly).map(action => (
               <Button
                 key={action.tab}

@@ -38,7 +38,7 @@ const roleBadgeConfig: Record<string, { variant: "default" | "secondary" | "dest
 
 function RoleBadge({ role }: { role: string }) {
   const cfg = roleBadgeConfig[role] || roleBadgeConfig.pending;
-  return <Badge variant={cfg.variant} className={cfg.className}>{cfg.label}</Badge>;
+  return <Badge variant={cfg.variant} className={cfg.className + (role === "coadmin" ? " text-[10px]" : "")}>{cfg.label}</Badge>;
 }
 
 function canModify(userRole: string | undefined, targetRole: string): boolean {
@@ -371,24 +371,26 @@ export default function UsersTab({ userRole }: UsersTabProps) {
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input className="pl-8" placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="coadmin">Co-Admin</SelectItem>
-                <SelectItem value="teacher">Teacher</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-                <SelectItem value="deleted">Deleted</SelectItem>
-                <SelectItem value="blocked">Blocked</SelectItem>
-              </SelectContent>
-            </Select>
-            {userRole === "admin" && (
-              <Button onClick={() => setCreateUserDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-1" /> Create User
-              </Button>
-            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 w-full gap-2">
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="coadmin">Co-Admin</SelectItem>
+                  <SelectItem value="teacher">Teacher</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="deleted">Deleted</SelectItem>
+                  <SelectItem value="blocked">Blocked</SelectItem>
+                </SelectContent>
+              </Select>
+              {userRole === "admin" && (
+                <Button onClick={() => setCreateUserDialogOpen(true)} className="w-full">
+                  <Plus className="h-4 w-4 mr-1" /> Create User
+                </Button>
+              )}
+            </div>
           </div>
 
           {isLoading ? (
@@ -462,12 +464,11 @@ export default function UsersTab({ userRole }: UsersTabProps) {
                         <p className="text-xs text-muted-foreground truncate">{u.profile?.email || "N/A"}</p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <RoleBadge role={u.role} />
                         <UserActionsMobile u={u} currentUser={currentUser} openEdit={openEdit} setStatsUser={setStatsUser} setDeleteUserId={setDeleteUserId} setDeleteUserDialogOpen={setDeleteUserDialogOpen} openImpersonate={openImpersonate} userRole={userRole} />
                       </div>
                     </div>
                     {u.profile?.school_name && <p className="text-xs text-muted-foreground flex items-center"><School className="text-primary h-4 w-4 mr-2" /> {u.profile.school_name}</p>}
-                    <p className="text-[10px] text-muted-foreground">Joined {u.profile?.created_at ? format(new Date(u.profile.created_at), "MMM d, yyyy") : "N/A"}</p>
+                    <span className="flex items-center gap-2"><p className="text-[10px] text-muted-foreground">Joined {u.profile?.created_at ? format(new Date(u.profile.created_at), "MMM d, yyyy") : "N/A"}</p><RoleBadge role={u.role} /></span>
                   </div>
                 ))}
               </div>
@@ -509,7 +510,7 @@ export default function UsersTab({ userRole }: UsersTabProps) {
               )}
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="grid grid-cols-2 gap-2">
             <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
             <Button onClick={() => updateProfile.mutate()} disabled={updateProfile.isPending}>
               {updateProfile.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1 inline-block" /> : null}Save Changes
