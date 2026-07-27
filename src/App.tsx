@@ -29,6 +29,7 @@ import YourData from "./pages/YourData";
 import Download from "./pages/Download";
 import Unsubscribe from "./pages/Unsubscribe";
 import UpcomingFeatures from "./pages/UpcomingFeatures";
+import ArchonKeysPage from "./pages/ArchonKeysPage";
 import NotesLoading from "@/components/NotesLoading";
 import { fetchNotesQuery } from "@/hooks/useNotes";
 import { supabase } from "@/integrations/supabase/client";
@@ -134,6 +135,7 @@ function AppContent() {
           <Route path="/download" element={<Download />} />
           <Route path="/unsubscribe" element={<Unsubscribe />} />
           <Route path="/upcoming" element={<UpcomingFeatures />} />
+          <Route path="/archon-keys" element={<ProtectedRoute><ArchonKeysPage /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>

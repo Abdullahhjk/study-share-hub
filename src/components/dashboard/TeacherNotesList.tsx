@@ -109,13 +109,17 @@ export function TeacherNotesList({ teacherId }: TeacherNotesListProps) {
 
   const duplicateNote = useMutation({
     mutationFn: async (note: Note) => {
-      const { id, created_at, updated_at, deleted_at, purged_at, ...rest } = note;
       const { error } = await supabase.from("notes").insert({
-        ...rest,
-        title: `${rest.title} (Copy)`,
-        created_at: undefined,
-        updated_at: undefined,
-      } as any);
+        title: `${note.title} (Copy)`,
+        description: note.description,
+        file_url: note.file_url,
+        preview_image_url: note.preview_image_url,
+        is_free: note.is_free,
+        price: note.price,
+        teacher_id: note.teacher_id,
+        subcategory_id: note.subcategory_id,
+        school_name: note.school_name,
+      });
       if (error) throw error;
     },
     onSuccess: () => {

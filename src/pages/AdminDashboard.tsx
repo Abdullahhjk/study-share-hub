@@ -30,6 +30,7 @@ import {
   ScrollText,
   Settings,
   ChevronRight,
+  Terminal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -47,6 +48,7 @@ import CohereQuotaTab from "@/components/admin/CohereQuotaTab";
 import DbBackupTab from "@/components/admin/DbBackupTab";
 import AdminAuditLog from "@/components/admin/AdminAuditLog";
 import AdminSettingsTab from "@/components/admin/AdminSettingsTab";
+import ConsoleTab from "@/components/admin/ConsoleTab";
 
 interface TabItem {
   value: string;
@@ -74,7 +76,7 @@ const tabGroups = [
     id: "system",
     label: "System",
     iconKey: "settings" as const,
-    tabValues: ["aiQuota", "dbBackup", "auditLog", "platformSettings", "buildReport", "upcomingFeatures"],
+    tabValues: ["aiQuota", "dbBackup", "auditLog", "platformSettings", "buildReport", "upcomingFeatures", "console"],
   },
 ];
 
@@ -105,6 +107,7 @@ export default function AdminDashboard() {
     "dbBackup",
     "auditLog",
     "platformSettings",
+    "console",
   ]);
 
   const safeTab = rawTab && validTabs.has(rawTab) ? rawTab : "overview";
@@ -232,6 +235,7 @@ export default function AdminDashboard() {
     { value: "platformSettings", label: "Platform Settings (Stub)", icon: <Settings className="h-4 w-4" />, adminOnly: true },
     { value: "buildReport", label: "Build ChangeLog", icon: <Hammer className="h-4 w-4" />, adminOnly: true },
     { value: "upcomingFeatures", label: "Upcoming", icon: <Rocket className="h-4 w-4" />, adminOnly: true },
+    { value: "console", label: "Console", icon: <Terminal className="h-4 w-4" />, adminOnly: true },
   ];
 
   const tabs = allTabs.filter(t => isAdmin || !t.adminOnly);
@@ -267,6 +271,7 @@ export default function AdminDashboard() {
       case "dbBackup": return isAdmin ? <DbBackupTab /> : null;
       case "auditLog": return isAdmin ? <AdminAuditLog /> : null;
       case "platformSettings": return isAdmin ? <AdminSettingsTab /> : null;
+      case "console": return isAdmin ? <ConsoleTab /> : null;
       default: return null;
     }
   };

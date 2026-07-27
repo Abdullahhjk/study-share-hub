@@ -26,6 +26,7 @@ import {
   Flag,
   Loader2,
   DollarSign,
+  Key,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UploadNoteForm } from "@/components/dashboard/UploadNoteForm";
@@ -153,7 +154,7 @@ export default function Dashboard() {
   const isDenied = (userRole as string) === "rejected" && !isApproved;
   const isDeleted = (userRole as string) === "deleted";
 
-  const coadminTabs = new Set(["activity", "categories", "settings"]);
+  const coadminTabs = new Set(["activity", "categories", "settings", "archon-keys"]);
 
   useEffect(() => {
     if (userRole === "coadmin") {
@@ -325,6 +326,7 @@ export default function Dashboard() {
     { value: "approvals", label: "Approvals", icon: <UserCheck className="h-4 w-4" />, adminOnly: true },
     { value: "settings", label: "Settings", icon: <Settings className="h-4 w-4" /> },
     { value: "payments", label: "Payments", icon: <DollarSign className="h-4 w-4" /> },
+    { value: "archon-keys", label: "ARCHON Keys", icon: <Key className="h-4 w-4" /> },
   ];
 
   const visibleTabs = tabs.filter((t) => {
@@ -337,7 +339,7 @@ export default function Dashboard() {
       {visibleTabs.map((tab) => (
         <button
           key={tab.value}
-          onClick={() => { handleTabChange(tab.value); setOpen(false) }}
+          onClick={() => { if (tab.value === "archon-keys") { navigate("/archon-keys"); } else { handleTabChange(tab.value); } setOpen(false) }}
           disabled={isPending || isDenied || isDeleted}
           className={cn(
             "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",

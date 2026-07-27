@@ -66,6 +66,8 @@ export default function AIAssistantPanel() {
   const [resetAt, setResetAt] = useState<string | null>(null);
   const [timeUntilReset, setTimeUntilReset] = useState("");
   const [quotaBannerDismissed, setQuotaBannerDismissed] = useState(false);
+  const [userKeys, setUserKeys] = useState<{ key: string; label: string; request_count: number }[]>([]);
+  const [userKeyIndex, setUserKeyIndex] = useState(0);
   useEffect(() => {
     if (!resetAt) return;
     const update = () => {
@@ -110,19 +112,69 @@ export default function AIAssistantPanel() {
 
   const initAgent = useCallback(async () => {
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("cohere-agent", { body: { action: "init" } });
-      if (fnError) throw new Error(fnError.message);
-      if (data?.error) throw new Error(data.error);
-      if (data?.rateLimited) {
-        setIsQuotaExhausted(true);
-        setResetAt(data.resetAt);
-        setError(`ARCHON is rate limited until ${new Date(data.resetAt).toLocaleString()} (midnight UTC). All available AI request quotas have been exhausted for this cycle.`);
+      const isAdmin = role === "admin" || role === "coadmin";
+
+      if (isAdmin) {
+        const { data, error: fnError } = await supabase.functions.invoke("cohere-agent", { body: { action: "init" } });
+        if (fnError) throw new Error(fnError.message);
+        if (data?.error) throw new Error(data.error);
+        if (data?.rateLimited) {
+          setIsQuotaExhausted(true);
+          setResetAt(data.resetAt);
+          setError(`ARCHON is rate limited until ${new Date(data.resetAt).toLocaleString()} (midnight UTC). All available AI request quotas have been exhausted for this cycle.`);
+          setInitialized(true);
+          setInitStatus("done");
+          return;
+        }
+        configRef.current = { apiKey: data.apiKey, systemPrompt: data.systemPrompt, model: data.model, quota: data.quota, keyName: data.keyName, secondaryApiKey: data.secondaryApiKey, nextKeyName: data.nextKeyName, secondaryQuota: data.secondaryQuota, isFinalBatch: data.isFinalBatch, message: data.message };
+        quotaUsedRef.current = 0;
+        secondaryUsedRef.current = 0;
+        setIsQuotaExhausted(false);
+        setResetAt(null);
         setInitialized(true);
         setInitStatus("done");
         return;
       }
-      configRef.current = { apiKey: data.apiKey, systemPrompt: data.systemPrompt, model: data.model, quota: data.quota, keyName: data.keyName, secondaryApiKey: data.secondaryApiKey, nextKeyName: data.nextKeyName, secondaryQuota: data.secondaryQuota, isFinalBatch: data.isFinalBatch, message: data.message };
-      quotaUsedRef.current = 0;
+
+      const { data: settings } = await supabase
+        .from("user_settings")
+        .select("cohere_api_keys")
+        .eq("user_id", user?.id)
+        .maybeSingle();
+
+      const keys: { key: string; label: string; request_count: number }[] = settings?.cohere_api_keys || [];
+      setUserKeys(keys);
+
+      if (keys.length === 0) {
+        setError("No Cohere API keys configured. Add keys in ARCHON Keys.");
+        setInitialized(true);
+        setInitStatus("done");
+        return;
+      }
+
+      const availableKeys = keys.filter(k => k.request_count < 1000);
+      if (availableKeys.length === 0) {
+        setIsQuotaExhausted(true);
+        setResetAt(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString());
+        setError("All your API key quotas are exhausted. Quotas reset on the 1st of each month.");
+        setInitialized(true);
+        setInitStatus("done");
+        return;
+      }
+
+      const chosen = availableKeys[0];
+      const chosenIndex = keys.indexOf(chosen);
+      setUserKeyIndex(chosenIndex);
+
+      configRef.current = {
+        apiKey: chosen.key,
+        systemPrompt: `You are ARCHON, an AI assistant for NotesSharer. You are helpful, concise, and professional. Current date: ${new Date().toLocaleDateString("en-CA")}.`,
+        model: "command-a-03-2025",
+        quota: 1000,
+        keyName: chosen.label,
+        isFinalBatch: false,
+      };
+      quotaUsedRef.current = chosen.request_count;
       secondaryUsedRef.current = 0;
       setIsQuotaExhausted(false);
       setResetAt(null);
@@ -131,7 +183,7 @@ export default function AIAssistantPanel() {
     } catch (e: any) {
       setError(`Init failed: ${e.message}`);
     }
-  }, []);
+  }, [role, user?.id]);
 
   useEffect(() => {
     const check = async () => {
@@ -144,11 +196,11 @@ export default function AIAssistantPanel() {
         .from("user_roles")
         .select("role")
         .eq("user_id", session.user.id)
-        .in("role", ["admin", "coadmin"])
         .maybeSingle();
-      setRole(roleData?.role || null);
+      setRole(roleData?.role || "user");
       setChecking(false);
-      if (!isQuotaExhausted) await initAgent();
+      const blockedRoles = ["anon", "pending", "blocked", "deleted", "rejected"];
+      if (!isQuotaExhausted && !blockedRoles.includes(roleData?.role || "")) await initAgent();
     };
     check();
   }, [initAgent]);
@@ -244,77 +296,119 @@ export default function AIAssistantPanel() {
       throw new Error("AI not initialized");
     }
 
-    const tryIncrement = async (keyName: string): Promise<{ ok: boolean; rateLimited?: boolean; resetAt?: string }> => {
-      const { data } = await supabase.functions.invoke("cohere-agent", {
-        body: { action: "increment", keyName },
+    const isAdmin = role === "admin" || role === "coadmin";
+
+    if (isAdmin) {
+      const tryIncrement = async (keyName: string): Promise<{ ok: boolean; rateLimited?: boolean; resetAt?: string }> => {
+        const { data } = await supabase.functions.invoke("cohere-agent", {
+          body: { action: "increment", keyName },
+        });
+        if (!data) return { ok: false };
+        if (data.rateLimited) {
+          return { ok: false, rateLimited: true, resetAt: data.resetAt };
+        }
+        if (data.success) return { ok: true };
+        return { ok: false };
+      };
+
+      if (quotaUsedRef.current < (config.quota || 0)) {
+        const result = await tryIncrement(config.keyName);
+        if (result.ok) {
+          quotaUsedRef.current++;
+          return config.apiKey;
+        }
+        if (result.rateLimited) {
+          setIsQuotaExhausted(true);
+          setResetAt(result.resetAt!);
+          setError(`Daily quota exhausted. ARCHON resumes at midnight (${new Date(result.resetAt!).toLocaleString()}).`);
+          throw new Error("Rate limited");
+        }
+        quotaUsedRef.current = config.quota || 0;
+      }
+
+      if (config.secondaryApiKey && config.nextKeyName && secondaryUsedRef.current < (config.secondaryQuota || 0)) {
+        const result = await tryIncrement(config.nextKeyName);
+        if (result.ok) {
+          secondaryUsedRef.current++;
+          return config.secondaryApiKey;
+        }
+        if (result.rateLimited) {
+          setIsQuotaExhausted(true);
+          setResetAt(result.resetAt!);
+          setError(`Daily quota exhausted. ARCHON resumes at midnight (${new Date(result.resetAt!).toLocaleString()}).`);
+          throw new Error("Rate limited");
+        }
+        secondaryUsedRef.current = config.secondaryQuota || 0;
+      }
+
+      const { data: initData, error: initError } = await supabase.functions.invoke("cohere-agent", { body: { action: "init" } });
+      if (initError) throw new Error(initError.message);
+      if (initData?.error) throw new Error(initData.error);
+      if (initData?.rateLimited) {
+        setIsQuotaExhausted(true);
+        setResetAt(initData.resetAt);
+        setError(`ARCHON is rate limited. All API quotas exhausted. Resets at ${new Date(initData.resetAt).toLocaleString()}.`);
+        throw new Error("Rate limited");
+      }
+
+      configRef.current = { apiKey: initData.apiKey, systemPrompt: initData.systemPrompt, model: initData.model, quota: initData.quota, keyName: initData.keyName, secondaryApiKey: initData.secondaryApiKey, nextKeyName: initData.nextKeyName, secondaryQuota: initData.secondaryQuota, isFinalBatch: initData.isFinalBatch, message: initData.message };
+      quotaUsedRef.current = 0;
+      secondaryUsedRef.current = 0;
+
+      const { data: incData } = await supabase.functions.invoke("cohere-agent", {
+        body: { action: "increment", keyName: initData.keyName },
       });
-      if (!data) return { ok: false };
-      if (data.rateLimited) {
-        return { ok: false, rateLimited: true, resetAt: data.resetAt };
+      if (incData?.success) {
+        quotaUsedRef.current = 1;
+        return initData.apiKey;
       }
-      if (data.success) return { ok: true };
-      return { ok: false };
-    };
-
-    if (quotaUsedRef.current < (config.quota || 0)) {
-      const result = await tryIncrement(config.keyName);
-      if (result.ok) {
-        quotaUsedRef.current++;
-        return config.apiKey;
-      }
-      if (result.rateLimited) {
+      if (incData?.rateLimited) {
         setIsQuotaExhausted(true);
-        setResetAt(result.resetAt!);
-        setError(`Daily quota exhausted. ARCHON resumes at midnight (${new Date(result.resetAt!).toLocaleString()}).`);
+        setResetAt(incData.resetAt);
+        setError(`Daily quota exhausted. ARCHON resumes at midnight (${new Date(incData.resetAt).toLocaleString()}).`);
         throw new Error("Rate limited");
       }
-      quotaUsedRef.current = config.quota || 0;
+      throw new Error("Failed to acquire API quota");
     }
 
-    if (config.secondaryApiKey && config.nextKeyName && secondaryUsedRef.current < (config.secondaryQuota || 0)) {
-      const result = await tryIncrement(config.nextKeyName);
-      if (result.ok) {
-        secondaryUsedRef.current++;
-        return config.secondaryApiKey;
-      }
-      if (result.rateLimited) {
-        setIsQuotaExhausted(true);
-        setResetAt(result.resetAt!);
-        setError(`Daily quota exhausted. ARCHON resumes at midnight (${new Date(result.resetAt!).toLocaleString()}).`);
-        throw new Error("Rate limited");
-      }
-      secondaryUsedRef.current = config.secondaryQuota || 0;
+    // Non-admin: use user's own keys
+    if (quotaUsedRef.current < 999) {
+      quotaUsedRef.current++;
+      const { error: rpcError } = await supabase.rpc("increment_user_cohere_key", {
+        p_key_label: config.keyName,
+      });
+      if (rpcError) console.warn("Failed to increment key count:", rpcError.message);
+      return config.apiKey;
     }
 
-    const { data: initData, error: initError } = await supabase.functions.invoke("cohere-agent", { body: { action: "init" } });
-    if (initError) throw new Error(initError.message);
-    if (initData?.error) throw new Error(initData.error);
-    if (initData?.rateLimited) {
+    const { data: settings } = await supabase
+      .from("user_settings")
+      .select("cohere_api_keys")
+      .eq("user_id", user?.id)
+      .maybeSingle();
+
+    const keys: { key: string; label: string; request_count: number }[] = settings?.cohere_api_keys || [];
+    const available = keys.filter(k => k.request_count < 1000);
+    if (available.length === 0) {
       setIsQuotaExhausted(true);
-      setResetAt(initData.resetAt);
-      setError(`ARCHON is rate limited. All API quotas exhausted. Resets at ${new Date(initData.resetAt).toLocaleString()}.`);
+      setResetAt(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString());
+      setError("All your API key quotas are exhausted. Quotas reset on the 1st of each month.");
       throw new Error("Rate limited");
     }
 
-    configRef.current = { apiKey: initData.apiKey, systemPrompt: initData.systemPrompt, model: initData.model, quota: initData.quota, keyName: initData.keyName, secondaryApiKey: initData.secondaryApiKey, nextKeyName: initData.nextKeyName, secondaryQuota: initData.secondaryQuota, isFinalBatch: initData.isFinalBatch, message: initData.message };
-    quotaUsedRef.current = 0;
-    secondaryUsedRef.current = 0;
+    const chosen = available[0];
+    const chosenIndex = keys.indexOf(chosen);
+    setUserKeyIndex(chosenIndex);
+    configRef.current = { ...config, apiKey: chosen.key, keyName: chosen.label };
+    quotaUsedRef.current = chosen.request_count + 1;
 
-    const { data: incData } = await supabase.functions.invoke("cohere-agent", {
-      body: { action: "increment", keyName: initData.keyName },
+    const { error: rpcError } = await supabase.rpc("increment_user_cohere_key", {
+      p_key_label: chosen.label,
     });
-    if (incData?.success) {
-      quotaUsedRef.current = 1;
-      return initData.apiKey;
-    }
-    if (incData?.rateLimited) {
-      setIsQuotaExhausted(true);
-      setResetAt(incData.resetAt);
-      setError(`Daily quota exhausted. ARCHON resumes at midnight (${new Date(incData.resetAt).toLocaleString()}).`);
-      throw new Error("Rate limited");
-    }
-    throw new Error("Failed to acquire API quota");
-  }, []);
+    if (rpcError) console.warn("Failed to increment key count:", rpcError.message);
+
+    return chosen.key;
+  }, [role, user?.id]);
 
   const invokeAgent = useCallback(async (history: ChatMessage[]) => {
     const config = configRef.current;
@@ -664,7 +758,10 @@ export default function AIAssistantPanel() {
     setEditingIndex(id);
   };
 
-  if (checking || !role || isOnAiTab) return null;
+  if (checking || !user || isOnAiTab) return null;
+
+  const ARCHON_BLOCKED_ROLES = ["anon", "pending", "blocked", "deleted", "rejected"];
+  if (ARCHON_BLOCKED_ROLES.includes(role || "")) return null;
 
   const dots = ".".repeat(thinkingStage);
 

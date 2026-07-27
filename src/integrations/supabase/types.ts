@@ -87,6 +87,27 @@ export type Database = {
           },
         ]
       }
+      apilayer_api_track: {
+        Row: {
+          API: string | null
+          count: number | null
+          created_at: string
+          id: string
+        }
+        Insert: {
+          API?: string | null
+          count?: number | null
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          API?: string | null
+          count?: number | null
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       approved_banks: {
         Row: {
           bank_name: string
@@ -212,6 +233,24 @@ export type Database = {
           sent_at?: string | null
           subject?: string | null
           version?: string
+        }
+        Relationships: []
+      }
+      CAR_PROJECT: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: number
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: number
         }
         Relationships: []
       }
@@ -341,6 +380,7 @@ export type Database = {
           fetched_at: string
           id: string
           rates: Json
+          started_at: string | null
           updated_at: string
         }
         Insert: {
@@ -348,6 +388,7 @@ export type Database = {
           fetched_at?: string
           id?: string
           rates?: Json
+          started_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -355,6 +396,7 @@ export type Database = {
           fetched_at?: string
           id?: string
           rates?: Json
+          started_at?: string | null
           updated_at?: string
         }
         Relationships: []
