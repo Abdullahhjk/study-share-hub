@@ -162,6 +162,29 @@ function cellString(val: unknown): string {
   return String(val);
 }
 
+function CopyQueryButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-6 w-6"
+      onClick={copy}
+      title="Copy query"
+    >
+      {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
+    </Button>
+  );
+}
+
 function CellValue({ val }: { val: unknown }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -656,6 +679,18 @@ export default function SQLExecPanel() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => query && navigator.clipboard.writeText(query)}
+              disabled={!query.trim()}
+              className="h-8 gap-1.5 text-xs text-muted-foreground flex-1 sm:flex-none"
+              title="Copy query"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              Copy
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
               onClick={clearHistory}
               disabled={history.length === 0}
               className="h-8 flex-1 gap-1.5 text-xs text-muted-foreground sm:flex-none"
@@ -691,9 +726,12 @@ export default function SQLExecPanel() {
             <p className="mt-1 text-xs text-foreground">
               This query modifies data. Review it carefully before running.
             </p>
-            <pre className="mt-2 rounded bg-black/5 dark:bg-white/10 p-2 text-[10px] font-mono whitespace-pre-wrap break-all max-h-28 overflow-y-auto">
-              {pendingConfirm}
-            </pre>
+            <div className="mt-2 flex items-start justify-between gap-2">
+              <pre className="rounded bg-black/5 dark:bg-white/10 p-2 text-[10px] font-mono whitespace-pre-wrap break-all max-h-28 overflow-y-auto">
+                {pendingConfirm}
+              </pre>
+              <CopyQueryButton text={pendingConfirm} />
+            </div>
             <div className="mt-2 flex gap-2">
               <Button size="sm" variant="destructive" className="gap-1.5 text-xs h-8" onClick={handleConfirm}>
                 <Play className="h-3.5 w-3.5" />
@@ -727,7 +765,10 @@ export default function SQLExecPanel() {
           <div className="rounded-lg bg-black/5 dark:bg-white/5 px-3 py-2">
             <div className="flex items-center justify-between gap-2 mb-1">
               <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Query</span>
-              <span className="text-[10px] text-muted-foreground">[{entry.time}]</span>
+              <span className="flex items-center gap-2">
+                <CopyQueryButton text={entry.query} />
+                <span className="text-[10px] text-muted-foreground">[{entry.time}]</span>
+              </span>
             </div>
             <pre className="text-xs font-mono whitespace-pre-wrap break-all text-foreground">{entry.query}</pre>
           </div>
