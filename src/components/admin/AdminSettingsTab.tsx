@@ -72,68 +72,99 @@ export default function AdminSettingsTab() {
         <CardDescription>Configure platform-wide settings like commission rates and price limits.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="space-y-2">
             <Label>Platform Commission Rate</Label>
-            <div className="flex items-center gap-2">
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Input
                 type="number"
                 step="0.01"
                 min="0"
                 max="1"
                 value={settings.taxRate}
-                onChange={e => handleChange("taxRate", e.target.value)}
-                className="max-w-[120px]"
+                onChange={(e) => handleChange("taxRate", e.target.value)}
+                className="w-full sm:max-w-[140px]"
               />
-              <span className="text-sm text-muted-foreground">({Math.round(settings.taxRate * 100)}%)</span>
+
+              <span className="text-sm text-muted-foreground">
+                ({Math.round(settings.taxRate * 100)}%)
+              </span>
             </div>
-            <p className="text-[11px] text-muted-foreground">Fraction of each sale taken as platform commission (0 to 1). Default: 0.15 (15%)</p>
+
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Fraction of each sale taken as platform commission (0 to 1). Default:
+              0.15 (15%)
+            </p>
           </div>
 
           <div className="space-y-2">
             <Label>Currency Code</Label>
+
             <Input
               value={settings.currency}
-              onChange={e => handleChange("currency", e.target.value)}
-              className="max-w-[120px]"
+              onChange={(e) => handleChange("currency", e.target.value)}
+              className="w-full sm:max-w-[140px]"
               maxLength={3}
             />
-            <p className="text-[11px] text-muted-foreground">ISO 4217 currency code. Default: PKR</p>
+
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              ISO 4217 currency code. Default: PKR
+            </p>
           </div>
 
           <div className="space-y-2">
             <Label>Minimum Note Price</Label>
+
             <Input
               type="number"
               step="1"
               min="0"
               value={settings.minNotePrice}
-              onChange={e => handleChange("minNotePrice", e.target.value)}
-              className="max-w-[160px]"
+              onChange={(e) => handleChange("minNotePrice", e.target.value)}
+              className="w-full sm:max-w-[180px]"
             />
-            <p className="text-[11px] text-muted-foreground">Minimum price teachers can set for notes. Default: 0</p>
+
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Minimum price teachers can set for notes. Default: 0
+            </p>
           </div>
 
           <div className="space-y-2">
             <Label>Maximum Note Price</Label>
+
             <Input
               type="number"
               step="1"
               min="0"
               value={settings.maxNotePrice}
-              onChange={e => handleChange("maxNotePrice", e.target.value)}
-              className="max-w-[160px]"
+              onChange={(e) => handleChange("maxNotePrice", e.target.value)}
+              className="w-full sm:max-w-[180px]"
             />
-            <p className="text-[11px] text-muted-foreground">Maximum price teachers can set for notes. Default: 100,000</p>
+
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Maximum price teachers can set for notes. Default: 100,000
+            </p>
           </div>
         </div>
 
-        <div className="flex gap-2 pt-2">
-          <Button onClick={handleSave} disabled={!hasChanges}>
-            <Save className="h-4 w-4 mr-1" /> Save Settings
+        <div className="flex flex-col gap-2 pt-2 sm:flex-row">
+          <Button
+            onClick={handleSave}
+            disabled={!hasChanges}
+            className="w-full sm:w-auto"
+          >
+            <Save className="mr-1 h-4 w-4" />
+            Save Settings
           </Button>
-          <Button variant="outline" onClick={handleReset}>
-            <RotateCcw className="h-4 w-4 mr-1" /> Reset Defaults
+
+          <Button
+            variant="outline"
+            onClick={handleReset}
+            className="w-full sm:w-auto"
+          >
+            <RotateCcw className="mr-1 h-4 w-4" />
+            Reset Defaults
           </Button>
         </div>
       </CardContent>

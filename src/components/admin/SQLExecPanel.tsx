@@ -22,6 +22,8 @@ import {
   ChevronUp,
   ChevronLeft,
   ChevronRight,
+  LayoutGrid,
+  MousePointerClick,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAIPanel } from "./AIPanelContext";
@@ -59,6 +61,100 @@ function normalizeResult(data: any): SqlResult {
 }
 
 const PAGE_SIZE = 20;
+
+const SQL_HISTORY_KEY = "sql-exec-history";
+
+function loadHistory(): HistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(SQL_HISTORY_KEY);
+    return raw ? (JSON.parse(raw) as HistoryEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+const SQL_TEMPLATES: { name: string; query: string }[] = [
+  { name: "Select table by name", query: "SELECT * FROM table_name LIMIT 100;" },
+  { name: "Select specific columns", query: "SELECT column1, column2 FROM table_name LIMIT 100;" },
+  { name: "Find by ID", query: "SELECT * FROM table_name WHERE id = 'your-id';" },
+  { name: "Filter rows", query: "SELECT * FROM table_name WHERE column_name = 'value';" },
+  { name: "Sort descending", query: "SELECT * FROM table_name ORDER BY created_at DESC LIMIT 100;" },
+  { name: "Count rows", query: "SELECT COUNT(*) FROM table_name;" },
+  { name: "Insert row", query: "INSERT INTO table_name (column1, column2) VALUES ('value1', 'value2');" },
+  { name: "Update row", query: "UPDATE table_name SET column1 = 'new-value' WHERE id = 'your-id';" },
+  { name: "Delete row", query: "DELETE FROM table_name WHERE id = 'your-id';" },
+  { name: "List all tables", query: "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;" },
+  { name: "Describe table", query: "SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_name = 'table_name' ORDER BY ordinal_position;" },
+  { name: "List indexes", query: "SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'table_name';" },
+  { name: "Foreign keys", query: "SELECT tc.constraint_name, kcu.column_name, ccu.table_name AS foreign_table, ccu.column_name AS foreign_column FROM information_schema.table_constraints tc JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name JOIN information_schema.constraint_column_usage ccu ON ccu.constraint_name = tc.constraint_name WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name = 'table_name';" },
+  { name: "Latest 10 rows", query: "SELECT * FROM table_name ORDER BY created_at DESC LIMIT 10;" },
+  { name: "Rows created today", query: "SELECT * FROM table_name WHERE created_at >= CURRENT_DATE;" },
+  { name: "Search with LIKE", query: "SELECT * FROM table_name WHERE column_name ILIKE '%search%';" },
+  { name: "Distinct values", query: "SELECT DISTINCT column_name FROM table_name;" },
+  { name: "Group by count", query: "SELECT column_name, COUNT(*) FROM table_name GROUP BY column_name ORDER BY COUNT(*) DESC;" },
+  { name: "Join two tables", query: "SELECT * FROM table1 t1 JOIN table2 t2 ON t1.id = t2.table1_id LIMIT 100;" },
+  { name: "Table size", query: "SELECT pg_size_pretty(pg_total_relation_size('table_name'));" },
+  { name: "Database version", query: "SELECT version();" },
+];
+
+function TemplateGallery({ open, onPick, onClose }: { open: boolean; onPick: (query: string) => void; onClose: () => void }) {
+  const [search, setSearch] = useState("");
+
+  if (!open) return null;
+
+  const q = search.trim().toLowerCase();
+  const items = q
+    ? SQL_TEMPLATES.filter((t) => t.name.toLowerCase().includes(q) || t.query.toLowerCase().includes(q))
+    : SQL_TEMPLATES;
+
+  return (
+    <div className="absolute inset-0 z-20 flex flex-col bg-background">
+      <div className="flex items-center justify-between border-b px-3 py-2.5 shrink-0">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <LayoutGrid className="h-4 w-4 text-primary shrink-0" />
+          <span>Query Templates</span>
+        </div>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="border-b px-3 py-2 shrink-0">
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search templates..."
+            className="h-8 pl-7 text-xs"
+          />
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto p-3">
+        <div className="grid grid-cols-1 gap-2">
+          {items.map((t) => (
+            <button
+              key={t.name}
+              onClick={() => onPick(t.query)}
+              className="group rounded-lg border border-border bg-card p-3 text-left hover:border-primary/50 hover:bg-accent transition-colors"
+              title="Insert into editor"
+            >
+              <p className="flex items-center justify-between gap-2 text-xs font-medium text-foreground">
+                {t.name}
+                <MousePointerClick className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+              </p>
+              <pre className="mt-1.5 text-[10px] font-mono text-muted-foreground whitespace-pre-wrap break-all line-clamp-2">
+                {t.query}
+              </pre>
+            </button>
+          ))}
+        </div>
+        {items.length === 0 && (
+          <p className="py-6 text-center text-xs text-muted-foreground">No templates match.</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function cellString(val: unknown): string {
   if (val === null) return "NULL";
@@ -131,7 +227,7 @@ function CellValue({ val }: { val: unknown }) {
   );
 }
 
-function ResultView({ result }: { result: SqlResult }) {
+function SelectResultTable({ result }: { result: Extract<SqlResult, { kind: "select" }> }) {
   const [copied, setCopied] = useState(false);
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -167,6 +263,8 @@ function ResultView({ result }: { result: SqlResult }) {
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages - 1);
   const pageRows = filteredRows.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
+  const rangeStart = filteredRows.length === 0 ? 0 : safePage * PAGE_SIZE + 1;
+  const rangeEnd = Math.min((safePage + 1) * PAGE_SIZE, filteredRows.length);
 
   const handleSort = (col: string) => {
     setPage(0);
@@ -208,6 +306,132 @@ function ResultView({ result }: { result: SqlResult }) {
     });
   };
 
+  return (
+    <div className="rounded-lg border border-border overflow-hidden">
+      <div className="bg-muted/50 border-b border-border px-2.5 py-1.5 flex items-center gap-2">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Input
+            value={filter}
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setPage(0);
+            }}
+            placeholder="Filter rows..."
+            className="h-7 pl-6 text-xs font-mono"
+          />
+        </div>
+        <span className="text-[10px] text-muted-foreground shrink-0">
+          {filteredRows.length} / {result.rowCount} rows
+        </span>
+      </div>
+      <div className="overflow-x-auto max-h-64 overflow-y-auto">
+        <table className="w-full text-xs font-mono">
+          <thead className="bg-muted sticky top-0 z-10">
+            <tr>
+              {result.columns.map((col) => (
+                <th
+                  key={col}
+                  style={colWidths[col] ? { minWidth: `${colWidths[col]}px` } : undefined}
+                  className="relative border-b border-border p-0"
+                >
+                  <button
+                    onClick={() => handleSort(col)}
+                    className="flex w-full items-center gap-1 px-2.5 py-1.5 text-left font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                    title="Sort column"
+                  >
+                    <span className="truncate">{col}</span>
+                    {sortKey === col ? (
+                      sortDir === "asc" ? (
+                        <ArrowUp className="h-3 w-3 shrink-0 text-primary" />
+                      ) : (
+                        <ArrowDown className="h-3 w-3 shrink-0 text-primary" />
+                      )
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
+                    )}
+                  </button>
+                  <span
+                    onMouseDown={(e) => startResize(e, col)}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/40 transition-colors"
+                    title="Resize column"
+                  />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {pageRows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={result.columns.length}
+                  className="px-2.5 py-3 text-center text-[10px] text-muted-foreground font-sans"
+                >
+                  No rows match the filter.
+                </td>
+              </tr>
+            ) : (
+              pageRows.map((row, i) => (
+                <tr key={i} className="odd:bg-background even:bg-muted/40">
+                  {result.columns.map((col) => (
+                    <td
+                      key={col}
+                      style={colWidths[col] ? { minWidth: `${colWidths[col]}px` } : undefined}
+                      className={cn(
+                        "border-b border-border/50 px-2.5 py-1.5 align-top",
+                        row[col] === null && "text-muted-foreground/60"
+                      )}
+                    >
+                      <CellValue val={row[col]} />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className="bg-muted px-2.5 py-1 text-[10px] text-muted-foreground border-t border-border flex items-center justify-between gap-2">
+        <span className="tabular-nums">
+          {filteredRows.length === 0 ? "0 rows" : `Showing ${rangeStart}-${rangeEnd} of ${filteredRows.length} rows`}
+        </span>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage(safePage - 1)}
+              disabled={safePage === 0}
+              className="flex items-center rounded px-1 py-0.5 border border-border hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+              title="Previous page"
+            >
+              <ChevronLeft className="h-3 w-3" />
+            </button>
+            <span className="px-1">
+              {safePage + 1} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage(safePage + 1)}
+              disabled={safePage >= totalPages - 1}
+              className="flex items-center rounded px-1 py-0.5 border border-border hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+              title="Next page"
+            >
+              <ChevronRight className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+        <button
+          onClick={copyJson}
+          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-black/10 transition-colors"
+          title="Copy as JSON"
+        >
+          {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? "Copied" : "JSON"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ResultView({ result }: { result: SqlResult }) {
   if (result.kind === "error") {
     return (
       <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm flex items-start gap-2">
@@ -238,129 +462,7 @@ function ResultView({ result }: { result: SqlResult }) {
     );
   }
 
-  return (
-    <>
-      <div className="rounded-lg border border-border overflow-hidden">
-        <div className="bg-muted/50 border-b border-border px-2.5 py-1.5 flex items-center gap-2">
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-            <Input
-              value={filter}
-              onChange={(e) => {
-                setFilter(e.target.value);
-                setPage(0);
-              }}
-              placeholder="Filter rows..."
-              className="h-7 pl-6 text-xs font-mono"
-            />
-          </div>
-          <span className="text-[10px] text-muted-foreground shrink-0">
-            {filteredRows.length} / {result.rowCount} rows
-          </span>
-        </div>
-        <div className="overflow-x-auto max-h-64 overflow-y-auto">
-          <table className="w-full text-xs font-mono">
-            <thead className="bg-muted sticky top-0 z-10">
-              <tr>
-                {result.columns.map((col) => (
-                  <th
-                    key={col}
-                    style={colWidths[col] ? { minWidth: `${colWidths[col]}px` } : undefined}
-                    className="relative border-b border-border p-0"
-                  >
-                    <button
-                      onClick={() => handleSort(col)}
-                      className="flex w-full items-center gap-1 px-2.5 py-1.5 text-left font-semibold text-muted-foreground hover:text-foreground transition-colors"
-                      title="Sort column"
-                    >
-                      <span className="truncate">{col}</span>
-                      {sortKey === col ? (
-                        sortDir === "asc" ? (
-                          <ArrowUp className="h-3 w-3 shrink-0 text-primary" />
-                        ) : (
-                          <ArrowDown className="h-3 w-3 shrink-0 text-primary" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
-                      )}
-                    </button>
-                    <span
-                      onMouseDown={(e) => startResize(e, col)}
-                      className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/40 transition-colors"
-                      title="Resize column"
-                    />
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={result.columns.length}
-                    className="px-2.5 py-3 text-center text-[10px] text-muted-foreground font-sans"
-                  >
-                    No rows match the filter.
-                  </td>
-                </tr>
-              ) : (
-                pageRows.map((row, i) => (
-                  <tr key={i} className="odd:bg-background even:bg-muted/40">
-                    {result.columns.map((col) => (
-                      <td
-                        key={col}
-                        style={colWidths[col] ? { minWidth: `${colWidths[col]}px` } : undefined}
-                        className={cn(
-                          "border-b border-border/50 px-2.5 py-1.5 align-top",
-                          row[col] === null && "text-muted-foreground/60"
-                        )}
-                      >
-                        <CellValue val={row[col]} />
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="bg-muted px-2.5 py-1 text-[10px] text-muted-foreground border-t border-border flex items-center justify-between gap-2">
-          <span>{filteredRows.length} row(s)</span>
-          {totalPages > 1 && (
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setPage(safePage - 1)}
-                disabled={safePage === 0}
-                className="flex items-center rounded px-1 py-0.5 border border-border hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
-                title="Previous page"
-              >
-                <ChevronLeft className="h-3 w-3" />
-              </button>
-              <span className="px-1">
-                {safePage + 1} / {totalPages}
-              </span>
-              <button
-                onClick={() => setPage(safePage + 1)}
-                disabled={safePage >= totalPages - 1}
-                className="flex items-center rounded px-1 py-0.5 border border-border hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
-                title="Next page"
-              >
-                <ChevronRight className="h-3 w-3" />
-              </button>
-            </div>
-          )}
-          <button
-            onClick={copyJson}
-            className="flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-black/10 transition-colors"
-            title="Copy as JSON"
-          >
-            {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-            {copied ? "Copied" : "JSON"}
-          </button>
-        </div>
-      </div>
-    </>
-  );
+  return <SelectResultTable result={result} />;
 }
 
 export default function SQLExecPanel() {
@@ -377,8 +479,12 @@ export default function SQLExecPanel() {
   const [query, setQuery] = useState("");
   const [running, setRunning] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<string | null>(null);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const nextId = useRef(1);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>(loadHistory);
+  const nextId = useRef(0);
+  if (nextId.current === 0 && history.length > 0) {
+    nextId.current = Math.max(...history.map((h) => h.id)) + 1;
+  }
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -413,6 +519,10 @@ export default function SQLExecPanel() {
       textareaRef.current?.focus();
     }
   }, [running]);
+
+  useEffect(() => {
+    localStorage.setItem(SQL_HISTORY_KEY, JSON.stringify(history));
+  }, [history]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -499,7 +609,17 @@ export default function SQLExecPanel() {
     }
   };
 
-  const clearHistory = () => setHistory([]);
+  const clearHistory = () => {
+    setQuery("");
+    setHistory([]);
+    localStorage.removeItem(SQL_HISTORY_KEY);
+  };
+
+  const handlePickTemplate = (template: string) => {
+    setQuery(template);
+    setGalleryOpen(false);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  };
 
   if (checking || !user || isOnAiTab) return null;
   if (role !== "admin") return null;
@@ -517,28 +637,47 @@ export default function SQLExecPanel() {
           className="flex-1 min-h-[90px] max-h-[200px] resize-none font-mono text-sm"
           rows={4}
         />
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={handleRun}
-            disabled={!query.trim() || running}
-            size="sm"
-            className="gap-1.5 text-xs h-8"
-          >
-            {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-            {running ? "Running..." : "Run"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearHistory}
-            disabled={history.length === 0}
-            className="gap-1.5 text-xs h-8 text-muted-foreground"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Clear
-          </Button>
-          <span className="ml-auto text-[10px] text-muted-foreground flex items-center gap-1">
-            <CornerDownLeft className="h-3 w-3" /> Ctrl/⌘ + Enter
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={handleRun}
+              disabled={!query.trim() || running}
+              size="sm"
+              className="h-8 flex-1 gap-1.5 text-xs sm:flex-none"
+            >
+              {running ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
+              {running ? "Running..." : "Run"}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearHistory}
+              disabled={history.length === 0}
+              className="h-8 flex-1 gap-1.5 text-xs text-muted-foreground sm:flex-none"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Clear
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setGalleryOpen(true)}
+              className="h-8 w-full gap-1.5 text-xs text-muted-foreground sm:w-auto"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Templates
+            </Button>
+          </div>
+
+          <span className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground sm:justify-end">
+            <CornerDownLeft className="h-3 w-3" />
+            Ctrl/⌘ + Enter
           </span>
         </div>
       </div>
@@ -632,13 +771,31 @@ export default function SQLExecPanel() {
           {header}
           {sqlResults}
           {sqlEditor}
+          <TemplateGallery open={galleryOpen} onPick={handlePickTemplate} onClose={() => setGalleryOpen(false)} />
         </div>
         <button
           onClick={openSqlTab}
-          className={`fixed bottom-12 right-5 z-[61] h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-all duration-300 ease-in-out ${sqlShown ? "opacity-0 pointer-events-none scale-75" : "opacity-100 scale-100"}`}
+          className={cn(
+            "fixed z-[61] transition-all duration-300 ease-in-out",
+            open
+              ? "right-0 top-1/2 -translate-y-1/2 rounded-l-md border border-r-0 bg-background px-1.5 py-4 shadow-md hover:bg-accent flex flex-col items-center gap-1"
+              : "bottom-12 right-5 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90",
+            sqlShown && "opacity-0 pointer-events-none"
+          )}
           title="Open SQL EXEC"
         >
-          <Database className="h-5 w-5" />
+          {open ? (
+            <>
+              <Database className="h-4 w-4 text-primary" />
+              <span className="text-[10px] font-medium text-muted-foreground tracking-wider flex flex-col items-center leading-none">
+                {"SQL EXEC".split("").map((c, i) => (
+                  <span key={i}>{c === " " ? <>&nbsp;</> : c}</span>
+                ))}
+              </span>
+            </>
+          ) : (
+            <Database className="h-5 w-5" />
+          )}
         </button>
       </>
     );
@@ -662,6 +819,7 @@ export default function SQLExecPanel() {
           {header}
           {sqlResults}
           {sqlEditor}
+          <TemplateGallery open={galleryOpen} onPick={handlePickTemplate} onClose={() => setGalleryOpen(false)} />
         </div>
       </div>
       <button
@@ -678,9 +836,7 @@ export default function SQLExecPanel() {
 
         <span className="text-[10px] font-medium text-muted-foreground tracking-wider flex flex-col items-center leading-none">
           {"SQL EXEC".split("").map((c, i) => (
-            <>
-              <span key={i}>{c === " " ? <>&nbsp;</> : c}</span>
-            </>
+            <span key={i}>{c === " " ? <>&nbsp;</> : c}</span>
           ))}
         </span>
       </button>

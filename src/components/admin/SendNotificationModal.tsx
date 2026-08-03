@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Send, Loader2 } from "lucide-react";
+import { Sparkles, Send, Pencil, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,13 +44,22 @@ interface Props {
     onOpenChange: (v: boolean) => void;
     recipientId: string | null;
     recipientName?: string;
+    recipients?: { id: string; full_name: string; email?: string }[];
+    onSent?: (recipientId: string | null) => void;
+    editTarget?: { id: string; title: string; message: string; user_id: string | null } | null;
 }
 
-export function SendNotificationModal({ open, onOpenChange, recipientId, recipientName }: Props) {
+export function SendNotificationModal({ open, onOpenChange, recipientId, recipientName, recipients, onSent, editTarget }: Props) {
+    const queryClient = useQueryClient();
     const [template, setTemplate] = useState("Payment Pending");
     const [subReason, setSubReason] = useState("Manual admin review");
     const [title, setTitle] = useState(TEMPLATES["Payment Pending"].title);
     const [message, setMessage] = useState(TEMPLATES["Payment Pending"].message);
+    const [recipient, setRecipient] = useState<string>(recipientId ?? "all");
+
+    useEffect(() => {
+        setRecipient(recipientId ?? "all");
+    }, [open, recipientId]);
 
     useEffect(() => {
         if (TEMPLATES[template]) {
@@ -58,6 +67,19 @@ export function SendNotificationModal({ open, onOpenChange, recipientId, recipie
             setMessage(TEMPLATES[template].message);
         }
     }, [template]);
+
+    useEffect(() => {
+        if (!open) return;
+        if (editTarget) {
+            setTemplate("Custom");
+            setTitle(editTarget.title);
+            setMessage(editTarget.message);
+        } else {
+            setTemplate("Payment Pending");
+            setTitle(TEMPLATES["Payment Pending"].title);
+            setMessage(TEMPLATES["Payment Pending"].message);
+        }
+    }, [open, editTarget]);
 
     const enhance = useMutation({
         mutationFn: async () => {
@@ -83,29 +105,60 @@ export function SendNotificationModal({ open, onOpenChange, recipientId, recipie
 
     const send = useMutation({
         mutationFn: async () => {
+            if (editTarget) {
+                const { error } = await supabase.from("notifications").update({
+                    title, message, user_id: recipient === "all" ? null : recipient,
+                }).eq("id", editTarget.id);
+                if (error) throw error;
+                return;
+            }
             const { data: { user } } = await supabase.auth.getUser();
             const { error } = await supabase.from("notifications").insert({
-                title, message, user_id: recipientId, created_by: user?.id,
+                title, message, user_id: recipient === "all" ? null : recipient, created_by: user?.id,
             });
             if (error) throw error;
         },
         onSuccess: () => {
-            toast.success("Notification sent");
+            queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+            toast.success(editTarget ? "Notification updated" : "Notification sent");
+            if (!editTarget) onSent?.(recipient === "all" ? null : recipient);
             onOpenChange(false);
         },
         onError: (e: any) => toast.error(e.message),
     });
 
+    const selectedName =
+        recipientName && recipient !== "all"
+            ? recipientName
+            : recipient === "all"
+                ? "All Users (Broadcast)"
+                : recipients?.find(u => u.id === recipient)?.full_name;
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-lg">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2"><Send className="h-4 w-4" /> Send Notification</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                        {editTarget ? <Pencil className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+                        {editTarget ? "Edit Notification" : "Send Notification"}
+                    </DialogTitle>
                     <DialogDescription>
-                        {recipientName ? `To: ${recipientName}` : "Targeted notification"}
+                        {selectedName ? `To: ${selectedName}` : "Select a recipient"}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
+                    {recipients && recipients.length > 0 && (
+                        <div className="space-y-1">
+                            <Label>Recipient</Label>
+                            <Select value={recipient} onValueChange={setRecipient}>
+                                <SelectTrigger><SelectValue placeholder="Select a user..." /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Users (Broadcast)</SelectItem>
+                                    {recipients.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name} {u.email ? `(${u.email})` : ""}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
                     <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
                             <Label>Template</Label>
@@ -147,8 +200,8 @@ export function SendNotificationModal({ open, onOpenChange, recipientId, recipie
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                     <Button onClick={() => send.mutate()} disabled={!title.trim() || !message.trim() || send.isPending}>
-                        {send.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1 inline-block" /> : <Send className="h-4 w-4 mr-1" />}
-                        Send
+                        {send.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1 inline-block" /> : editTarget ? <Pencil className="h-4 w-4 mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+                        {editTarget ? "Save" : "Send"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

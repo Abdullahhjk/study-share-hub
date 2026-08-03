@@ -188,12 +188,31 @@ export default function AdminAuditLog() {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between pt-2">
-                <p className="text-xs text-muted-foreground">{filtered.length} total entries</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="text-xs px-3 py-1 rounded border hover:bg-muted disabled:opacity-50">Prev</button>
-                  <span className="text-xs text-muted-foreground px-2 py-1">{page + 1} / {totalPages}</span>
-                  <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1} className="text-xs px-3 py-1 rounded border hover:bg-muted disabled:opacity-50">Next</button>
+              <div className="flex flex-col gap-3 pt-2 sm:gap-2 md:flex-row md:items-center md:justify-between">
+                <p className="text-center text-xs text-muted-foreground md:text-left">
+                  {filtered.length} total entries
+                </p>
+
+                <div className="flex items-center justify-center gap-2 sm:justify-end">
+                  <button
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                    className="rounded border px-3 py-1.5 text-xs hover:bg-muted disabled:opacity-50"
+                  >
+                    Prev
+                  </button>
+
+                  <span className="min-w-[60px] text-center text-xs text-muted-foreground">
+                    {page + 1} / {totalPages}
+                  </span>
+
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={page >= totalPages - 1}
+                    className="rounded border px-3 py-1.5 text-xs hover:bg-muted disabled:opacity-50"
+                  >
+                    Next
+                  </button>
                 </div>
               </div>
             )}

@@ -285,21 +285,29 @@ export default function ConsoleTab() {
         </Button>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1">
-            <CornerDownLeft className="h-3 w-3" /> Enter to run
+      <div className="mt-2 flex flex-col gap-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span className="flex items-center gap-1 whitespace-nowrap">
+            <CornerDownLeft className="h-3 w-3" />
+            Enter to run
           </span>
-          <span>↑↓ History</span>
-          <span className="text-muted-foreground/60">clear() to clear</span>
+
+          <span className="whitespace-nowrap">
+            ↑↓ History
+          </span>
+
+          <span className="whitespace-nowrap text-muted-foreground/60">
+            clear() to clear
+          </span>
         </div>
+
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 px-2 text-xs"
+          className="h-8 w-full px-3 text-xs sm:h-6 sm:w-auto sm:px-2"
           onClick={() => setEntries([])}
         >
-          <Trash2 className="h-3 w-3 mr-1" />
+          <Trash2 className="mr-1 h-3 w-3" />
           Clear
         </Button>
       </div>

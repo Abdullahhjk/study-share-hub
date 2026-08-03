@@ -225,7 +225,7 @@ export function ActivityLogs({ userId, isAdmin = false }: ActivityLogsProps) {
                   disabled={page === 0}
                   onClick={() => setPage(p => p - 1)}
                 >
-                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                  <ChevronLeft className="h-4 w-4 mr-1" /> <p className="hidden sm:block">Previous</p>
                 </Button>
 
                 <span className="text-xs text-muted-foreground">
@@ -238,7 +238,7 @@ export function ActivityLogs({ userId, isAdmin = false }: ActivityLogsProps) {
                   disabled={page >= totalPages - 1}
                   onClick={() => setPage(p => p + 1)}
                 >
-                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                  <p className="hidden sm:block">Next</p> <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>
             )}

@@ -299,21 +299,40 @@ export default function UpcomingFeaturesTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
           <h2 className="text-lg font-semibold">Upcoming Features</h2>
-          <p className="text-sm text-muted-foreground">{features.length} feature{features.length !== 1 ? "s" : ""} listed</p>
+          <p className="text-sm text-muted-foreground">
+            {features.length} feature{features.length !== 1 ? "s" : ""} listed
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            className="w-full gap-1.5 lg:w-auto"
+          >
             <Download className="h-3.5 w-3.5" />
             Export JSON
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="gap-1.5">
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setImportOpen(true)}
+            className="w-full gap-1.5 lg:w-auto"
+          >
             <Upload className="h-3.5 w-3.5" />
             Import JSON
           </Button>
-          <Button size="sm" onClick={openAdd} className="gap-1.5">
+
+          <Button
+            size="sm"
+            onClick={openAdd}
+            className="w-full gap-1.5 sm:col-span-2 lg:w-auto lg:col-span-1"
+          >
             <Plus className="h-3.5 w-3.5" />
             Add Feature
           </Button>

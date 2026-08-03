@@ -119,6 +119,7 @@ export default function AIAssistantPanel() {
 
   const initAgent = useCallback(async () => {
     try {
+      if (!user?.id) return;
       const isAdmin = role === "admin" || role === "coadmin";
 
       if (isAdmin) {
@@ -880,10 +881,24 @@ export default function AIAssistantPanel() {
         </div>
         <button
           onClick={openArchonTab}
-          className={`fixed bottom-12 right-5 z-[61] h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-all duration-300 ease-in-out ${archonShown ? "opacity-0 pointer-events-none scale-75" : "opacity-100 scale-100"}`}
+          className={`fixed z-[61] transition-all duration-300 ease-in-out ${open
+            ? "right-0 top-1/2 -translate-y-1/2 rounded-l-md border border-r-0 bg-background px-1.5 py-4 shadow-md hover:bg-accent flex flex-col items-center gap-1 group"
+            : "bottom-28 right-5 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90"
+            } ${archonShown ? "opacity-0 pointer-events-none" : ""}`}
           title="Open A.R.C.H.O.N."
         >
-          <img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5" />
+          {open ? (
+            <>
+              <img src="/ARCHON.png" alt="ARCHON" className="h-4 w-4 rotate-90 transition-transform duration-300 group-hover:rotate-0" />
+              <span className="text-[10px] font-medium text-muted-foreground tracking-wider flex flex-col items-center leading-none">
+                {"ARCHON".split("").map((c, i) => (
+                  <span key={i}>{c}</span>
+                ))}
+              </span>
+            </>
+          ) : (
+            <img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5" />
+          )}
         </button>
       </>
     );

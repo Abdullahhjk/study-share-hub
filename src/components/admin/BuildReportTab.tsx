@@ -186,35 +186,94 @@ export default function BuildReportTab() {
             )}
 
             <Card>
-                <CardHeader>
-                    <CardTitle className="flex flex-col md:flex-row items-center gap-2"><Mail className="h-4 w-4" /> Subscribers <div className="flex items-center gap-2"><Badge variant="secondary">Active: {subscribers.filter((s: any) => s.is_active !== false).length}</Badge><Badge variant="secondary">Total: {subscribers.length}</Badge><Badge variant="default" className="hover:cursor-pointer" onClick={() => { setShowUnsubscribed(!showUnsubscribed) }}>Showing {showUnsubscribed ? "Unsubscribed" : "All"}</Badge></div></CardTitle>
+                <CardHeader className="space-y-3">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                            <Mail className="h-4 w-4" />
+                            Subscribers
+                        </CardTitle>
+
+                        <div className="flex flex-wrap gap-2">
+                            <Badge variant="secondary">
+                                Active: {subscribers.filter((s: any) => s.is_active !== false).length}
+                            </Badge>
+
+                            <Badge variant="secondary">
+                                Total: {subscribers.length}
+                            </Badge>
+
+                            <Badge
+                                variant="default"
+                                className="cursor-pointer"
+                                onClick={() => setShowUnsubscribed(!showUnsubscribed)}
+                            >
+                                Showing {showUnsubscribed ? "Unsubscribed" : "All"}
+                            </Badge>
+                        </div>
+                    </div>
                 </CardHeader>
+
                 <CardContent>
-                    {subscribers.length === 0 || subscribers.filter((s: any) => !showUnsubscribed ? true : s.is_active === false).length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No {showUnsubscribed ? "Unsubscribed" : "Active"} subscribers yet.</p>
+                    {subscribers.length === 0 ||
+                        subscribers.filter((s: any) =>
+                            !showUnsubscribed ? true : s.is_active === false
+                        ).length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                            No {showUnsubscribed ? "Unsubscribed" : "Active"} subscribers yet.
+                        </p>
                     ) : (
-                        <div className="space-y-1 max-h-72 overflow-y-auto">
-                            {subscribers.filter((s: any) => !showUnsubscribed ? true : s.is_active === false).map((s: any, i: number) => (
-                                <div key={s.id} className="grid grid-cols-1 sm:grid-cols-2 items-center justify-between rounded-md border px-3 py-2 text-sm mr-4">
-                                    <span className="flex items-center gap-4 justify-start"><p className="font-semibold">{i + 1}.</p><p className="truncate">{s.email}</p></span>
-                                    <div className="flex items-center gap-2 justify-between sm:justify-end">
-                                        <Badge variant="secondary">
-                                            {new Date(s.created_at).toLocaleDateString()}
-                                        </Badge>
-                                        <Badge
-                                            variant={s.is_active ? "secondary" : "outline"}
-                                            className={`hover:cursor-pointer ${s.is_active ? "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30" : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"}`}
-                                            onClick={() => toggleSubscriberActive.mutate({ id: s.id, is_active: !s.is_active })}
-                                        >
-                                            {s.is_active ? "Active" : "Inactive"}
-                                        </Badge>
-                                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive"
-                                            onClick={() => removeSubscriber.mutate(s.id)}>
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
+                        <div className="max-h-72 space-y-3 overflow-y-auto">
+                            {subscribers
+                                .filter((s: any) =>
+                                    !showUnsubscribed ? true : s.is_active === false
+                                )
+                                .map((s: any, i: number) => (
+                                    <div
+                                        key={s.id}
+                                        className="rounded-md border p-3"
+                                    >
+                                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                            <div className="min-w-0 flex items-center gap-3">
+                                                <span className="font-semibold">{i + 1}.</span>
+
+                                                <p className="truncate break-all font-medium">
+                                                    {s.email}
+                                                </p>
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                                                <Badge variant="secondary">
+                                                    {new Date(s.created_at).toLocaleDateString()}
+                                                </Badge>
+
+                                                <Badge
+                                                    variant={s.is_active ? "secondary" : "outline"}
+                                                    className={`cursor-pointer ${s.is_active
+                                                            ? "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400"
+                                                            : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
+                                                        }`}
+                                                    onClick={() =>
+                                                        toggleSubscriberActive.mutate({
+                                                            id: s.id,
+                                                            is_active: !s.is_active,
+                                                        })
+                                                    }
+                                                >
+                                                    {s.is_active ? "Active" : "Inactive"}
+                                                </Badge>
+
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 text-destructive"
+                                                    onClick={() => removeSubscriber.mutate(s.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
                         </div>
                     )}
                 </CardContent>

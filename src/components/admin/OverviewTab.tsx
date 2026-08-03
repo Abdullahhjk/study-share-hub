@@ -302,9 +302,12 @@ export default function OverviewTab() {
             </div>
           )}
 
-          <CardHeader className="flex flex-col sm:flex-row items-center justify-between p-3 pb-1">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-lg font-medium">FX Rates (PKR)</CardTitle>
+          <CardHeader className="flex flex-col gap-3 p-3 pb-1 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-lg font-medium">
+                FX Rates (PKR)
+              </CardTitle>
+
               {fxStale && (
                 <span className="flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-destructive">
                   <div className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
@@ -312,19 +315,43 @@ export default function OverviewTab() {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3">
-              <span className={`text-xs font-medium ${fxStale ? "text-destructive" : "text-muted-foreground"}`}>
+
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
+              <span
+                className={`text-xs ${fxStale ? "text-destructive" : "text-muted-foreground"
+                  }`}
+              >
                 Updated {relativeTime(data.fxRate.fetched_at)}
               </span>
-              <Button variant={fxStale ? "default" : "outline"} size="sm" onClick={handleForceFetchFx} disabled={!fxStale || isFxFetching} className="h-7 gap-1 text-xs">
-                {isFxFetching ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                Refresh
-              </Button>
-              <CopyRatesButton data={data} />
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setApiDialogOpen(true)}>
-                <Activity className="h-3.5 w-3.5" />
-                API Usage
-              </Button>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={fxStale ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleForceFetchFx}
+                  disabled={!fxStale || isFxFetching}
+                  className="h-8 flex-1 sm:flex-none gap-1 text-xs"
+                >
+                  {isFxFetching ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3" />
+                  )}
+                  Refresh
+                </Button>
+
+                <CopyRatesButton data={data} />
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setApiDialogOpen(true)}
+                  className="h-8 flex-1 sm:flex-none gap-1.5 text-xs"
+                >
+                  <Activity className="h-3.5 w-3.5" />
+                  API Usage
+                </Button>
+              </div>
             </div>
           </CardHeader>
 

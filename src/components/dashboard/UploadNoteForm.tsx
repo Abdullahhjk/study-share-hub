@@ -228,114 +228,115 @@ export function UploadNoteForm() {
 
   return (
     <Card className="w-full">
-      <CardHeader>
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle className="flex items-center gap-2">
-          <Upload className="h-5 w-5" />
+          <Upload className="h-5 w-5 shrink-0" />
           Upload New Notes
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="ml-4">
-                Rules
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[85vh] p-0 overflow-hidden flex flex-col">
-
-              {/* HEADER */}
-              <div className="px-6 py-4 border-b bg-muted/30">
-                <DialogHeader>
-                  <DialogTitle className="text-lg font-semibold">
-                    Notes Upload Rules
-                  </DialogTitle>
-                </DialogHeader>
-              </div>
-
-              {/* DOWNLOAD SECTION */}
-              <div className="px-6 py-3 border-b flex items-center justify-between bg-background">
-                <p className="text-sm text-muted-foreground">
-                  Download the official template for reference before uploading.
-                </p>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isDownloading || url.isLoading}
-                  onClick={async () => {
-                    if (!url.data) {
-                      toast({
-                        title: "Error",
-                        description: "File not available",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-
-                    try {
-                      setIsDownloading(true);
-
-                      toast({
-                        title: "Preparing download...",
-                        description: "Please wait",
-                      });
-
-                      await new Promise((res) => setTimeout(res, 500));
-
-                      const link = document.createElement("a");
-                      link.href = url.data;
-                      link.download = "Preface.docx";
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-
-                      toast({
-                        title: "Download started",
-                        description: "Check your downloads",
-                      });
-
-                    } catch (err) {
-                      toast({
-                        title: "Download failed",
-                        description: "Something went wrong",
-                        variant: "destructive",
-                      });
-                    } finally {
-                      setIsDownloading(false);
-                    }
-                  }}
-                >
-                  {isDownloading || url.isLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2 inline-block" />
-                      Downloading...
-                    </>
-                  ) : (
-                    "Download MS Word File"
-                  )}
-                </Button>
-              </div>
-
-              {/* CONTENT (SCROLL AREA) */}
-              <div className="flex-1 overflow-y-auto px-6 py-1">
-                <ul className="space-y-2 text-sm text-muted-foreground list-disc list-outside pl-5 leading-relaxed">
-                  {NOTES_RULES.map((rule, index) => (
-                    <li key={index} className="text-foreground/80">
-                      {rule}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* FOOTER */}
-              <div className="px-6 py-3 border-t bg-muted/20 text-center text-xs text-muted-foreground">
-                For safety of your notes, we recommend following all rules above.
-              </div>
-
-            </DialogContent>
-          </Dialog>
         </CardTitle>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="w-full sm:w-auto">
+              Rules
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[85vh] p-0 overflow-hidden flex flex-col">
+
+            {/* HEADER */}
+            <div className="px-4 sm:px-6 py-4 border-b bg-muted/30">
+              <DialogHeader>
+                <DialogTitle className="text-lg font-semibold">
+                  Notes Upload Rules
+                </DialogTitle>
+              </DialogHeader>
+            </div>
+
+            {/* DOWNLOAD SECTION */}
+            <div className="px-4 sm:px-6 py-3 border-b flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-background">
+              <p className="text-sm text-muted-foreground">
+                Download the official template for reference before uploading.
+              </p>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto"
+                disabled={isDownloading || url.isLoading}
+                onClick={async () => {
+                  if (!url.data) {
+                    toast({
+                      title: "Error",
+                      description: "File not available",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  try {
+                    setIsDownloading(true);
+
+                    toast({
+                      title: "Preparing download...",
+                      description: "Please wait",
+                    });
+
+                    await new Promise((res) => setTimeout(res, 500));
+
+                    const link = document.createElement("a");
+                    link.href = url.data;
+                    link.download = "Preface.docx";
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    toast({
+                      title: "Download started",
+                      description: "Check your downloads",
+                    });
+
+                  } catch (err) {
+                    toast({
+                      title: "Download failed",
+                      description: "Something went wrong",
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setIsDownloading(false);
+                  }
+                }}
+              >
+                {isDownloading || url.isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2 inline-block" />
+                    Downloading...
+                  </>
+                ) : (
+                  "Download MS Word File"
+                )}
+              </Button>
+            </div>
+
+            {/* CONTENT (SCROLL AREA) */}
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-1">
+              <ul className="space-y-2 text-sm text-muted-foreground list-disc list-outside pl-5 leading-relaxed">
+                {NOTES_RULES.map((rule, index) => (
+                  <li key={index} className="text-foreground/80">
+                    {rule}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* FOOTER */}
+            <div className="px-4 sm:px-6 py-3 border-t bg-muted/20 text-center text-xs text-muted-foreground">
+              For safety of your notes, we recommend following all rules above.
+            </div>
+
+          </DialogContent>
+        </Dialog>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid grid-cols-[1fr_auto_1fr] gap-4 mb-3">
+          <div className="grid gap-6 md:grid-cols-2">
             {/* Left Column */}
             <div className="space-y-4">
               {/* Title */}
@@ -354,7 +355,7 @@ export function UploadNoteForm() {
               {/* Category Selection */}
               <div className="space-y-2">
                 <Label>Category *</Label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <Select
                     value={selectedCategory}
                     onValueChange={(value) => {
@@ -363,7 +364,7 @@ export function UploadNoteForm() {
                     }}
                     disabled={categoriesLoading}
                   >
-                    <SelectTrigger className="flex-1">
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -386,7 +387,12 @@ export function UploadNoteForm() {
                     onOpenChange={setShowCategoryDialog}
                   >
                     <DialogTrigger asChild>
-                      <Button type="button" variant="outline" size="icon">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="w-full sm:w-10"
+                      >
                         <Plus className="h-4 w-4" />
                       </Button>
                     </DialogTrigger>
@@ -421,13 +427,13 @@ export function UploadNoteForm() {
               {/* Subcategory Selection */}
               <div className="space-y-2">
                 <Label>Subcategory *</Label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <Select
                     value={selectedSubcategory}
                     onValueChange={setSelectedSubcategory}
                     disabled={!selectedCategory || subcategoriesLoading}
                   >
-                    <SelectTrigger className="flex-1">
+                    <SelectTrigger className="w-full">
                       <SelectValue
                         placeholder={
                           selectedCategory
@@ -460,6 +466,7 @@ export function UploadNoteForm() {
                         type="button"
                         variant="outline"
                         size="icon"
+                        className="w-full sm:w-10"
                         disabled={!selectedCategory}
                       >
                         <Plus className="h-4 w-4" />
@@ -531,7 +538,7 @@ export function UploadNoteForm() {
 
               </div>
             </div>
-            <div className="w-px bg-border" />
+
             {/* Right Column */}
             <div className="space-y-4">
               {/* Description */}
@@ -570,9 +577,9 @@ export function UploadNoteForm() {
                     onChange={(e) => setNoteFile(e.target.files?.[0] || null)}
                   />
                   {noteFile ? (
-                    <div className="flex items-center justify-center gap-2 text-primary">
-                      <FileText className="h-6 w-6" />
-                      <span className="font-medium">{noteFile.name}</span>
+                    <div className="flex items-center justify-center gap-2 text-primary flex-wrap">
+                      <FileText className="h-6 w-6 shrink-0" />
+                      <span className="font-medium break-all">{noteFile.name}</span>
                     </div>
                   ) : (
                     <div className="text-muted-foreground">
@@ -601,9 +608,9 @@ export function UploadNoteForm() {
                     onChange={(e) => setPreviewFile(e.target.files?.[0] || null)}
                   />
                   {previewFile ? (
-                    <div className="flex items-center justify-center gap-2 text-primary">
-                      <ImageIcon className="h-6 w-6" />
-                      <span className="font-medium">{previewFile.name}</span>
+                    <div className="flex items-center justify-center gap-2 text-primary flex-wrap">
+                      <ImageIcon className="h-6 w-6 shrink-0" />
+                      <span className="font-medium break-all">{previewFile.name}</span>
                     </div>
                   ) : (
                     <div className="text-muted-foreground">
@@ -616,11 +623,11 @@ export function UploadNoteForm() {
             </div>
           </div>
           {/* Full Width Bottom Section */}
-          <div className="col-span-2 space-y-4">
+          <div className="mt-6 space-y-4">
             {/* Submit Button */}
             {!hasSchoolName && (
               <p className="text-sm text-destructive bg-destructive/10 p-3 rounded-md flex items-center gap-2">
-                <AlertCircle className="h-4 w-4" />
+                <AlertCircle className="h-4 w-4 shrink-0" />
                 Please set your school name in the <strong>Profile</strong> tab
                 before uploading notes.
               </p>

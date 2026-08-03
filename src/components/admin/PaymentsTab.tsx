@@ -384,27 +384,28 @@ export default function PaymentsTab({ userRole }: PaymentsTabProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative w-full flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 className="pl-8"
                 placeholder="Search teachers..."
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <div className="flex gap-1 border rounded-lg p-0.5 bg-muted/30">
+
+            <div className="flex flex-wrap gap-1 rounded-lg border bg-muted/30 p-0.5 sm:flex-nowrap">
               {(["all", "pending", "overdue"] as const).map((tab) => (
                 <Button
                   key={tab}
                   size="sm"
                   variant={filterTab === tab ? "default" : "ghost"}
-                  className="h-7 text-xs capitalize"
+                  className="h-8 flex-1 sm:flex-none text-xs capitalize"
                   onClick={() => setFilterTab(tab)}
                 >
-                  {tab === "pending" && <Clock className="h-3 w-3 mr-1" />}
-                  {tab === "overdue" && <XCircle className="h-3 w-3 mr-1" />}
+                  {tab === "pending" && <Clock className="mr-1 h-3 w-3" />}
+                  {tab === "overdue" && <XCircle className="mr-1 h-3 w-3" />}
                   {tab}
                 </Button>
               ))}

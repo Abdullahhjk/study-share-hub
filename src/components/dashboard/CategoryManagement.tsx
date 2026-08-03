@@ -50,6 +50,7 @@ import {
   useCreateCategory,
   useCreateSubcategory,
 } from "@/hooks/useNoteMutations";
+import { cn } from "@/lib/utils";
 
 const CATEGORY_RULES = [
   "This is a shared community space — keep categories clear and meaningful.",
@@ -147,7 +148,7 @@ function CategoryItem({ category, index, selectedCategory, editingCategory, edit
 
   return (
     <div
-      className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${isSelected
+      className={`flex flex-wrap items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${isSelected
         ? "border-primary bg-primary/10 ring-1 ring-primary"
         : "hover:border-primary/50 hover:bg-muted/30"
         }`}
@@ -155,7 +156,7 @@ function CategoryItem({ category, index, selectedCategory, editingCategory, edit
         if (!isEditing) onSelect(category.id);
       }}
     >
-      <span className="flex-0 text-sm mx-2 text-muted-foreground">{index + 1}.</span>
+      <span className="shrink-0 text-sm mx-2 text-muted-foreground">{index + 1}.</span>
       {isEditing ? (
         <EditActions
           value={editValue}
@@ -165,7 +166,7 @@ function CategoryItem({ category, index, selectedCategory, editingCategory, edit
         />
       ) : (
         <>
-          <span className="flex-1 text-sm font-medium">{category.name}</span>
+          <span className="flex-1 min-w-[8rem] text-sm font-medium break-words">{category.name}</span>
           <Badge variant="secondary" className="text-xs font-normal whitespace-nowrap">
             {subCount} {subCount === 1 ? "sub" : "subs"}
           </Badge>
@@ -192,8 +193,8 @@ function SubcategoryItem({ sub, index, editingSubcategory, editValue, userId, on
   const noteCount = (sub as any).notes?.[0]?.count ?? 0;
 
   return (
-    <div className="flex items-center gap-2 p-2 rounded-lg border hover:bg-muted/30 transition-colors">
-      <span className="flex-0 text-sm mx-2 text-muted-foreground">{index + 1}.</span>
+    <div className="flex flex-wrap items-center gap-2 p-2 rounded-lg border hover:bg-muted/30 transition-colors">
+      <span className="shrink-0 text-sm mx-2 text-muted-foreground">{index + 1}.</span>
       {isEditing ? (
         <EditActions
           value={editValue}
@@ -203,7 +204,7 @@ function SubcategoryItem({ sub, index, editingSubcategory, editValue, userId, on
         />
       ) : (
         <>
-          <span className="flex-1 text-sm">{sub.name}</span>
+          <span className="flex-1 min-w-[8rem] text-sm break-words">{sub.name}</span>
           <Badge variant="secondary" className="text-xs font-normal whitespace-nowrap">
             {noteCount} {noteCount === 1 ? "note" : "notes"}
           </Badge>
@@ -606,7 +607,7 @@ export function CategoryManagement() {
             Manage categories and subcategories for organizing your notes
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="grid gap-6">
           {/* Categories Section */}
           <div className="space-y-4">
             <h3 className="font-semibold text-lg">Categories</h3>
@@ -652,13 +653,15 @@ export function CategoryManagement() {
 
           {/* Subcategories Section - only visible when a category is selected */}
           <div
-            className={`border-t overflow-hidden transition-all duration-300 ease-in-out ${selectedCategory
-              ? "max-h-[1000px] opacity-100 pt-8 space-y-4 mt-8 "
-              : "max-h-0 opacity-0 pt-0 border-0"
-              }`}
+            className={cn(
+              "overflow-hidden transition-all duration-300 ease-in-out",
+              selectedCategory
+                ? "max-h-[1600px] opacity-100 space-y-4 border-t pt-4"
+                : "max-h-0 opacity-0 border-0"
+            )}
           >
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-lg flex items-center gap-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="font-semibold text-lg flex flex-wrap items-center gap-2">
                 Subcategories
                 <Badge variant="secondary" className="text-sm font-normal">
                   {selectedCategoryName}
@@ -668,7 +671,7 @@ export function CategoryManagement() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setSelectedCategory(null)}
-                className="gap-1 text-muted-foreground"
+                className="w-fit gap-1 text-muted-foreground"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to categories
