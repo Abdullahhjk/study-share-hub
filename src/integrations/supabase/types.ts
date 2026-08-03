@@ -1020,6 +1020,7 @@ export type Database = {
         Row: {
           appearence: string
           autoselect_currency: boolean
+          cohere_api_keys: Json
           colorblind_mode: boolean
           colorblind_type: string
           created_at: string
@@ -1034,6 +1035,7 @@ export type Database = {
         Insert: {
           appearence?: string
           autoselect_currency?: boolean
+          cohere_api_keys?: Json
           colorblind_mode?: boolean
           colorblind_type?: string
           created_at?: string
@@ -1048,6 +1050,7 @@ export type Database = {
         Update: {
           appearence?: string
           autoselect_currency?: boolean
+          cohere_api_keys?: Json
           colorblind_mode?: boolean
           colorblind_type?: string
           created_at?: string
@@ -1379,6 +1382,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_user_cohere_key: {
+        Args: { p_key_label: string }
+        Returns: Json
+      }
       is_category_in_use: { Args: { category_id: string }; Returns: boolean }
       is_client_blocked: {
         Args: { p_fp_hash: string; p_ip_hash: string }
@@ -1442,6 +1449,7 @@ export type Database = {
         Args: { p_reason: string; p_record_id: string }
         Returns: undefined
       }
+      reset_user_cohere_key_counts: { Args: never; Returns: undefined }
       submit_payment_proof: {
         Args: {
           p_month: number

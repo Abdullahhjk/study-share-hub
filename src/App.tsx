@@ -11,6 +11,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import DevNotice from "@/components/DevNotice";
 import AIAssistantPanel from "@/components/admin/AIAssistantPanel";
+import SQLExecPanel from "@/components/admin/SQLExecPanel";
 import { AIPanelProvider, useAIPanel } from "@/components/admin/AIPanelContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -140,6 +141,7 @@ function AppContent() {
         </Routes>
       </div>
       <AIAssistantPanel />
+      <SQLExecPanel />
     </BrowserRouter>
   );
 }

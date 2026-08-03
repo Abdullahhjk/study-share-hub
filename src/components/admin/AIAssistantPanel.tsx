@@ -41,10 +41,17 @@ function extractText(content: unknown): string | null {
 export default function AIAssistantPanel() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
+  const isMobile = useIsMobile();
+  const { open, setOpen, panelWidth, setPanelWidth, activePanel, setActivePanel } = useAIPanel();
   const isOnAiTab = (location.pathname === "/admin" || location.pathname === "/coadmin") && searchParams.get("tab") === "aiAssistant";
 
-  const isMobile = useIsMobile();
-  const { open, setOpen, panelWidth, setPanelWidth } = useAIPanel();
+  const isArchonActive = activePanel === "archon";
+  const archonShown = open && isArchonActive;
+
+  const openArchonTab = () => {
+    setActivePanel("archon");
+    setOpen(true);
+  };
   const [user, setUser] = useState<any>(null);
   const [avatar, setAvatar] = useState<string>("/user.png");
   const [isColorBlind, setIsColorBlind] = useState(false);
@@ -852,7 +859,7 @@ export default function AIAssistantPanel() {
       <>
         <div
           ref={panelRef}
-          className={`fixed inset-0 z-[60] flex flex-col bg-background transition-transform duration-300 ease-in-out ${open ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
+          className={`fixed inset-0 z-[60] flex flex-col bg-background transition-transform duration-300 ease-in-out ${archonShown ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
           onMouseEnter={() => { isHoveringRef.current = true; }}
           onMouseLeave={() => { isHoveringRef.current = false; }}
         >
@@ -872,8 +879,8 @@ export default function AIAssistantPanel() {
           </div>
         </div>
         <button
-          onClick={() => setOpen(true)}
-          className={`fixed bottom-12 right-5 z-[61] h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-all duration-300 ease-in-out ${open ? "opacity-0 pointer-events-none scale-75" : "opacity-100 scale-100"}`}
+          onClick={openArchonTab}
+          className={`fixed bottom-12 right-5 z-[61] h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-all duration-300 ease-in-out ${archonShown ? "opacity-0 pointer-events-none scale-75" : "opacity-100 scale-100"}`}
           title="Open A.R.C.H.O.N."
         >
           <img src="/ARCHON.png" alt="ARCHON" className="h-5 w-5" />
@@ -887,7 +894,7 @@ export default function AIAssistantPanel() {
       <div
         ref={panelRef}
         style={{ width: `${panelWidth}%` }}
-        className={`fixed right-0 top-0 bottom-0 z-40 border-l flex flex-col shadow-lg bg-background transition-transform duration-300 ease-in-out ${streamMode === "stream" ? "border-success/20" : "border-border"} ${open ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
+        className={`fixed right-0 top-0 bottom-0 z-40 border-l flex flex-col shadow-lg bg-background transition-transform duration-300 ease-in-out ${streamMode === "stream" ? "border-success/20" : "border-border"} ${archonShown ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
         onMouseEnter={() => { isHoveringRef.current = true; }}
         onMouseLeave={() => { isHoveringRef.current = false; }}
       >
@@ -915,8 +922,12 @@ export default function AIAssistantPanel() {
         </div>
       </div>
       <button
-        onClick={() => setOpen(true)}
-        className={`fixed right-0 top-1/2 -translate-y-1/2 z-30 rounded-l-md border border-r-0 bg-background px-1.5 py-4 shadow-md hover:bg-accent flex flex-col items-center gap-1 transition-all duration-300 ease-in-out group ${open ? "opacity-0 pointer-events-none" : "opacity-100"
+        onClick={openArchonTab}
+        className={`fixed right-0 top-1/2 z-50 rounded-l-md border border-r-0 bg-background px-1.5 py-4 shadow-md hover:bg-accent flex flex-col items-center gap-1 transition-all duration-300 ease-in-out group ${archonShown
+          ? "opacity-0 pointer-events-none"
+          : open && activePanel === "sql"
+            ? "-translate-y-1/2 opacity-100"
+            : "-translate-y-[calc(100%+12px)] opacity-100"
           }`}
         title="Open A.R.C.H.O.N."
       >

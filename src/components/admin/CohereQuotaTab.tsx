@@ -92,6 +92,7 @@ function useMonthlyCountdown(): { days: number; hours: number; minutes: number }
 }
 
 function DailyUsageChart({ rows }: { rows: DailyQuotaRow[] }) {
+  const [chartMode, setChartMode] = useState<"heatmap" | "log">("heatmap");
   const [tooltip, setTooltip] = useState<{
     x: number; y: number; day: DailyQuotaRow; monthTotal: number; maxDaily: number
   } | null>(null);
@@ -132,6 +133,21 @@ function DailyUsageChart({ rows }: { rows: DailyQuotaRow[] }) {
 
   return (
     <div className="relative">
+      <div className="flex items-center gap-1.5 mb-3">
+        <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mr-1">View:</span>
+        {(["heatmap", "log"] as const).map(m => (
+          <button
+            key={m}
+            onClick={() => setChartMode(m)}
+            className={`px-2.5 py-1 text-[10px] font-medium rounded-md transition-all capitalize ${chartMode === m
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "bg-muted/50 text-muted-foreground hover:bg-muted"
+              }`}
+          >
+            {m === "heatmap" ? "Heatmap" : "Log Scale"}
+          </button>
+        ))}
+      </div>
       <div className="space-y-3">
         {byMonth.map(month => {
           const monthLabel = new Date(month.label + "-01").toLocaleDateString(undefined, { month: "short" });
@@ -142,12 +158,14 @@ function DailyUsageChart({ rows }: { rows: DailyQuotaRow[] }) {
                 <div className="flex h-6 rounded-sm overflow-hidden bg-muted/30">
                   {month.days.map(day => {
                     const rel = day.request_count / maxDaily;
-                    const flex = Math.max(0.5, day.request_count);
                     return (
                       <div
                         key={day.quota_date}
                         className="h-full cursor-pointer transition-all hover:brightness-110 border-r border-white/90 last:border-r-0"
-                        style={{ flex, backgroundColor: usageColor(rel) }}
+                        style={{
+                          flex: chartMode === "heatmap" ? 1 : Math.max(1, Math.log1p(day.request_count)),
+                          backgroundColor: usageColor(rel),
+                        }}
                         onMouseEnter={e => {
                           const rect = e.currentTarget.getBoundingClientRect();
                           setTooltip({
