@@ -26,8 +26,8 @@ import { toast } from "sonner";
 import { StatCard } from "./OverviewTab";
 import { format } from "date-fns";
 import { proxyImageUrl } from "@/lib/image-proxy";
+import { commissionAsFraction, DEFAULT_COMMISSION_PERCENT } from "@/hooks/usePlatformSettings";
 
-const COMMISSION_RATE = 0.15;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 interface PaymentsTabProps {
@@ -124,11 +124,16 @@ export default function PaymentsTab({ userRole }: PaymentsTabProps) {
   const { data, isLoading } = useQuery({
     queryKey: ["admin-payments-v2"],
     queryFn: async () => {
-      const [profilesRes, recordsRes, requestsRes] = await Promise.all([
+      const [profilesRes, recordsRes, requestsRes, rolesRes, settingsRes] = await Promise.all([
         supabase.from("profiles").select("id, full_name, email, phone, is_blocked"),
         supabase.from("payment_records").select("*").order("year", { ascending: false }).order("month", { ascending: false }),
         supabase.from("note_requests").select("teacher_id, total_amount, status, created_at"),
+        supabase.from("user_roles").select("user_id, settings_id"),
+        supabase.from("platform_settings").select("id, commission"),
       ]);
+
+      const settingsMap = new Map((settingsRes.data || []).map(s => [s.id, s.commission]));
+      const teacherSettingsId = new Map((rolesRes.data || []).map(r => [r.user_id, r.settings_id]));
 
       const profiles = (profilesRes.data || []).filter(p =>
         ["teacher", "admin"].some(r => true)
@@ -148,7 +153,10 @@ export default function PaymentsTab({ userRole }: PaymentsTabProps) {
         const completedRevenue = teacherRequests
           .filter(r => r.status === "completed")
           .reduce((s, r) => s + (r.total_amount || 0), 0);
-        const monthlyCommission = completedRevenue * COMMISSION_RATE;
+        const settingsId = teacherSettingsId.get(profile.id);
+        const commissionPercent = settingsId ? settingsMap.get(settingsId) : undefined;
+        const commissionRate = commissionAsFraction(commissionPercent ?? DEFAULT_COMMISSION_PERCENT);
+        const monthlyCommission = completedRevenue * commissionRate;
 
         const unpaidBalance = teacherRecords
           .filter(r => r.status !== "verified")
@@ -178,6 +186,7 @@ export default function PaymentsTab({ userRole }: PaymentsTabProps) {
           isBlocked: profile.is_blocked,
           completedRevenue,
           monthlyCommission,
+          commissionRate,
           unpaidBalance: Math.round(unpaidBalance * 100) / 100,
           lastPaid: lastPaidRecord
             ? `${MONTHS[lastPaidRecord.month - 1]} ${lastPaidRecord.year}`
@@ -325,7 +334,7 @@ export default function PaymentsTab({ userRole }: PaymentsTabProps) {
         <StatCard title="Teachers Tracked" value={data.teacherCount} icon={<BarChart3 className="h-4 w-4" />} sub="With payment records" />
         <StatCard title="Total Unpaid" value={formatPrice(data.totalUnpaid)} icon={<DollarSign className="h-4 w-4 text-warning" />} sub="Outstanding balance" color="text-warning" />
         <StatCard title="Collected This Year" value={formatPrice(data.totalPaidThisYear)} icon={<TrendingUp className="h-4 w-4 text-success" />} sub={`${currentYear}`} color="text-success" />
-        <StatCard title="All-Time Commission" value={formatPrice(data.totalAllTimeCommission)} icon={<DollarSign className="h-4 w-4 text-primary" />} sub={`${COMMISSION_RATE * 100}% of sales`} color="text-primary" />
+        <StatCard title="All-Time Commission" value={formatPrice(data.totalAllTimeCommission)} icon={<DollarSign className="h-4 w-4 text-primary" />} sub="Calculated from each teacher's assigned settings" color="text-primary" />
       </div>
 
       {!isCoadmin && (
@@ -453,7 +462,7 @@ export default function PaymentsTab({ userRole }: PaymentsTabProps) {
                           </TableCell>
                           <TableCell>
                             <span className="font-semibold">{formatPrice(teacher.monthlyCommission)}</span>
-                            <p className="text-[10px] text-muted-foreground">/{MONTHS[currentMonth - 1]} {currentYear}</p>
+                            <p className="text-[10px] text-muted-foreground">/{MONTHS[currentMonth - 1]} {currentYear} · {Math.round(teacher.commissionRate * 100)}%</p>
                           </TableCell>
                           <TableCell>
                             <span className={`font-semibold ${teacher.unpaidBalance > 0 ? "text-destructive" : "text-success"}`}>

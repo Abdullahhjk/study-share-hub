@@ -72,7 +72,7 @@ const sections = [
         {[
           "Teachers may set pricing for premium notes or educational materials.",
           "Teachers must provide accurate bank account or mobile wallet details for receiving payments; the platform is not responsible for errors in teacher-provided payment information.",
-          "The platform may apply a service fee to transactions conducted through the platform.",
+          "The platform may apply a service fee (commission) to transactions conducted through the platform, based on the platform settings assigned to the applicable account.",
           "Payment confirmation information submitted by users may be reviewed for moderation, verification, or dispute-resolution purposes.",
           "Refund requests and payment disputes may be reviewed with administrative oversight where necessary.",
         ].map((item) => (

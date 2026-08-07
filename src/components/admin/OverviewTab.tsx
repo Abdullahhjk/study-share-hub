@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { commissionAsFraction, DEFAULT_COMMISSION_PERCENT } from "@/hooks/usePlatformSettings";
 
 const ROLE_COLORS: Record<string, string> = {
   teacher: "hsl(217, 91%, 50%)",
@@ -80,7 +81,6 @@ const Currencies: Currency[] = [
   { code: "SAR", label: "الریال اسعودی", icon: Coins },
 ];
 
-const TAX_RATE = 0.15;
 const FX_STALE_MS = 6 * 60 * 60 * 1000 + 5 * 60 * 1000;
 
 function maskApi(api: string | null): string {
@@ -108,13 +108,16 @@ export default function OverviewTab() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin-overview"],
     queryFn: async () => {
-      const [usersRes, notesRes, requestsRes, fxRes] = await Promise.all([
-        supabase.from("user_roles").select("role"),
+      const [usersRes, notesRes, requestsRes, fxRes, settingsRes] = await Promise.all([
+        supabase.from("user_roles").select("role, user_id, settings_id"),
         supabase.from("notes").select("id, price, is_free", { count: "exact" }),
-        supabase.from("note_requests").select("status, total_amount"),
+        supabase.from("note_requests").select("teacher_id, status, total_amount"),
         supabase.from("fx_rates").select("*").eq("base_currency", "PKR").single(),
+        supabase.from("platform_settings").select("id, commission"),
       ]);
       const roles = usersRes.data || [];
+      const settingsMap = new Map((settingsRes.data || []).map(s => [s.id, s.commission]));
+      const userSettingsId = new Map(roles.map(r => [r.user_id, r.settings_id]));
       const notes = notesRes.data || [];
       const requests = requestsRes.data || [];
       const totalUsers = roles.length;
@@ -130,10 +133,14 @@ export default function OverviewTab() {
       const notesValue = paidNotes.reduce((s, n) => s + (n.price || 0), 0);
       const completedRequests = requests.filter(r => r.status === "completed");
       const pendingRequests = requests.filter(r => r.status === "pending");
-      const totalRevenue = completedRequests.reduce((s, r) => s + (r.total_amount || 0), 0);
+      const grossRevenue = completedRequests.reduce((s, r) => s + (r.total_amount || 0), 0);
       const pendingRevenue = pendingRequests.reduce((s, r) => s + (r.total_amount || 0), 0);
-      const grossRevenue = totalRevenue;
-      const tax = grossRevenue * TAX_RATE;
+      const tax = completedRequests.reduce((sum, r) => {
+        const settingsId = userSettingsId.get(r.teacher_id);
+        const commissionPercent = settingsId ? settingsMap.get(settingsId) : undefined;
+        const rate = commissionAsFraction(commissionPercent ?? DEFAULT_COMMISSION_PERCENT);
+        return sum + (r.total_amount || 0) * rate;
+      }, 0);
       const netRevenue = grossRevenue - tax;
       return { totalUsers, teachers, pending, admins, coadmins, deleted, blocked, rejected, totalNotes: notes.length, paidNotes: paidNotes.length, freeNotes: freeNotes.length, notesValue, totalRequests: requests.length, completedRequests: completedRequests.length, pendingRequests: pendingRequests.length, grossRevenue, tax, netRevenue, pendingRevenue, fxRate: fxRes.data ?? null };
     },

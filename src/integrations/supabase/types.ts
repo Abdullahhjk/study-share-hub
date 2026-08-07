@@ -821,6 +821,36 @@ export type Database = {
           },
         ]
       }
+      platform_settings: {
+        Row: {
+          code: string
+          commission: number
+          created_at: string
+          id: string
+          max_price: number
+          min_price: number
+          updated_at: string
+        }
+        Insert: {
+          code?: string
+          commission?: number
+          created_at?: string
+          id?: string
+          max_price?: number
+          min_price?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          commission?: number
+          created_at?: string
+          id?: string
+          max_price?: number
+          min_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1002,19 +1032,30 @@ export type Database = {
         Row: {
           id: string
           role: Database["public"]["Enums"]["app_role"]
+          settings_id: string
           user_id: string
         }
         Insert: {
           id?: string
           role: Database["public"]["Enums"]["app_role"]
+          settings_id?: string
           user_id: string
         }
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          settings_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_settings_id_fkey"
+            columns: ["settings_id"]
+            isOneToOne: false
+            referencedRelation: "platform_settings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_settings: {
         Row: {

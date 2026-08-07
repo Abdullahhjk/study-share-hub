@@ -19,12 +19,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getTaxRate } from "@/lib/admin-settings";
+import { commissionAsFraction, DEFAULT_COMMISSION_PERCENT } from "@/hooks/usePlatformSettings";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { MiniStat } from "./OverviewTab";
-
-const TAX_RATE = getTaxRate();
 
 const roleBadgeConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; className: string; label: string }> = {
   admin: { variant: "destructive", className: "bg-red-500/15 text-red-600 hover:bg-red-500/25 border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30", label: "Admin" },
@@ -128,17 +126,22 @@ export default function UsersTab({ userRole }: UsersTabProps) {
     queryKey: ["user-stats", statsUser?.user_id],
     queryFn: async () => {
       const uid = statsUser.user_id;
-      const [notesRes, requestsRes, logsRes] = await Promise.all([
+      const [notesRes, requestsRes, logsRes, roleRes, settingsRes] = await Promise.all([
         supabase.from("notes").select("id, price, is_free", { count: "exact" }).eq("teacher_id", uid),
         supabase.from("note_requests").select("id, total_amount, status").eq("teacher_id", uid),
         supabase.from("activity_logs").select("id", { count: "exact" }).eq("user_id", uid),
+        supabase.from("user_roles").select("settings_id").eq("user_id", uid).maybeSingle(),
+        supabase.from("platform_settings").select("id, commission"),
       ]);
+      const settingsMap = new Map((settingsRes.data || []).map(s => [s.id, s.commission]));
+      const settingsId = roleRes.data?.settings_id;
+      const commissionPercent = settingsId ? settingsMap.get(settingsId) : undefined;
+      const taxRate = commissionAsFraction(commissionPercent ?? DEFAULT_COMMISSION_PERCENT);
       const notes = notesRes.data || [];
       const requests = requestsRes.data || [];
       const completedRevenue = requests.filter(r => r.status === "completed").reduce((s, r) => s + (r.total_amount || 0), 0);
       const pendingRevenue = requests.filter(r => r.status === "pending").reduce((s, r) => s + (r.total_amount || 0), 0);
       const gross = completedRevenue;
-      const taxRate = getTaxRate();
       return { totalNotes: notesRes.count || 0, totalRequests: requests.length, completedRevenue, pendingRevenue, gross, taxRate, platformCharge: gross * taxRate, net: gross - gross * taxRate, activityCount: logsRes.count || 0 };
     },
     enabled: !!statsUser?.user_id,

@@ -43,6 +43,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
 import { useCurrency } from "@/hooks/useCurrency";
+import { usePlatformSettings, commissionAsFraction } from "@/hooks/usePlatformSettings";
 import { proxyImageUrl } from "@/lib/image-proxy";
 
 type ProfileData = {
@@ -150,6 +151,11 @@ export default function YourData() {
   });
 
   const isCoadmin = userRole === "coadmin";
+
+  const { data: platformSettings } = usePlatformSettings(user?.id);
+  const commissionRate = platformSettings
+    ? commissionAsFraction(platformSettings.commission)
+    : 0;
 
   useEffect(() => {
     if (selectedRequest) {
@@ -588,8 +594,8 @@ export default function YourData() {
                         <p className="text-xs text-muted-foreground">Completed Requests</p>
                       </div>
                       <div className="p-4 rounded-lg bg-muted/50">
-                        <p className="text-2xl font-bold text-destructive">{formatPrice(stats?.totalRevenue * 0.15 || 0)}</p>
-                        <p className="text-xs text-muted-foreground">Amount Owed to Platform</p>
+                        <p className="text-2xl font-bold text-destructive">{formatPrice((stats?.totalRevenue || 0) * commissionRate)}</p>
+                        <p className="text-xs text-muted-foreground">Amount Owed to Platform ({Math.round(commissionRate * 100)}%)</p>
                       </div>
                     </div>
                   )}

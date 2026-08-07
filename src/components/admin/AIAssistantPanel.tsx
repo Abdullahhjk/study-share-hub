@@ -122,9 +122,11 @@ export default function AIAssistantPanel() {
       if (!user?.id) return;
       const isAdmin = role === "admin" || role === "coadmin";
 
+      const { data: edgeData, error: edgeError } = await supabase.functions.invoke("cohere-agent", { body: { action: "init" } });
+
       if (isAdmin) {
-        const { data, error: fnError } = await supabase.functions.invoke("cohere-agent", { body: { action: "init" } });
-        if (fnError) throw new Error(fnError.message);
+        if (edgeError) throw new Error(edgeError.message);
+        const data = edgeData ?? {};
         if (data?.error) throw new Error(data.error);
         if (data?.rateLimited) {
           setIsQuotaExhausted(true);
@@ -176,7 +178,9 @@ export default function AIAssistantPanel() {
 
       configRef.current = {
         apiKey: chosen.key,
-        systemPrompt: `You are ARCHON, an AI assistant for NotesSharer. You are helpful, concise, and professional. Current date: ${new Date().toLocaleDateString("en-CA")}.`,
+        systemPrompt: (edgeData && !edgeError && edgeData?.systemPrompt)
+          ? edgeData.systemPrompt
+          : `You are ARCHON, an AI assistant for Scholar Share. You are helpful, concise, and professional. Current date: ${new Date().toLocaleDateString("en-CA")}.`,
         model: "command-a-03-2025",
         quota: 1000,
         keyName: chosen.label,

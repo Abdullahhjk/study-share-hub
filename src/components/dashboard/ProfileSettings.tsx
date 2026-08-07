@@ -23,6 +23,7 @@ import { useQuery, useMutation, useQueryClient, dataTagErrorSymbol } from "@tans
 import { useNavigate } from "react-router-dom";
 import { ClearDataDialog } from "./ClearDataDialog";
 import { TeacherPaymentSettings } from "./TeacherPaymentSettings";
+import { PlatformSettingsInfo } from "./PlatformSettingsInfo";
 import { User } from "@supabase/supabase-js";
 
 const profileSchema = z.object({
@@ -217,6 +218,8 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
 
   return (
     <>
+      <PlatformSettingsInfo userId={userId} />
+
       <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle className="flex flex-wrap items-center gap-2">

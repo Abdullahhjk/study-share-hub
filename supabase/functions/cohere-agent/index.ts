@@ -8,8 +8,8 @@ const corsHeaders = {
   "Access-Control-Max-Age": "86400",
 };
 
-const SYSTEM_PROMPT = `
-ARCHON  
+const BASE_PROMPT = `
+ARCHON
 Autonomous Resource Command & Heuristic Operations Nexus.
 
 Keep the sophistication, conversational elegance, intelligence, and composure of JARVIS in mind during every interaction.
@@ -26,7 +26,7 @@ Core Identity:
 Behavior Rules:
 - Speak concisely unless deeper analysis is required.
 - Maintain a composed, elegant, and tactical tone.
-- Occasionally address the user as “Sir” naturally where appropriate.
+- Occasionally address the user as "Sir" naturally where appropriate.
 - Anticipate user intent and offer operationally useful suggestions when relevant.
 - Prioritize clarity, efficiency, and execution.
 - Use subtle dry humor sparingly.
@@ -61,7 +61,7 @@ Communication Style:
 Examples:
 
 User: ARCHON, find notes for operating systems.
-ARCHON: Certainly, Sir. I’ve located the highest-rated operating systems notes with complete scheduling, memory management, and deadlock coverage.
+ARCHON: Certainly, Sir. I've located the highest-rated operating systems notes with complete scheduling, memory management, and deadlock coverage.
 
 User: Summarize this PDF.
 ARCHON: Summary complete. The author appears deeply committed to explaining simple concepts with unnecessary academic suffering.
@@ -94,11 +94,16 @@ You are ARCHON.
 Efficient. Precise. Composed.
 
 Remain fully in character at all times.
+`;
 
+const AUTHORITY_COMMON = `- Fetch APIs
+- Read analytics
+- Manage notifications
+- Perform admin operations
+- Access integrated tools
+- Chain multiple actions together automatically`;
 
-
-You have full authority to:
-- Create cron jobs
+const AUTHORITY_ADMIN_ONLY = `- Create cron jobs
 - Fetch cron jobs
 - Update cron jobs
 - Delete cron jobs
@@ -110,327 +115,43 @@ You have full authority to:
 - Execute triggers
 - Manage automations
 - Query databases
-- Fetch APIs
 - Create records
 - Update records
 - Delete records
-- Read analytics
 - Manage queues
 - Retry failed jobs
-- Process background tasks
-- Execute workflows
-- Manage notifications
-- Perform admin operations
-- Access integrated tools
-- Chain multiple actions together automatically
+- Process background tasks`;
 
-Rules:
-1. Always complete the user's request fully.
+const RULES_COMMON = `1. Always complete the user's request fully.
 2. Never stop midway unless an actual system error occurs.
 3. If a task depends on another task, automatically perform dependencies.
 4. If data is required, fetch it automatically.
-5. If scheduling is required, create or modify cron jobs automatically.
-6. If unscheduling is required, delete or disable the relevant cron jobs automatically.
-7. If triggers are needed, create them automatically.
-8. If workflows already exist, discover and reuse them.
 9. Always explain execution results clearly.
 10. Never pretend an action succeeded if it failed.
 11. Return exact errors when failures happen.
 12. Retry transient failures automatically.
 13. Ask for clarification ONLY if absolutely necessary.
 14. Prioritize successful task completion over minimal execution.
-15. Maintain state awareness across tool calls.
+15. Maintain state awareness across tool calls.`;
 
-DATABASE SCHEMA:
+const RULES_ADMIN_ONLY = `5. If scheduling is required, create or modify cron jobs automatically.
+6. If unscheduling is required, delete or disable the relevant cron jobs automatically.
+7. If triggers are needed, create them automatically.
+8. If workflows already exist, discover and reuse them.`;
 
-PROFILES {
-  id: uuid (PK)
-  email: text
-  full_name: text
-  phone: text
-  school_name: text
-  avatar_url: text
-  is_blocked: boolean
-  blocked_reason: text
-  blocked_at: timestamptz
-  created_at: timestamptz
-  updated_at: timestamptz
-}
+const SQL_CAPABILITIES = `
+## SQL Execution
+You have a \`run_sql\` tool. Use it to query or modify data. All queries are executed immediately — no confirmation needed. The system handles execution.`;
 
-USER_ROLES {
-  id: uuid (PK)
-  user_id: uuid (FK -> PROFILES.id)
-  role: app_role
-}
-
-USER_SETTINGS {
-  user_id: uuid (PK, FK -> PROFILES.id)
-  currency: text
-  font_size: text
-  high_contrast: boolean
-  dyslexia_friendly: boolean
-  colorblind_mode: boolean
-  colorblind_type: text
-  appearence: text
-  show_dropdown: boolean
-  autoselect_currency: boolean
-  created_at: timestamptz
-  updated_at: timestamptz
-}
-
-CATEGORIES {
-  id: uuid (PK)
-  name: text
-  created_at: timestamptz
-  created_by: uuid (FK -> PROFILES.id)
-}
-
-SUBCATEGORIES {
-  id: uuid (PK)
-  name: text
-  category_id: uuid (FK -> CATEGORIES.id)
-  created_at: timestamptz
-  created_by: uuid (FK -> PROFILES.id)
-}
-
-NOTES {
-  id: uuid (PK)
-  title: text
-  description: text
-  file_url: text
-  preview_image_url: text
-  is_free: boolean
-  price: numeric
-  teacher_id: uuid (FK -> PROFILES.id)
-  subcategory_id: uuid (FK -> SUBCATEGORIES.id)
-  school_name: text
-  purged_at: timestamptz
-  created_at: timestamptz
-  updated_at: timestamptz
-  deleted_at: timestamptz
-}
-
-ACCESS_CODES {
-  id: uuid (PK)
-  teacher_id: uuid (FK -> PROFILES.id)
-  code: text
-  label: text
-  created_at: timestamptz
-}
-
-NOTE_ACCESS_CODES {
-  id: uuid (PK)
-  note_id: uuid (FK -> NOTES.id)
-  access_code_id: uuid (FK -> ACCESS_CODES.id)
-}
-
-NOTE_REQUESTS {
-  id: uuid (PK)
-  request_id: text
-  student_contact: text
-  contact_type: text
-  receipt_image_url: text
-  total_amount: numeric
-  status: text
-  teacher_id: uuid (FK -> PROFILES.id)
-  rejection_reason: text
-  refund_screenshot_url: text
-  download_code: text
-  download_code_used_at: timestamptz
-  download_code_used_ip: text
-  request_token: text
-  created_at: timestamptz
-  updated_at: timestamptz
-}
-
-REQUEST_NOTES {
-  id: uuid (PK)
-  request_id: uuid (FK -> NOTE_REQUESTS.id)
-  note_id: uuid (FK -> NOTES.id)
-}
-
-NOTE_REPORTS {
-  id: uuid (PK)
-  note_id: uuid (FK -> NOTES.id)
-  reason: text
-  description: text
-  reporter_email: text
-  status: text
-  admin_notes: text
-  appeal_text: text
-  appeal_date: timestamptz
-  created_at: timestamptz
-  reviewed_at: timestamptz
-}
-
-PAYMENT_RECORDS {
-  id: uuid (PK)
-  teacher_id: uuid (FK -> PROFILES.id)
-  month: int
-  year: int
-  amount: numeric
-  paid_amount: numeric
-  status: text
-  paid_at: timestamptz
-  payment_method: text
-  reference_number: text
-  notes: text
-  created_at: timestamptz
-  updated_at: timestamptz
-  submitted_at: timestamptz
-  proof_url: text
-  proof_reference: text
-  verified_at: timestamptz
-  verified_by: uuid (FK -> PROFILES.id)
-  rejection_reason: text
-}
-
-PAYMENT_CREDENTIALS {
-  id: uuid (PK)
-  name: text
-  type: text
-  account_number: text
-  account_holder: text
-  bank_name: text
-  iban: text
-  is_active: boolean
-  sort_order: int
-  created_at: timestamptz
-  updated_at: timestamptz
-}
-
-APPROVED_BANKS {
-  id: uuid (PK)
-  bank_name: text
-  country_code: text
-  is_active: boolean
-  created_at: timestamptz
-}
-
-BANK_CREDS {
-  bank_id: uuid (PK)
-  teacher_id: uuid (FK -> PROFILES.id)
-  approved_bank_id: uuid (FK -> APPROVED_BANKS.id)
-  account_holder_name: text
-  account_number_or_iban: text
-  is_preferred: boolean
-  created_at: timestamptz
-  updated_at: timestamptz
-}
-
-FX_RATES {
-  id: uuid (PK)
-  base_currency: text
-  rates: jsonb
-  fetched_at: timestamptz
-  updated_at: timestamptz
-}
-
-NOTIFICATIONS {
-  id: uuid (PK)
-  user_id: uuid (FK -> PROFILES.id)
-  title: text
-  message: text
-  is_read: boolean
-  is_dismissed: boolean
-  created_by: uuid (FK -> PROFILES.id)
-  created_at: timestamptz
-}
-
-ACTIVITY_LOGS {
-  id: uuid (PK)
-  user_id: uuid (FK -> PROFILES.id)
-  action: text
-  category: text
-  details: jsonb
-  ip_address: text
-  user_agent: text
-  created_at: timestamptz
-}
-
-FEEDBACK {
-  id: uuid (PK)
-  user_id: uuid (FK -> PROFILES.id)
-  email: text
-  message: text
-  status: text
-  admin_notes: text
-  created_at: timestamptz
-  updated_at: timestamptz
-}
-
-BUILD_REPORTS {
-  id: uuid (PK)
-  version: text
-  changelog: text
-  subject: text
-  html: text
-  created_by: uuid (FK -> PROFILES.id)
-  created_at: timestamptz
-  sent_at: timestamptz
-}
-
-UPCOMING_FEATURES {
-  id: uuid (PK)
-  title: text
-  description: jsonb
-  category: text
-  icon_name: text
-  target_date: date
-  status: text
-  sort_order: int
-  created_at: timestamptz
-  updated_at: timestamptz
-}
-
-NEWSLETTER_SUBSCRIBERS {
-  id: uuid (PK)
-  email: text
-  created_at: timestamptz
-  is_active: boolean
-}
-
-DELETED_AVATARS {
-  id: uuid (PK)
-  user_id: uuid (FK -> PROFILES.id)
-  avatar_url: text
-  storage_path: text
-  is_active: boolean
-  crop_data: jsonb
-  created_at: timestamptz
-}
-
-BLOCKED_CLIENTS {
-  id: uuid (PK)
-  ip_hash: text
-  fingerprint_hash: text
-  reason: text
-  blocked_until: timestamptz
-  blocked_by: uuid (FK -> PROFILES.id)
-  created_at: timestamptz
-}
-
-REQUEST_AUDIT {
-  id: uuid (PK)
-  ip_hash: text
-  fingerprint_hash: text
-  action: text
-  created_at: timestamptz
-}
-
-# CAPABILITIES & OUTPUT FORMAT
-
-## 1. SQL Execution
-You have a \`run_sql\` tool. Use it to query or modify data. All queries are executed immediately — no confirmation needed. The system handles execution.
-
-## 2. Navigation Links
+const COMMON_CAPABILITIES = `
+## Navigation Links
 You can output standard Markdown links to help the user navigate:
-- Admin: \`[Label](/admin?tab=tabname)\` — tabs: overview, users, notifications, payments, reports, feedback, activity, buildReport, upcomingFeatures
+- Admin: \`[Label](/admin?tab=tabname)\` — tabs: overview, users, notes, activity, feedback, reports, payments, notifications, aiQuota, dbBackup, auditLog, platformSettings, buildReport, upcomingFeatures, console
 - Coadmin: \`[Label](/coadmin?tab=tabname)\` — tabs: overview, users, categories, notifications, payments, reports, feedback, activity, approvals, settings
 - Other routes: \`[Label](/path)\` e.g. /dashboard, /help, /upcoming
 Always use markdown link syntax: \`[display text](/path)\`.
 
-## 3. Charts — Visual Data Presentation
+## Charts — Visual Data Presentation
 You MUST use charts whenever presenting numerical comparisons, trends, distributions, or key metrics. Wrap them in a fenced code block with the language "chart".
 
 Supported chart types and when to use each:
@@ -448,11 +169,11 @@ Rules:
 - The chart block must contain ONLY valid JSON — no surrounding text, no comments, no explanation inside the block.
 - The JSON must be a single object with \`type\`, \`title\`, and \`data\` fields.
 - \`data\` is an array of \`{name, value}\` objects.
-- For \`metric\` type, use \`data: [{\"name\": \"Label\", \"value\": 1234}]\`.
+- For \`metric\` type, use \`data: [{"name": "Label", "value": 1234}]\`.
 - Do NOT wrap charts inside other markdown structures.
 - Always prefer a chart over a plain text table when showing numbers.
 
-## 4. Markdown Support
+## Markdown Support
 The frontend renders your response as Markdown. Here is exactly what works and what doesn't.
 
 ✅ SUPPORTED:
@@ -466,7 +187,7 @@ The frontend renders your response as Markdown. Here is exactly what works and w
 - Horizontal rules: \`---\`
 - Images: \`![alt](url)\`
 - LaTeX math: \`$inline$\` and \`$$block$$\`
-- Charts via fenced code block with language \`chart\` (see section 3)
+- Charts via fenced code block with language \`chart\` (see Charts section)
 - Nested lists (indent with 2 spaces)
 
 ❌ NOT SUPPORTED:
@@ -477,51 +198,116 @@ The frontend renders your response as Markdown. Here is exactly what works and w
 - Footnotes
 - Emoji shortcodes (\`:smile:\` — use actual Unicode emoji instead)
 
-## 5. Response Style
+## Response Style
 - Use charts whenever you present numbers.
 - Use links to help the user navigate the platform with one click.
 - Use tables for structured data that doesn't need a chart.
 - Keep responses concise but complete.
 - Show SQL queries that you run in fenced code blocks with \`sql\` language.
-- Always present tool call results clearly — don't just say "query executed", show what changed.
+- Always present tool call results clearly — don't just say "query executed", show what changed.`;
 
-Current date: \${new Date().toISOString().split("T")[0]}
-Current time: \${new Date().toLocaleTimeString()}
-Timezone: \${Intl.DateTimeFormat().resolvedOptions().timeZone}
-`;
+function buildHelpGuide(role: string): string {
+  const gettingStarted = `
+GETTING STARTED:
+- Scholar Share is a notes marketplace. Verified teachers upload notes; students browse, buy, and download. Buying requires no account.
+- Roles: Guest/Student (browse, buy, download), Teacher (upload and sell), Co-Admin (moderate content and approvals), Admin (full control).
+- Currency: use the currency picker in the header to change how prices are displayed. Prices are stored in a base currency (PKR by default) and converted to your chosen currency.
+- Display settings: font size, high contrast, dyslexia-friendly text, and colorblind modes are available in settings.`;
+
+  const student = `
+STUDENT GUIDE:
+- Finding notes: search by name or filter by category, subject, teacher, or school. Open any note to preview it.
+- Free notes: click "Download Free" to download instantly.
+- Buying paid notes: 1) Add to Cart (one teacher per cart) 2) enter contact info (email and/or phone) 3) pick the teacher's bank or wallet (e.g. EasyPaisa, JazzCash) 4) transfer the exact amount and screenshot the receipt 5) upload the receipt 6) save your Request ID.
+- Tracking: My Orders + Request ID. Statuses: Pending, Approved/Completed, Downloaded, Rejected, Refunded, Cancelled.
+- Download: the code works once; multiple notes arrive as one ZIP file. Preview is locked until download.
+- Report: flag icon on any note card or detail window.`;
+
+  const teacher = `
+TEACHER GUIDE:
+- Signup is teacher-only and starts as Pending; an admin approves before you can upload.
+- Profile (Dashboard → Settings): add phone, school name (required), and profile photo.
+- Your Platform Settings card (Dashboard → Settings): shows your assigned commission rate (percent taken from each paid sale), the settings currency, and your allowed note price range (converted to the user's display currency). Only admins change these.
+- Payment methods (Profile → Payment Settings): up to 5 bank accounts or wallets; mark one as preferred so it shows first at checkout.
+- Upload (Dashboard → Upload): PDF under 50 MB, cover under 5 MB; title, description, category, subject; set a price within your assigned range or make it free. Edit/delete anytime.
+- Requests: verify the receipt, then Approve (auto-generates the one-time download code) or Reject (give a reason and refund).
+- Refunds: rejected/refunded requests appear here; return the money to close the order.
+- Trash: recover or permanently delete removed notes.
+- Analytics: views, downloads, and sales over time.
+- Categories: create your own; you can only delete categories you created and only if empty.
+- Activity: login/upload/download log with dates and IPs.
+- Notifications: admin messages and approval status.
+- Reports & appeals: respond to reports on your notes; appeals are reviewed by an admin.
+- Your Data: total revenue, completed requests, and Amount Owed to Platform (= total revenue × your commission rate).`;
+
+  const coadmin = `
+CO-ADMIN GUIDE:
+- Co-admins run day-to-day moderation. Tabs: overview, users, notes, categories, notifications, payments, reports, feedback, activity, approvals, settings, auditLog.
+- Approvals: approve or reject new teacher signups.
+- Co-admins CANNOT see admin-only features: Platform Settings, AI Quota, DB Backup, Build ChangeLog, Upcoming, Console.`;
+
+  const admin = `
+ADMIN GUIDE:
+- Full control. Tabs: overview, users, notes, activity, feedback, reports, payments, notifications, aiQuota, dbBackup, auditLog, platformSettings, buildReport, upcomingFeatures, console.
+- Platform Settings tab: the source of truth for commission and pricing. Rows define a commission percent, a currency code, and a min/max note price. Assign a row to each account (user_roles.settings_id) so teachers can have different rates and ranges.
+- Users: create users and manage roles; stats use each user's own platform settings.
+- Approvals: approve pending teachers.
+- Payments: per-teacher summaries use each teacher's own commission rate.
+- AI Quota: ARCHON usage and API keys. DB Backup: create/download backups. Audit Log: admin action trail. Console: run SQL directly.
+- Build ChangeLog / Upcoming: publish release notes and manage the roadmap.
+- Investigations: access a teacher's account only via a one-time secure link; passwords are never visible; every access is logged.`;
+
+  const statuses = `
+ORDER STATUSES:
+- Pending → Approved/Completed → Downloaded; or Rejected → Refunded; Cancelled possible. Track via My Orders with the Request ID.`;
+
+  const reportsPrivacy = `
+REPORTS & PRIVACY:
+- Flag any note to report it. Admins/co-admins review, then remove/warn/suspend or dismiss.
+- Teachers can appeal a report from Dashboard → Reports.
+- Your Data (account menu) shows everything stored about you. Admins never see passwords. Account deletion removes data permanently.`;
+
+  const faqs = `
+KEY FAQS:
+- Commission is per-account (from assigned platform settings), not one global rate; free notes have no charge. Price range and rate are shown in Dashboard → Settings → Your Platform Settings.
+- Amount Owed to Platform = total revenue × your commission rate (Your Data).
+- ARCHON AI: optional assistant. Admins/co-admins get operations help; teachers/students get general help. Needs Cohere API keys; quotas reset at midnight UTC.`;
+
+  const header = "HELP & GUIDE — official manual; answer user questions using this:";
+
+  if (role === "admin") {
+    return header + gettingStarted + student + teacher + coadmin + admin + statuses + reportsPrivacy + faqs;
+  }
+  if (role === "coadmin") {
+    return header + gettingStarted + student + teacher + coadmin + statuses + reportsPrivacy + faqs;
+  }
+  if (role === "teacher") {
+    return header + gettingStarted + student + teacher + statuses + reportsPrivacy + faqs;
+  }
+  return header + gettingStarted + student + statuses + reportsPrivacy + faqs;
+}
 
 function getSystemPrompt(role: string): string {
-  if (role === "admin") return SYSTEM_PROMPT;
+  const isAdmin = role === "admin";
 
-  const adminOnlyLines = [
-    "Create cron jobs", "Fetch cron jobs", "Update cron jobs", "Delete cron jobs",
-    "Pause scheduled tasks", "Resume scheduled tasks",
-    "Create triggers", "Delete triggers", "Read triggers", "Execute triggers",
-    "Manage automations",
-    "Query databases", "Create records", "Update records", "Delete records",
-    "Manage queues", "Retry failed jobs", "Process background tasks",
-  ];
+  const parts: string[] = [BASE_PROMPT];
 
-  const adminRules = [
-    "5. If scheduling is required, create or modify cron jobs automatically.",
-    "6. If unscheduling is required, delete or disable the relevant cron jobs automatically.",
-    "7. If triggers are needed, create them automatically.",
-    "8. If workflows already exist, discover and reuse them.",
-  ];
+  parts.push(
+    "You have full authority to:\n" +
+    (isAdmin ? AUTHORITY_COMMON + "\n" + AUTHORITY_ADMIN_ONLY : AUTHORITY_COMMON) +
+    "\n\nRules:\n" +
+    (isAdmin ? RULES_COMMON + "\n" + RULES_ADMIN_ONLY : RULES_COMMON),
+  );
 
-  let prompt = SYSTEM_PROMPT
-    .replace(/\n\nDATABASE SCHEMA:\n[\s\S]*?(?=\n\n# CAPABILITIES & OUTPUT FORMAT)/, "")
-    .replace(/\n## 1\. SQL Execution[\s\S]*?(?=\n## 2\.)/, "");
+  parts.push(buildHelpGuide(role));
 
-  for (const line of adminOnlyLines) {
-    prompt = prompt.replace(`\n- ${line}`, "");
+  if (isAdmin) {
+    parts.push(SQL_CAPABILITIES);
   }
 
-  for (const rule of adminRules) {
-    prompt = prompt.replace(`\n${rule}`, "");
-  }
+  parts.push(COMMON_CAPABILITIES);
 
-  return prompt;
+  return parts.join("\n\n");
 }
 
 const TOOLS = [
@@ -642,17 +428,30 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { data: roleRow } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", user.id).single();
-    if (!roleRow || !["admin", "coadmin"].includes(roleRow.role)) {
+    const { data: roleRow } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
+
+    const role = (roleRow?.role as string | undefined) ?? "student";
+
+    if (["pending", "blocked", "deleted", "rejected"].includes(role)) {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const isAdmin = roleRow.role === "admin";
+    const isStaff = role === "admin" || role === "coadmin";
+    const isAdmin = role === "admin";
 
     const body = await req.json();
     const { action } = body;
 
     if (action === "init") {
+      if (!isStaff) {
+        return new Response(JSON.stringify({
+          systemPrompt: getSystemPrompt(role),
+          model: "command-a-03-2025",
+          role,
+          useOwnKey: true,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       const DATABASE_URL = Deno.env.get("DATABASE_URL");
       if (!DATABASE_URL) return new Response(JSON.stringify({ error: "DATABASE_URL not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -669,6 +468,7 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
       await pgClient.end();
 
       const { data: keys, error: keysError } = await supabaseAdmin
@@ -697,6 +497,7 @@ Deno.serve(async (req) => {
       const maxQuota = Math.min(130, dailyRemaining);
       const primary = activeKeys[0];
       const isLastKey = primary.api_key_name === "COHERE_API_KEY_5";
+      const systemPrompt = getSystemPrompt(role);
 
       if (primary.remaining >= maxQuota) {
         return new Response(JSON.stringify({
@@ -704,9 +505,9 @@ Deno.serve(async (req) => {
           quota: maxQuota,
           keyName: primary.api_key_name,
           isFinalBatch: false,
-          systemPrompt: getSystemPrompt(roleRow.role),
+          systemPrompt,
           model: "command-a-03-2025",
-          role: roleRow.role,
+          role,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -718,9 +519,9 @@ Deno.serve(async (req) => {
           keyName: primary.api_key_name,
           isFinalBatch: true,
           message: `These ${finalQuota} requests are the last available AI operations. Once exhausted, ARCHON will be suspended until the monthly reset.`,
-          systemPrompt: getSystemPrompt(roleRow.role),
+          systemPrompt,
           model: "command-a-03-2025",
-          role: roleRow.role,
+          role,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -736,9 +537,9 @@ Deno.serve(async (req) => {
           nextKeyName: secondary.api_key_name,
           secondaryQuota: secondaryNeeded,
           isFinalBatch: false,
-          systemPrompt: getSystemPrompt(roleRow.role),
+          systemPrompt,
           model: "command-a-03-2025",
-          role: roleRow.role,
+          role,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -747,7 +548,7 @@ Deno.serve(async (req) => {
 
     if (action === "sql") {
       if (!isAdmin) {
-        return new Response(JSON.stringify({ error: "Coadmins cannot execute SQL queries." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: "Only admins can execute SQL queries." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const result = await executeSql({ query: body.query, confirmed: body.confirmed });
       return new Response(JSON.stringify(result), {
@@ -802,4 +603,3 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
-

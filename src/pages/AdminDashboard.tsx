@@ -232,7 +232,7 @@ export default function AdminDashboard() {
     { value: "dbBackup", label: "DB Backup", icon: <Database className="h-4 w-4" />, adminOnly: true },
 
     { value: "auditLog", label: "Audit Log", icon: <ScrollText className="h-4 w-4" />, adminOnly: true },
-    { value: "platformSettings", label: "Platform Settings (Stub)", icon: <Settings className="h-4 w-4" />, adminOnly: true },
+    { value: "platformSettings", label: "Platform Settings", icon: <Settings className="h-4 w-4" />, adminOnly: true },
     { value: "buildReport", label: "Build ChangeLog", icon: <Hammer className="h-4 w-4" />, adminOnly: true },
     { value: "upcomingFeatures", label: "Upcoming", icon: <Rocket className="h-4 w-4" />, adminOnly: true },
     { value: "console", label: "Console", icon: <Terminal className="h-4 w-4" />, adminOnly: true },

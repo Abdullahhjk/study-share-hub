@@ -24,9 +24,12 @@ import {
   ChevronRight,
   LayoutGrid,
   MousePointerClick,
+  Table2,
+  Workflow,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAIPanel } from "./AIPanelContext";
+import SqlResultGraph from "./SqlResultGraph";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -75,6 +78,13 @@ function loadHistory(): HistoryEntry[] {
 
 const SQL_TEMPLATES: { name: string; query: string }[] = [
   { name: "Select table by name", query: "SELECT * FROM table_name LIMIT 100;" },
+  {
+    name: "Query-Driven Relational Data Mapping Engine", query: `SELECT * 
+FROM user_roles 
+JOIN profiles 
+  ON user_roles.user_id = profiles.id 
+JOIN platform_settings 
+  ON user_roles.settings_id = platform_settings.id;`},
   { name: "Select specific columns", query: "SELECT column1, column2 FROM table_name LIMIT 100;" },
   { name: "Find by ID", query: "SELECT * FROM table_name WHERE id = 'your-id';" },
   { name: "Filter rows", query: "SELECT * FROM table_name WHERE column_name = 'value';" },
@@ -252,6 +262,7 @@ function CellValue({ val }: { val: unknown }) {
 
 function SelectResultTable({ result }: { result: Extract<SqlResult, { kind: "select" }> }) {
   const [copied, setCopied] = useState(false);
+  const [view, setView] = useState<"table" | "graph">("table");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [filter, setFilter] = useState("");
@@ -345,111 +356,137 @@ function SelectResultTable({ result }: { result: Extract<SqlResult, { kind: "sel
           />
         </div>
         <span className="text-[10px] text-muted-foreground shrink-0">
-          {filteredRows.length} / {result.rowCount} rows
+          {view === "graph" ? result.rowCount : filteredRows.length} / {result.rowCount} rows
         </span>
+        <div className="flex items-center gap-0.5 rounded-md border border-border bg-background p-0.5 shrink-0">
+          <button
+            onClick={() => setView("table")}
+            className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${view === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            title="Table view"
+          >
+            <Table2 className="h-3 w-3" />
+            Table
+          </button>
+          <button
+            onClick={() => setView("graph")}
+            className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${view === "graph" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            title="Flow graph view (dedupes repeated values, links rows by shared keys)"
+          >
+            <Workflow className="h-3 w-3" />
+            Graph
+          </button>
+        </div>
       </div>
-      <div className="overflow-x-auto max-h-64 overflow-y-auto">
-        <table className="w-full text-xs font-mono">
-          <thead className="bg-muted sticky top-0 z-10">
-            <tr>
-              {result.columns.map((col) => (
-                <th
-                  key={col}
-                  style={colWidths[col] ? { minWidth: `${colWidths[col]}px` } : undefined}
-                  className="relative border-b border-border p-0"
-                >
-                  <button
-                    onClick={() => handleSort(col)}
-                    className="flex w-full items-center gap-1 px-2.5 py-1.5 text-left font-semibold text-muted-foreground hover:text-foreground transition-colors"
-                    title="Sort column"
-                  >
-                    <span className="truncate">{col}</span>
-                    {sortKey === col ? (
-                      sortDir === "asc" ? (
-                        <ArrowUp className="h-3 w-3 shrink-0 text-primary" />
-                      ) : (
-                        <ArrowDown className="h-3 w-3 shrink-0 text-primary" />
-                      )
-                    ) : (
-                      <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
-                    )}
-                  </button>
-                  <span
-                    onMouseDown={(e) => startResize(e, col)}
-                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/40 transition-colors"
-                    title="Resize column"
-                  />
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {pageRows.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={result.columns.length}
-                  className="px-2.5 py-3 text-center text-[10px] text-muted-foreground font-sans"
-                >
-                  No rows match the filter.
-                </td>
-              </tr>
-            ) : (
-              pageRows.map((row, i) => (
-                <tr key={i} className="odd:bg-background even:bg-muted/40">
+      {view === "graph" ? (
+        <SqlResultGraph columns={result.columns} rows={result.rows} />
+      ) : (
+        <>
+          <div className="overflow-x-auto max-h-64 overflow-y-auto">
+            <table className="w-full text-xs font-mono">
+              <thead className="bg-muted sticky top-0 z-10">
+                <tr>
                   {result.columns.map((col) => (
-                    <td
+                    <th
                       key={col}
                       style={colWidths[col] ? { minWidth: `${colWidths[col]}px` } : undefined}
-                      className={cn(
-                        "border-b border-border/50 px-2.5 py-1.5 align-top",
-                        row[col] === null && "text-muted-foreground/60"
-                      )}
+                      className="relative border-b border-border p-0"
                     >
-                      <CellValue val={row[col]} />
-                    </td>
+                      <button
+                        onClick={() => handleSort(col)}
+                        className="flex w-full items-center gap-1 px-2.5 py-1.5 text-left font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                        title="Sort column"
+                      >
+                        <span className="truncate">{col}</span>
+                        {sortKey === col ? (
+                          sortDir === "asc" ? (
+                            <ArrowUp className="h-3 w-3 shrink-0 text-primary" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3 shrink-0 text-primary" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
+                        )}
+                      </button>
+                      <span
+                        onMouseDown={(e) => startResize(e, col)}
+                        className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/40 transition-colors"
+                        title="Resize column"
+                      />
+                    </th>
                   ))}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-      <div className="bg-muted px-2.5 py-1 text-[10px] text-muted-foreground border-t border-border flex items-center justify-between gap-2">
-        <span className="tabular-nums">
-          {filteredRows.length === 0 ? "0 rows" : `Showing ${rangeStart}-${rangeEnd} of ${filteredRows.length} rows`}
-        </span>
-        {totalPages > 1 && (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setPage(safePage - 1)}
-              disabled={safePage === 0}
-              className="flex items-center rounded px-1 py-0.5 border border-border hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
-              title="Previous page"
-            >
-              <ChevronLeft className="h-3 w-3" />
-            </button>
-            <span className="px-1">
-              {safePage + 1} / {totalPages}
+              </thead>
+              <tbody>
+                {pageRows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={result.columns.length}
+                      className="px-2.5 py-3 text-center text-[10px] text-muted-foreground font-sans"
+                    >
+                      No rows match the filter.
+                    </td>
+                  </tr>
+                ) : (
+                  pageRows.map((row, i) => (
+                    <tr key={i} className="odd:bg-background even:bg-muted/40">
+                      {result.columns.map((col) => (
+                        <td
+                          key={col}
+                          style={colWidths[col] ? { minWidth: `${colWidths[col]}px` } : undefined}
+                          className={cn(
+                            "border-b border-border/50 px-2.5 py-1.5 align-top",
+                            row[col] === null && "text-muted-foreground/60"
+                          )}
+                        >
+                          <CellValue val={row[col]} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="bg-muted px-2.5 py-1 text-[10px] text-muted-foreground border-t border-border flex items-center justify-between gap-2">
+            <span className="tabular-nums">
+              {filteredRows.length === 0 ? "0 rows" : `Showing ${rangeStart}-${rangeEnd} of ${filteredRows.length} rows`}
             </span>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(safePage - 1)}
+                  disabled={safePage === 0}
+                  className="flex items-center rounded px-1 py-0.5 border border-border hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                  title="Previous page"
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                </button>
+                <span className="px-1">
+                  {safePage + 1} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage(safePage + 1)}
+                  disabled={safePage >= totalPages - 1}
+                  className="flex items-center rounded px-1 py-0.5 border border-border hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                  title="Next page"
+                >
+                  <ChevronRight className="h-3 w-3" />
+                </button>
+              </div>
+            )}
             <button
-              onClick={() => setPage(safePage + 1)}
-              disabled={safePage >= totalPages - 1}
-              className="flex items-center rounded px-1 py-0.5 border border-border hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
-              title="Next page"
+              onClick={copyJson}
+              className="flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-black/10 transition-colors"
+              title="Copy as JSON"
             >
-              <ChevronRight className="h-3 w-3" />
+              {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? "Copied" : "JSON"}
             </button>
           </div>
-        )}
-        <button
-          onClick={copyJson}
-          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-black/10 transition-colors"
-          title="Copy as JSON"
-        >
-          {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-          {copied ? "Copied" : "JSON"}
-        </button>
-      </div>
+        </>
+      )}
     </div>
   );
 }
