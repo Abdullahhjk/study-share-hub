@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { trackFn } from "../_shared/telemetry.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,7 +12,7 @@ const supabaseAdmin = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
-Deno.serve(async (req: Request) => {
+Deno.serve(trackFn("image-preview-proxy", async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -115,4 +116,4 @@ Deno.serve(async (req: Request) => {
       }
     );
   }
-});
+}));

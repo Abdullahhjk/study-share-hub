@@ -220,7 +220,7 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
     <>
       <PlatformSettingsInfo userId={userId} />
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden mt-4">
         <CardHeader>
           <CardTitle className="flex flex-wrap items-center gap-2">
             <User2 className="h-5 w-5" />

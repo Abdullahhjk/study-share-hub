@@ -21,6 +21,7 @@ export interface Teacher {
   full_name: string;
   phone: string | null;
   school_name: string | null;
+  is_verified: boolean;
   created_at: string;
   updated_at: string;
 }

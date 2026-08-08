@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
+import { SystemEventReporter } from "@/components/SystemEventReporter";
 import { ColorblindFilters } from "@/components/ColorblindFilters";
 import { CurrencyProvider } from "@/components/providers/CurrencyProvider";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -112,6 +113,7 @@ function AppContent() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Toaster />
       <Sonner />
+      <SystemEventReporter />
 
       <div style={{
         maxWidth: panelOpen ? `${100 - panelWidth}vw` : "100%",

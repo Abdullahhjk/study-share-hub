@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { trackFn } from "../_shared/telemetry.ts";
 
 const ALLOWED_ORIGINS = [
   "https://scholar-share.netlify.app",
@@ -13,7 +14,7 @@ const corsHeaders = (origin: string) => ({
 
 const VALID_ROLES = ["admin", "coadmin", "teacher", "pending", "rejected", "deleted", "blocked"];
 
-Deno.serve(async (req) => {
+Deno.serve(trackFn("admin-change-role", async (req) => {
   const origin = req.headers.get("origin") || "";
   const headers = corsHeaders(origin);
 
@@ -100,4 +101,4 @@ Deno.serve(async (req) => {
       headers: { ...headers, "Content-Type": "application/json" },
     });
   }
-});
+}));

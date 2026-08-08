@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { trackFn } from "../_shared/telemetry.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,7 +9,7 @@ const corsHeaders = {
 
 const COHERE_API_KEY = Deno.env.get("COHERE_API_KEY");
 
-Deno.serve(async (req) => {
+Deno.serve(trackFn("ai-build-report-email", async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       headers: corsHeaders,
@@ -238,4 +239,4 @@ Changelog: ${changelog}
       }
     );
   }
-});
+}));

@@ -861,9 +861,11 @@ export type Database = {
           full_name: string
           id: string
           is_blocked: boolean
+          is_verified: boolean
           phone: string | null
           school_name: string | null
           updated_at: string
+          verified_at: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -874,9 +876,11 @@ export type Database = {
           full_name: string
           id: string
           is_blocked?: boolean
+          is_verified?: boolean
           phone?: string | null
           school_name?: string | null
           updated_at?: string
+          verified_at?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -887,9 +891,11 @@ export type Database = {
           full_name?: string
           id?: string
           is_blocked?: boolean
+          is_verified?: boolean
           phone?: string | null
           school_name?: string | null
           updated_at?: string
+          verified_at?: string | null
         }
         Relationships: []
       }
@@ -985,6 +991,120 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sys_snapshots: {
+        Row: {
+          day: string
+          estimated_rows: number
+          table_name: string
+          total_size: number
+        }
+        Insert: {
+          day?: string
+          estimated_rows: number
+          table_name: string
+          total_size: number
+        }
+        Update: {
+          day?: string
+          estimated_rows?: number
+          table_name?: string
+          total_size?: number
+        }
+        Relationships: []
+      }
+      system_events: {
+        Row: {
+          created_at: string
+          id: number
+          level: string
+          message: string
+          metadata: Json
+          source: string
+          stack: string | null
+          url: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          level?: string
+          message: string
+          metadata?: Json
+          source?: string
+          stack?: string | null
+          url?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          level?: string
+          message?: string
+          metadata?: Json
+          source?: string
+          stack?: string | null
+          url?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      teacher_verification_requests: {
+        Row: {
+          created_at: string
+          document_name: string | null
+          document_type: string
+          document_url: string
+          id: string
+          review_feedback: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          document_name?: string | null
+          document_type: string
+          document_url: string
+          id?: string
+          review_feedback?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          document_name?: string | null
+          document_type?: string
+          document_url?: string
+          id?: string
+          review_feedback?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_verification_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_verification_requests_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1330,6 +1450,28 @@ export type Database = {
       }
       dearmor: { Args: { "": string }; Returns: string }
       delete_old_purged_rows: { Args: never; Returns: undefined }
+      expire_teacher_verification: {
+        Args: { p_request_id: string }
+        Returns: {
+          created_at: string
+          document_name: string | null
+          document_type: string
+          document_url: string
+          id: string
+          review_feedback: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          teacher_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "teacher_verification_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       gen_random_uuid: { Args: never; Returns: string }
       gen_salt: { Args: { "": string }; Returns: string }
       generate_monthly_payment_record: {
@@ -1344,6 +1486,7 @@ export type Database = {
           avatar_url: string
           full_name: string
           id: string
+          is_verified: boolean
           school_name: string
         }[]
       }
@@ -1452,6 +1595,7 @@ export type Database = {
           avatar_url: string
           full_name: string
           id: string
+          is_verified: boolean
           school_name: string
         }[]
       }
@@ -1463,6 +1607,17 @@ export type Database = {
           p_ip_address?: string
           p_user_agent?: string
           p_user_id: string
+        }
+        Returns: undefined
+      }
+      log_system_event: {
+        Args: {
+          p_level: string
+          p_message: string
+          p_metadata?: Json
+          p_source: string
+          p_stack?: string
+          p_url?: string
         }
         Returns: undefined
       }
@@ -1491,6 +1646,28 @@ export type Database = {
         Returns: undefined
       }
       reset_user_cohere_key_counts: { Args: never; Returns: undefined }
+      review_teacher_verification: {
+        Args: { p_approve: boolean; p_feedback?: string; p_request_id: string }
+        Returns: {
+          created_at: string
+          document_name: string | null
+          document_type: string
+          document_url: string
+          id: string
+          review_feedback: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          teacher_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "teacher_verification_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       submit_payment_proof: {
         Args: {
           p_month: number
@@ -1501,6 +1678,74 @@ export type Database = {
         }
         Returns: string
       }
+      submit_teacher_verification: {
+        Args: {
+          p_document_name?: string
+          p_document_type: string
+          p_document_url: string
+        }
+        Returns: {
+          created_at: string
+          document_name: string | null
+          document_type: string
+          document_url: string
+          id: string
+          review_feedback: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          teacher_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "teacher_verification_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      sys_activity_analytics: {
+        Args: { p_start?: string }
+        Returns: Json
+      }
+      sys_activity_stats: { Args: never; Returns: Json }
+      sys_admin_check: { Args: never; Returns: undefined }
+      sys_ai_analytics: { Args: never; Returns: Json }
+      sys_ai_stats: { Args: never; Returns: Json }
+      sys_cron_jobs: { Args: never; Returns: Json }
+      sys_cron_overview: { Args: never; Returns: Json }
+      sys_db_overview: { Args: never; Returns: Json }
+      sys_db_performance: { Args: never; Returns: Json }
+      sys_error_analytics: {
+        Args: { p_start?: string }
+        Returns: Json
+      }
+      sys_error_stats: { Args: never; Returns: Json }
+      sys_function_analytics: {
+        Args: { p_start?: string }
+        Returns: Json
+      }
+      sys_index_stats: { Args: never; Returns: Json }
+      sys_inventory: { Args: never; Returns: Json }
+      sys_query_stats: { Args: never; Returns: Json }
+      sys_record_snapshot: { Args: never; Returns: undefined }
+      sys_security_overview: { Args: never; Returns: Json }
+      sys_storage_analytics: {
+        Args: { p_start?: string }
+        Returns: Json
+      }
+      sys_storage_stats: { Args: never; Returns: Json }
+      sys_table_stats: { Args: never; Returns: Json }
+      sys_timeline: {
+        Args: { p_service?: string; p_start?: string }
+        Returns: Json
+      }
+      sys_top_queries: { Args: never; Returns: Json }
+      sys_user_analytics: {
+        Args: { p_start?: string }
+        Returns: Json
+      }
+      sys_user_stats: { Args: never; Returns: Json }
       validate_access_code: {
         Args: { p_code: string }
         Returns: {

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription
 } from "@/components/ui/dialog";
-import { Download, ShoppingCart, Calendar, School, User, FileText, Flag } from "lucide-react";
+import { Download, ShoppingCart, Calendar, School, User, FileText, Flag, BadgeCheck } from "lucide-react";
 import type { Note } from "@/lib/types";
 import { format } from "date-fns";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -59,7 +59,12 @@ export function NoteDetailDialog({ note, open, onOpenChange, onRequestPaid, onRe
                                     </div>
                                 )}
                                 <div className="flex flex-col text-xs">
-                                    <span className="font-medium">{note.teacher.full_name}</span>
+                                    <div className="flex items-center gap-1">
+                                        <span className="font-medium">{note.teacher.full_name}</span>
+                                        {note.teacher.is_verified && (
+                                            <BadgeCheck className="h-3.5 w-3.5 text-success" aria-label="Verified teacher" />
+                                        )}
+                                    </div>
                                     {note.teacher.email && <span className="text-muted-foreground">{note.teacher.email}</span>}
                                 </div>
                             </div>

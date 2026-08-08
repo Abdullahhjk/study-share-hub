@@ -1,10 +1,11 @@
 // supabase/functions/update-fx-rates/index.ts
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { trackFn } from "../_shared/telemetry.ts";
 
 const API_KEY = "u2bDtKc89JOPkHSKFinEnVN38toUfpyr";
 
-Deno.serve(async () => {
+Deno.serve(trackFn("update-fx-rates", async () => {
   try {
     const response = await fetch(
       "https://api.apilayer.com/currency_data/live?source=PKR&currencies=USD,PKR,CAD,JPY,CNY,EUR,GBP,SAR",
@@ -74,4 +75,4 @@ Deno.serve(async () => {
       }
     );
   }
-});
+}));

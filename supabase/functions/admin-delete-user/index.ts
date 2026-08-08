@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { trackFn } from "../_shared/telemetry.ts";
 
 const ALLOWED_ORIGINS = [
   "https://scholarshare.netlify.app",
@@ -11,7 +12,7 @@ const corsHeaders = (origin: string) => ({
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 });
 
-Deno.serve(async (req) => {
+Deno.serve(trackFn("admin-delete-user", async (req) => {
   const origin = req.headers.get("origin") || "";
   const headers = corsHeaders(origin);
 
@@ -90,4 +91,4 @@ Deno.serve(async (req) => {
       { status: 400, headers: { ...headers, "Content-Type": "application/json" } }
     );
   }
-});
+}));

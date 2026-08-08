@@ -1,6 +1,7 @@
 // supabase/functions/email-template/index.ts
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { trackFn } from "../_shared/telemetry.ts";
 
 type EmailType = "confirm" | "reset" | "magic" | "newsletter";
 
@@ -554,7 +555,7 @@ function generateEmailHTML({
 `;
 }
 
-serve(async (req) => {
+serve(trackFn("email-template", async (req) => {
   const origin = req.headers.get("origin") || "";
   const headers = corsHeaders(origin);
 
@@ -620,4 +621,4 @@ serve(async (req) => {
       { status: 500, headers },
     );
   }
-});
+}));

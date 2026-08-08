@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { trackFn } from "../_shared/telemetry.ts";
 
 const ALLOWED_ORIGINS = [
   "https://scholarshare.netlify.app",
@@ -15,7 +16,7 @@ const corsHeaders = (origin: string) => ({
 // Used to authenticate cron job invocations
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 
-Deno.serve(async (req) => {
+Deno.serve(trackFn("cleanup-deleted-notes", async (req) => {
   const origin = req.headers.get("origin") || "";
   const headers = corsHeaders(origin);
 
@@ -145,4 +146,4 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...headers, "Content-Type": "application/json" } }
     );
   }
-});
+}));

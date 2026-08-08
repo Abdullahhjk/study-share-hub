@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import pg from "npm:pg@8.13.0";
+import { trackFn } from "../_shared/telemetry.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -406,7 +407,7 @@ async function consumeDailyQuota(client: pg.Client): Promise<{ ok: boolean; rema
   return { ok: true, remaining: 130 - result.rows[0].request_count };
 }
 
-Deno.serve(async (req) => {
+Deno.serve(trackFn("cohere-agent", async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
@@ -602,4 +603,4 @@ Deno.serve(async (req) => {
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
-});
+}));

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { trackFn } from "../_shared/telemetry.ts";
 
 const ALLOWED_ORIGINS = [
   "https://scholarshare.netlify.app",
@@ -26,7 +27,7 @@ function checkRateLimit(ip: string, maxRequests = 10, windowSeconds = 60): boole
   return true;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(trackFn("redeem-download-code", async (req) => {
   const origin = req.headers.get("origin") || "";
   const headers = corsHeaders(origin);
 
@@ -97,5 +98,5 @@ function json(body: unknown, status = 200, headers: Record<string, string>) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...headers, "Content-Type": "application/json" },
-  });
+  }));
 }

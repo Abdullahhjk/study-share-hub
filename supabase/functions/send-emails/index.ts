@@ -1,6 +1,7 @@
 // supabase/functions/send-emails/index.ts
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { trackFn } from "../_shared/telemetry.ts";
 
 const ACTIVEPIECES_WEBHOOK_URL = Deno.env.get(
   "ACTIVEPIECES_WEBHOOK_URL",
@@ -85,7 +86,7 @@ function getSubjectForType(type: string): string {
   }
 }
 
-serve(async (req: Request) => {
+serve(trackFn("send-emails", async (req: Request) => {
   const origin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
 
@@ -217,4 +218,4 @@ serve(async (req: Request) => {
       },
     );
   }
-});
+}));

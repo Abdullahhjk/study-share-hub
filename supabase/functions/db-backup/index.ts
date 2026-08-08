@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import pg from "npm:pg@8.13.0";
+import { trackFn } from "../_shared/telemetry.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -56,7 +57,7 @@ function formatDefault(col: { column_default: string | null; data_type: string }
   return ` DEFAULT ${def}`;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(trackFn("db-backup", async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -350,4 +351,4 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));

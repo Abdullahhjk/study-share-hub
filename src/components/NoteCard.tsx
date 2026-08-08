@@ -1,4 +1,4 @@
-import { Download, ShoppingCart, Flag } from "lucide-react";
+import { Download, ShoppingCart, Flag, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -81,9 +81,17 @@ export function NoteCard({ note, onRequestPaid, onCardClick, onReport }: NoteCar
             )}
             <div className="flex flex-col text-[10px] sm:text-xs min-w-0">
               {note.teacher && (
-                <span className="truncate block max-w-full">
-                  {note.teacher.full_name}
-                </span>
+                <div className="flex items-center gap-1 min-w-0">
+                  <span className="truncate block min-w-0">
+                    {note.teacher.full_name}
+                  </span>
+                  {note.teacher.is_verified && (
+                    <BadgeCheck
+                      className="h-3.5 w-3.5 shrink-0 text-success"
+                      aria-label="Verified teacher"
+                    />
+                  )}
+                </div>
               )}
 
               {note.teacher?.email && (

@@ -27,6 +27,8 @@ import {
   Loader2,
   DollarSign,
   Key,
+  BadgeCheck,
+  Lock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UploadNoteForm } from "@/components/dashboard/UploadNoteForm";
@@ -38,6 +40,8 @@ import { CategoryManagement } from "@/components/dashboard/CategoryManagement";
 import { TeacherAnalytics } from "@/components/dashboard/TeacherAnalytics";
 import { RefundManagement } from "@/components/dashboard/RefundManagement";
 import { TeacherApprovalPanel } from "@/components/dashboard/TeacherApprovalPanel";
+import { TeacherVerification } from "@/components/dashboard/TeacherVerification";
+import { VerificationReviewPanel } from "@/components/admin/VerificationReviewPanel";
 import { ActivityLogs } from "@/components/dashboard/ActivityLogs";
 import { TeacherReports } from "@/components/dashboard/TeacherReports";
 import { TeacherNotifications } from "@/components/dashboard/TeacherNotifications";
@@ -54,6 +58,7 @@ interface TabItem {
   label: string;
   icon: React.ReactNode;
   adminOnly?: boolean;
+  teacherOnly?: boolean;
 }
 
 export default function Dashboard() {
@@ -70,6 +75,7 @@ export default function Dashboard() {
     "notifications",
     "reports",
     "approvals",
+    "verification",
     "settings",
     "payments",
   ]);
@@ -154,7 +160,7 @@ export default function Dashboard() {
   const isDenied = (userRole as string) === "rejected" && !isApproved;
   const isDeleted = (userRole as string) === "deleted";
 
-  const coadminTabs = new Set(["activity", "categories", "settings", "archon-keys"]);
+  const coadminTabs = new Set(["activity", "categories", "settings", "archon-keys", "approvals"]);
 
   useEffect(() => {
     if (userRole === "coadmin") {
@@ -324,6 +330,7 @@ export default function Dashboard() {
     { value: "notifications", label: "Notifications", icon: <Bell className="h-4 w-4" /> },
     { value: "reports", label: "Reports", icon: <Flag className="h-4 w-4" /> },
     { value: "approvals", label: "Approvals", icon: <UserCheck className="h-4 w-4" />, adminOnly: true },
+    { value: "verification", label: "Verification", icon: <BadgeCheck className="h-4 w-4" />, teacherOnly: true },
     { value: "settings", label: "Settings", icon: <Settings className="h-4 w-4" /> },
     { value: "payments", label: "Payments", icon: <DollarSign className="h-4 w-4" /> },
     { value: "archon-keys", label: "ARCHON Keys", icon: <Key className="h-4 w-4" /> },
@@ -331,6 +338,7 @@ export default function Dashboard() {
 
   const visibleTabs = tabs.filter((t) => {
     if (isCoadmin) return coadminTabs.has(t.value);
+    if (t.teacherOnly) return isTeacher || isPending;
     return !t.adminOnly || isAdmin;
   });
 
@@ -340,15 +348,28 @@ export default function Dashboard() {
         <button
           key={tab.value}
           onClick={() => { if (tab.value === "archon-keys") { navigate("/archon-keys"); } else { handleTabChange(tab.value); } setOpen(false) }}
-          disabled={isPending || isDenied || isDeleted}
+          disabled={
+            tab.value === "verification"
+              ? isDenied || isDeleted
+              : isPending || isDenied || isDeleted
+          }
           className={cn(
             "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
             activeTab === tab.value
               ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-primary/50 hover:text-primary-foreground"
+              : "text-muted-foreground hover:bg-primary/50 hover:text-primary-foreground",
+            (tab.value === "verification"
+              ? isDenied || isDeleted
+              : isPending || isDenied || isDeleted) &&
+              "opacity-40 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground"
           )}
         >
           {tab.icon}
+          {(tab.value === "verification"
+            ? isDenied || isDeleted
+            : isPending || isDenied || isDeleted) && (
+            <Lock className="ml-auto h-3.5 w-3.5 shrink-0 opacity-70" />
+          )}
           <span>
             {tab.label.includes("|") ? (
               (() => {
@@ -455,7 +476,17 @@ export default function Dashboard() {
       case "reports":
         return <TeacherReports teacherId={user?.id} />;
       case "approvals":
-        return isAdmin ? <TeacherApprovalPanel /> : null;
+        return isAdmin || isCoadmin ? (
+          <div className="space-y-4">
+            <TeacherApprovalPanel />
+            <VerificationReviewPanel />
+          </div>
+        ) : null;
+
+      case "verification":
+        return isTeacher || isPending ? (
+          <TeacherVerification teacherId={user?.id} />
+        ) : null;
 
       case "payments":
         return <TeacherPayments teacherId={user?.id} />;

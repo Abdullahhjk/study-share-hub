@@ -1,8 +1,9 @@
 // supabase/functions/unsubscribe-newsletter/index.ts
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { trackFn } from "../_shared/telemetry.ts";
 
-Deno.serve(async (req) => {
+Deno.serve(trackFn("unsubscribe-newsletter", async (req) => {
   try {
     if (req.method !== "POST") {
       return new Response(
@@ -72,4 +73,4 @@ Deno.serve(async (req) => {
       }
     );
   }
-});
+}));

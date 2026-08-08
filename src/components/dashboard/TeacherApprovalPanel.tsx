@@ -17,9 +17,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CheckCircle, XCircle, UserCheck, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, UserCheck, Loader2, Eye, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+
+const VERIFICATION_DOCUMENT_LABEL: Record<string, string> = {
+  institution_id: "Institution ID Card",
+  appointment_letter: "Appointment Letter",
+  faculty_staff_id: "Faculty/Staff ID Card",
+  teaching_license: "Teaching License/Certificate",
+  employment_letter: "Employment Verification Letter",
+};
 
 interface PendingTeacher {
   user_id: string;
@@ -30,6 +38,12 @@ interface PendingTeacher {
     school_name: string | null;
     phone: string | null;
     created_at: string;
+  } | null;
+  verification: {
+    id: string;
+    document_type: string;
+    document_url: string;
+    document_name: string | null;
   } | null;
 }
 
@@ -50,21 +64,44 @@ export function TeacherApprovalPanel() {
 
       // Get their profiles
       const userIds = roles.map((r) => r.user_id);
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, full_name, email, school_name, phone, created_at")
-        .in("id", userIds);
+      const [profilesResult, verificationResult] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, full_name, email, school_name, phone, created_at")
+          .in("id", userIds),
+        supabase
+          .from("teacher_verification_requests")
+          .select("id, teacher_id, document_type, document_url, document_name")
+          .in("teacher_id", userIds)
+          .eq("status", "pending_review"),
+      ]);
 
-      if (profilesError) throw profilesError;
+      if (profilesResult.error) throw profilesResult.error;
+      if (verificationResult.error) throw verificationResult.error;
 
       return roles.map((role) => ({
         user_id: role.user_id,
         role: role.role as "pending" | "teacher" | "admin",
-        profile: profiles?.find((p) => p.id === role.user_id) || null,
+        profile:
+          profilesResult.data?.find((p) => p.id === role.user_id) || null,
+        verification:
+          verificationResult.data?.find((v) => v.teacher_id === role.user_id) ||
+          null,
       })) as PendingTeacher[];
     },
     refetchInterval: 30000,
   });
+
+  const viewDocument = async (path: string) => {
+    const { data, error } = await supabase.storage
+      .from("verification-documents")
+      .createSignedUrl(path, 60);
+    if (error || !data?.signedUrl) {
+      toast.error(error?.message || "Could not open the document.");
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
+  };
 
   const approveMutation = useMutation({
     mutationFn: async (userId: string) => {
@@ -91,6 +128,17 @@ export function TeacherApprovalPanel() {
         .update({ role: "rejected" })
         .eq("user_id", userId);
       if (rejectError) throw rejectError;
+
+      const { error: verifError } = await supabase
+        .from("teacher_verification_requests")
+        .update({
+          status: "expired",
+          review_feedback: "Account approval was rejected",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("teacher_id", userId)
+        .eq("status", "pending_review");
+      if (verifError) throw verifError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pending-teachers"] });
@@ -137,6 +185,7 @@ export function TeacherApprovalPanel() {
                 <TableHead>Email</TableHead>
                 <TableHead>School/Institution</TableHead>
                 <TableHead>Phone</TableHead>
+                <TableHead>Verification</TableHead>
                 <TableHead>Registered</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -160,6 +209,33 @@ export function TeacherApprovalPanel() {
                       <span className="text-muted-foreground">
                         Not provided
                       </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {teacher.verification ? (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1 text-xs font-medium">
+                          <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                          {
+                            VERIFICATION_DOCUMENT_LABEL[
+                              teacher.verification.document_type
+                            ] ?? teacher.verification.document_type
+                          }
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs"
+                          onClick={() =>
+                            viewDocument(teacher.verification!.document_url)
+                          }
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          <span className="ml-1">View doc</span>
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">Not submitted</span>
                     )}
                   </TableCell>
                   <TableCell>
