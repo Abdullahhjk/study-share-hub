@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,38 +11,51 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children, requiredRole, fallbackPath = "/login" }: ProtectedRouteProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { refresh } = useAuth();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function check() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        if (!cancelled) { setAuthorized(false); navigate(fallbackPath, { replace: true }); }
+    void (async () => {
+      const snapshot = await refresh();
+      if (cancelled) return;
+
+      if (!snapshot.user) {
+        setAuthorized(false);
+        navigate(fallbackPath, { replace: true });
         return;
       }
 
       if (requiredRole === "admin" || requiredRole === "coadmin") {
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id)
-          .in("role", ["admin", "coadmin"])
-          .maybeSingle();
-
-        if (!roleData) {
-          if (!cancelled) { setAuthorized(false); navigate("/dashboard", { replace: true }); }
+        if (snapshot.role !== "admin" && snapshot.role !== "coadmin") {
+          setAuthorized(false);
+          navigate("/dashboard", { replace: true });
           return;
         }
       }
 
-      if (!cancelled) setAuthorized(true);
-    }
+      if (snapshot.mfaRequired) {
+        // A recovery session (magic-link) can't enter a TOTP code; it must
+        // finish replacing the authenticator on the recovery page.
+        if (snapshot.recoverySession) {
+          setAuthorized(false);
+          navigate("/mfa/recover", { replace: true });
+          return;
+        }
+        const next = encodeURIComponent(location.pathname + location.search);
+        setAuthorized(false);
+        navigate(`/mfa/verify?next=${next}`, { replace: true });
+        return;
+      }
 
-    check();
+      setAuthorized(true);
+    })();
+
     return () => { cancelled = true; };
-  }, [navigate, requiredRole, fallbackPath]);
+    // refresh is stable across renders; location changes re-run the gate.
+  }, [requiredRole, fallbackPath, navigate, location.pathname, location.search, refresh]);
 
   if (authorized === null) {
     return (

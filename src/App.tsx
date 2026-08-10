@@ -10,6 +10,10 @@ import { ColorblindFilters } from "@/components/ColorblindFilters";
 import { CurrencyProvider } from "@/components/providers/CurrencyProvider";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
+import MfaVerify from "@/pages/MfaVerify";
+import MfaRecover from "@/pages/MfaRecover";
 import DevNotice from "@/components/DevNotice";
 import AIAssistantPanel from "@/components/admin/AIAssistantPanel";
 import SQLExecPanel from "@/components/admin/SQLExecPanel";
@@ -43,6 +47,7 @@ function AppContent() {
   const client = useQueryClient();
   const [initialLoading, setInitialLoading] = useState(true);
   const { open: panelOpen, panelWidth } = useAIPanel();
+  const { mfaRequired } = useAuth();
 
   useEffect(() => {
     client.prefetchQuery({
@@ -123,6 +128,8 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/mfa/verify" element={<MfaVerify />} />
+          <Route path="/mfa/recover" element={<MfaRecover />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/database-data" element={<ProtectedRoute><YourData /></ProtectedRoute>} />
           <Route path="/my-orders" element={<StudentDashboard />} />
@@ -142,28 +149,30 @@ function AppContent() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
-      <AIAssistantPanel />
-      <SQLExecPanel />
+      {!mfaRequired && <AIAssistantPanel />}
+      {!mfaRequired && <SQLExecPanel />}
     </BrowserRouter>
   );
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <SettingsBootstrap />
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <ColorblindFilters />
-      <CurrencyProvider>
-        <TooltipProvider>
-          <ErrorBoundary>
-            <AIPanelProvider>
-              <AppContent />
-            </AIPanelProvider>
-          </ErrorBoundary>
-        </TooltipProvider>
-      </CurrencyProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+  <AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <SettingsBootstrap />
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ColorblindFilters />
+        <CurrencyProvider>
+          <TooltipProvider>
+            <ErrorBoundary>
+              <AIPanelProvider>
+                <AppContent />
+              </AIPanelProvider>
+            </ErrorBoundary>
+          </TooltipProvider>
+        </CurrencyProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </AuthProvider>
 );
 
 export default App;

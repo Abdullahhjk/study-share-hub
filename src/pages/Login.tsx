@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ActivityLogger } from "@/hooks/useActivityLogger";
+import { useAuth } from "@/contexts/AuthContext";
 import React from "react";
 
 /* ─── Schemas ─────────────────────────────────────────────────────────────── */
@@ -242,6 +243,7 @@ export default function Login() {
 
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { refresh } = useAuth();
 
   const loginForm = useForm<LoginData>({ resolver: zodResolver(loginSchema) });
   const signupForm = useForm<SignupData>({ resolver: zodResolver(signupSchema) });
@@ -272,6 +274,14 @@ export default function Login() {
         setIsLoading(false);
         return;
       }
+
+      // Admins/coadmins with an active TOTP factor must complete MFA before use.
+      const snapshot = await refresh();
+      if (snapshot.mfaRequired) {
+        navigate("/mfa/verify?next=%2Fdashboard", { replace: true });
+        return;
+      }
+
       try {
         const { data: user } = await supabase.auth.getUser();
         const { data: profile, error: profileError } = await supabase.from("profiles").select("full_name").eq("id", user?.user?.id).single();

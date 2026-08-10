@@ -49,6 +49,7 @@ import DbBackupTab from "@/components/admin/DbBackupTab";
 import AdminAuditLog from "@/components/admin/AdminAuditLog";
 import AdminSettingsTab from "@/components/admin/AdminSettingsTab";
 import ConsoleTab from "@/components/admin/ConsoleTab";
+import { SecurityTab } from "@/components/admin/SecurityTab";
 
 interface TabItem {
   value: string;
@@ -76,7 +77,7 @@ const tabGroups = [
     id: "system",
     label: "System",
     iconKey: "settings" as const,
-    tabValues: ["aiQuota", "dbBackup", "auditLog", "platformSettings", "buildReport", "upcomingFeatures", "console"],
+    tabValues: ["security", "aiQuota", "dbBackup", "auditLog", "platformSettings", "buildReport", "upcomingFeatures", "console"],
   },
 ];
 
@@ -101,6 +102,7 @@ export default function AdminDashboard() {
     "reports",
     "payments",
     "notifications",
+    "security",
     "buildReport",
     "upcomingFeatures",
     "aiQuota",
@@ -228,6 +230,8 @@ export default function AdminDashboard() {
     { value: "payments", label: "Payments", icon: <DollarSign className="h-4 w-4" /> },
     { value: "notifications", label: "Notifications", icon: <Bell className="h-4 w-4" /> },
 
+    { value: "security", label: "Security", icon: <Shield className="h-4 w-4" /> },
+
     { value: "aiQuota", label: "AI Quota", icon: <Cpu className="h-4 w-4" />, adminOnly: true },
     { value: "dbBackup", label: "DB Backup", icon: <Database className="h-4 w-4" />, adminOnly: true },
 
@@ -265,6 +269,7 @@ export default function AdminDashboard() {
       case "reports": return <ReportsTab />;
       case "payments": return <PaymentsTab userRole={userRole} />;
       case "notifications": return <NotificationsTab />;
+      case "security": return <SecurityTab />;
       case "buildReport": return isAdmin ? <BuildReportTab /> : null;
       case "upcomingFeatures": return isAdmin ? <UpcomingFeaturesTab /> : null;
       case "aiQuota": return isAdmin ? <CohereQuotaTab /> : null;

@@ -92,11 +92,11 @@ Deno.serve(trackFn("redeem-download-code", async (req) => {
   } catch (e) {
     return json({ error: (e as Error).message }, 500, headers);
   }
-});
+}));
 
 function json(body: unknown, status = 200, headers: Record<string, string>) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...headers, "Content-Type": "application/json" },
-  }));
+  });
 }

@@ -318,7 +318,7 @@ export default function UsersTab({ userRole }: UsersTabProps) {
         body: { target_user_id: impersonateUser.user_id },
       });
       if (error) throw new Error(error.message);
-      const magicLink = `${import.meta.env.VITE_SUPABASE_URL}/auth/v1/verify?token=${result.token_hash}&type=magiclink&redirect_to=${window.location.origin}/dashboard`;
+      const magicLink = `${import.meta.env.VITE_SUPABASE_URL}/auth/v1/verify?token=${result.token_hash}&type=magiclink&redirect_to=${encodeURIComponent(`${window.location.origin}/dashboard?impersonate=1`)}`;
       localStorage.clear();
       sessionStorage.clear();
       window.location.href = magicLink;

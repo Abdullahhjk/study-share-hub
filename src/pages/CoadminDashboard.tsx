@@ -37,6 +37,7 @@ import ReportsTab from "@/components/admin/ReportsTab";
 import FeedbackTab from "@/components/admin/FeedbackTab";
 import AdminNotesTab from "@/components/admin/AdminNotesTab";
 import AdminAuditLog from "@/components/admin/AdminAuditLog";
+import { SecurityTab } from "@/components/admin/SecurityTab";
 
 interface TabItem {
   value: string;
@@ -61,6 +62,7 @@ export default function CoadminDashboard() {
     "feedback",
     "activity",
     "approvals",
+    "security",
     "settings",
     "auditLog",
   ]);
@@ -158,6 +160,7 @@ export default function CoadminDashboard() {
     { value: "feedback", label: "Feedback", icon: <MessageSquare className="h-4 w-4" /> },
     { value: "activity", label: "Activity", icon: <Activity className="h-4 w-4" /> },
     { value: "approvals", label: "Approvals", icon: <UserCheck className="h-4 w-4" /> },
+    { value: "security", label: "Security", icon: <Shield className="h-4 w-4" /> },
     { value: "settings", label: "Settings", icon: <Settings className="h-4 w-4" /> },
     { value: "auditLog", label: "Audit Log", icon: <ScrollText className="h-4 w-4" /> },
   ];
@@ -174,6 +177,7 @@ export default function CoadminDashboard() {
       case "feedback": return <FeedbackTab />;
       case "activity": return <ActivityLogs isAdmin />;
       case "approvals": return <TeacherApprovalPanel />;
+      case "security": return <SecurityTab />;
       case "settings": return <ProfileSettings userId={user?.id} />;
       case "auditLog": return <AdminAuditLog />;
       default: return null;

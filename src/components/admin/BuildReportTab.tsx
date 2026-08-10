@@ -222,58 +222,52 @@ export default function BuildReportTab() {
                             No {showUnsubscribed ? "Unsubscribed" : "Active"} subscribers yet.
                         </p>
                     ) : (
-                        <div className="max-h-72 space-y-3 overflow-y-auto">
-                            {subscribers
-                                .filter((s: any) =>
-                                    !showUnsubscribed ? true : s.is_active === false
-                                )
-                                .map((s: any, i: number) => (
-                                    <div
-                                        key={s.id}
-                                        className="rounded-md border p-3"
-                                    >
-                                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                            <div className="min-w-0 flex items-center gap-3">
-                                                <span className="font-semibold">{i + 1}.</span>
+                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                            {subscribers.map((s) => (
+                                <div
+                                    key={s.id}
+                                    className="rounded-lg border p-3"
+                                >
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="min-w-0">
+                                            <p className="truncate max-w-[200px] break-all font-medium">
+                                                <Button onClick={() => navigator.clipboard.writeText(s.email)} variant="link" className="text-ghost-foreground">{s.email}</Button>
+                                            </p>
+                                        </div>
 
-                                                <p className="truncate break-all font-medium">
-                                                    {s.email}
-                                                </p>
-                                            </div>
+                                        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                                            <Badge variant="secondary">
+                                                {new Date(s.created_at).toLocaleDateString()}
+                                            </Badge>
 
-                                            <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                                                <Badge variant="secondary">
-                                                    {new Date(s.created_at).toLocaleDateString()}
-                                                </Badge>
+                                            <Badge
+                                                variant={s.is_active ? "secondary" : "outline"}
+                                                className={`cursor-pointer ${s.is_active
+                                                    ? "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400"
+                                                    : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
+                                                    }`}
+                                                onClick={() =>
+                                                    toggleSubscriberActive.mutate({
+                                                        id: s.id,
+                                                        is_active: !s.is_active,
+                                                    })
+                                                }
+                                            >
+                                                {s.is_active ? "Active" : "Inactive"}
+                                            </Badge>
 
-                                                <Badge
-                                                    variant={s.is_active ? "secondary" : "outline"}
-                                                    className={`cursor-pointer ${s.is_active
-                                                            ? "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400"
-                                                            : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
-                                                        }`}
-                                                    onClick={() =>
-                                                        toggleSubscriberActive.mutate({
-                                                            id: s.id,
-                                                            is_active: !s.is_active,
-                                                        })
-                                                    }
-                                                >
-                                                    {s.is_active ? "Active" : "Inactive"}
-                                                </Badge>
-
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-8 w-8 text-destructive"
-                                                    onClick={() => removeSubscriber.mutate(s.id)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-8 w-8 text-destructive"
+                                                onClick={() => removeSubscriber.mutate(s.id)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
                                         </div>
                                     </div>
-                                ))}
+                                </div>
+                            ))}
                         </div>
                     )}
                 </CardContent>

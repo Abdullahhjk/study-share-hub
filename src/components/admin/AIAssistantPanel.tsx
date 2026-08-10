@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { isAdminMfaPending } from "@/lib/mfa";
 import { CohereClientV2 } from "cohere-ai";
 import { X } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -56,6 +57,7 @@ export default function AIAssistantPanel() {
   const [avatar, setAvatar] = useState<string>("/user.png");
   const [isColorBlind, setIsColorBlind] = useState(false);
   const [role, setRole] = useState<string | null>(null);
+  const [mfaPending, setMfaPending] = useState(false);
   const [checking, setChecking] = useState(true);
   const [initialized, setInitialized] = useState(false);
   const [initStatus, setInitStatus] = useState<"idle" | "initializing" | "done">("idle");
@@ -210,9 +212,11 @@ export default function AIAssistantPanel() {
         .eq("user_id", session.user.id)
         .maybeSingle();
       setRole(roleData?.role || "user");
+      const pending = await isAdminMfaPending();
+      setMfaPending(pending);
       setChecking(false);
       const blockedRoles = ["anon", "pending", "blocked", "deleted", "rejected"];
-      if (!isQuotaExhausted && !blockedRoles.includes(roleData?.role || "")) await initAgent();
+      if (!isQuotaExhausted && !blockedRoles.includes(roleData?.role || "") && !pending) await initAgent();
     };
     check();
   }, [initAgent]);
@@ -770,7 +774,7 @@ export default function AIAssistantPanel() {
     setEditingIndex(id);
   };
 
-  if (checking || !user || isOnAiTab) return null;
+  if (checking || !user || isOnAiTab || mfaPending) return null;
 
   const ARCHON_BLOCKED_ROLES = ["anon", "pending", "blocked", "deleted", "rejected"];
   if (ARCHON_BLOCKED_ROLES.includes(role || "")) return null;

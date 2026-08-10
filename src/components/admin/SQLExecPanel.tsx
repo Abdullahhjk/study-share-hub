@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAIPanel } from "./AIPanelContext";
+import { isAdminMfaPending } from "@/lib/mfa";
 import SqlResultGraph from "./SqlResultGraph";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -534,6 +535,7 @@ export default function SQLExecPanel() {
   const { open, setOpen, panelWidth, setPanelWidth, activePanel, setActivePanel } = useAIPanel();
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [mfaPending, setMfaPending] = useState(false);
   const [checking, setChecking] = useState(true);
 
   const [query, setQuery] = useState("");
@@ -569,6 +571,7 @@ export default function SQLExecPanel() {
         .eq("user_id", session.user.id)
         .maybeSingle();
       setRole(roleData?.role || "user");
+      setMfaPending(await isAdminMfaPending());
       setChecking(false);
     };
     check();
@@ -681,7 +684,7 @@ export default function SQLExecPanel() {
     requestAnimationFrame(() => textareaRef.current?.focus());
   };
 
-  if (checking || !user || isOnAiTab) return null;
+  if (checking || !user || isOnAiTab || mfaPending) return null;
   if (role !== "admin") return null;
 
   const sqlEditor = (

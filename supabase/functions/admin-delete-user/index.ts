@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { trackFn } from "../_shared/telemetry.ts";
+import { aalFromAuthHeader, requireAal2 } from "../_shared/authz.ts";
 
 const ALLOWED_ORIGINS = [
   "https://scholarshare.netlify.app",
@@ -43,6 +44,8 @@ Deno.serve(trackFn("admin-delete-user", async (req) => {
       .maybeSingle();
 
     if (!roleData) throw new Error("Only admins can delete users");
+
+    requireAal2(aalFromAuthHeader(authHeader));
 
     const { target_user_id } = await req.json();
     if (!target_user_id) throw new Error("target_user_id is required");
