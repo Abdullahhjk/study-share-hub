@@ -137,7 +137,7 @@ lar Share.</p>
   <footer style=3D"text-align:center;padding:20px 0;font-size:14px;color:#8=
 88">
     <p>If you no longer wish to receive these emails, you can <a href=3D"ht=
-tps://scholarshare.netlify.app/unsubscribe" style=3D"color:#007bff;text-dec=
+ tps://scholar-share.netlify.app/unsubscribe" style=3D"color:#007bff;text-dec=
 oration:none">unsubscribe here</a>.</p>
   </footer>
 </div>

@@ -347,9 +347,9 @@ export default function Login() {
   const handleMagicLink = async (data: EmailData) => {
     setIsLoading(true);
     try {
-      const { data: userRole, error: roleError } = await supabase.from("user_roles").select("role").eq("email", data.email).single();
+      const { data: role, error: roleError } = await supabase.rpc("get_user_role_by_email", { p_email: data.email });
       if (roleError) throw roleError;
-      if (userRole && ["deleted", "blocked", "rejected"].includes(userRole.role)) {
+      if (role && ["deleted", "blocked", "rejected"].includes(role)) {
         toast({ title: "Access denied", description: "Your account has been blocked. It will be deleted soon.", variant: "destructive" });
         setIsLoading(false);
         return;

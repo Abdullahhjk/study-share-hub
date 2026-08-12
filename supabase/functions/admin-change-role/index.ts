@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { trackFn } from "../_shared/telemetry.ts";
-import { aalFromAuthHeader, requireAal2 } from "../_shared/authz.ts";
+import { aalFromAuthHeader, requireSecondFactor } from "../_shared/authz.ts";
 
 const ALLOWED_ORIGINS = [
   "https://scholar-share.netlify.app",
@@ -57,7 +57,7 @@ Deno.serve(trackFn("admin-change-role", async (req) => {
       throw new Error("Only admins and coadmins can change roles");
     }
 
-    requireAal2(aalFromAuthHeader(authHeader));
+    requireSecondFactor(aalFromAuthHeader(authHeader), authHeader);
 
     if (callerRoleName === "coadmin") {
       const allowedRoles = ["teacher", "pending", "blocked", "rejected", "deleted"];

@@ -7,4 +7,4 @@ Disallow: /download
 Disallow: /my-orders
 Disallow: /reset-password
 
-Sitemap: https://scholarshare.netlify.app/sitemap.xml
+Sitemap: https://scholar-share.netlify.app/sitemap.xml

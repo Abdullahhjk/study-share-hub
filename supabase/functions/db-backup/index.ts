@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import pg from "npm:pg@8.13.0";
 import { trackFn } from "../_shared/telemetry.ts";
-import { aalFromAuthHeader, requireAal2 } from "../_shared/authz.ts";
+import { aalFromAuthHeader, requireSecondFactor } from "../_shared/authz.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -82,7 +82,7 @@ Deno.serve(trackFn("db-backup", async (req) => {
     if (roleRow?.role !== "admin") {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    requireAal2(aalFromAuthHeader(authHeader));
+    requireSecondFactor(aalFromAuthHeader(authHeader), authHeader);
 
     const databaseUrl = Deno.env.get("DATABASE_URL");
     if (!databaseUrl) throw new Error("DATABASE_URL not set");

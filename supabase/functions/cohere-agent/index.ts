@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import pg from "npm:pg@8.13.0";
 import { trackFn } from "../_shared/telemetry.ts";
-import { aalFromAuthHeader, requireAal2 } from "../_shared/authz.ts";
+import { aalFromAuthHeader, requireSecondFactor } from "../_shared/authz.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -454,8 +454,8 @@ Deno.serve(trackFn("cohere-agent", async (req) => {
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Staff init exposes raw Cohere API keys — require MFA completed.
-      requireAal2(aalFromAuthHeader(authHeader));
+      // Staff init exposes raw Cohere API keys — magic link counts as 2FA, otherwise require AAL2.
+      requireSecondFactor(aalFromAuthHeader(authHeader), authHeader);
 
       const DATABASE_URL = Deno.env.get("DATABASE_URL");
       if (!DATABASE_URL) return new Response(JSON.stringify({ error: "DATABASE_URL not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -555,8 +555,8 @@ Deno.serve(trackFn("cohere-agent", async (req) => {
       if (!isAdmin) {
         return new Response(JSON.stringify({ error: "Only admins can execute SQL queries." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      // SQL execution is direct database access — require MFA completed.
-      requireAal2(aalFromAuthHeader(authHeader));
+      // SQL execution is direct database access — magic link counts as 2FA, otherwise require AAL2.
+      requireSecondFactor(aalFromAuthHeader(authHeader), authHeader);
       const result = await executeSql({ query: body.query, confirmed: body.confirmed });
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -1559,6 +1559,10 @@ export type Database = {
           year: number
         }[]
       }
+      get_user_role_by_email: {
+        Args: { p_email: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

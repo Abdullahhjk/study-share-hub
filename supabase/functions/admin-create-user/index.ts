@@ -1,9 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { trackFn } from "../_shared/telemetry.ts";
-import { aalFromAuthHeader, requireAal2 } from "../_shared/authz.ts";
+import { aalFromAuthHeader, requireSecondFactor } from "../_shared/authz.ts";
 
 const ALLOWED_ORIGINS = [
-  "https://scholarshare.netlify.app",
+  "https://scholar-share.netlify.app",
   "http://localhost:8080",
   "http://localhost:5173",
 ];
@@ -44,7 +44,7 @@ Deno.serve(trackFn("admin-create-user", async (req) => {
 
     if (!roleData) throw new Error("Only admins can create users");
 
-    requireAal2(aalFromAuthHeader(authHeader));
+    requireSecondFactor(aalFromAuthHeader(authHeader), authHeader);
 
     const { email, password, role, full_name } = await req.json();
     if (!email || !password) throw new Error("email and password are required");

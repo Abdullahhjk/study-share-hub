@@ -159,14 +159,18 @@ export function isRecoveryIntent(
  * the privileged ARCHON / SQL-executor surfaces unlock. Mirrors the AuthContext
  * `mfaRequired` computation but reads everything from Supabase directly, so
  * the panels never depend on context timing and can never flash open for an
- * AAL1 admin. Server-side AAL2 checks on the edge functions remain the real
- * security boundary; this only controls what the UI shows.
+ * AAL1 admin. A magic-link (`otp`) sign-in is itself treated as the second
+ * factor, so it is exempt. Server-side AAL2 checks on the edge functions remain
+ * the real security boundary; this only controls what the UI shows.
  */
 export async function isAdminMfaPending(): Promise<boolean> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
   if (!session?.user) return false;
+
+  const methods = amrFromToken(session.access_token);
+  if (methods.some((a) => a.method === "otp")) return false;
 
   const { data: roleData } = await supabase
     .from("user_roles")

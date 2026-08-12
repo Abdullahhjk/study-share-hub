@@ -117,9 +117,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ? false
           : isRecoveryIntent(currentSession?.user?.id, methods) && aal.currentLevel !== "aal2",
         impersonating,
-        mfaRequired: impersonating
-          ? false
-          : !!currentSession?.user && isAdminRole && verified && aal.currentLevel !== "aal2",
+        mfaRequired:
+          impersonating || methods.some((a) => a.method === "otp")
+            ? false
+            : !!currentSession?.user && isAdminRole && verified && aal.currentLevel !== "aal2",
       };
     },
     [],

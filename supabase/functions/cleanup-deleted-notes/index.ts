@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { trackFn } from "../_shared/telemetry.ts";
 
 const ALLOWED_ORIGINS = [
-  "https://scholarshare.netlify.app",
+  "https://scholar-share.netlify.app",
   "https://localhost:8080",
   "https://localhost:5173",
 ];

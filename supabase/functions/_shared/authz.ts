@@ -28,6 +28,29 @@ export function aalFromAuthHeader(authHeader: string): Aal {
   return claims?.aal === "aal2" ? "aal2" : "aal1";
 }
 
+/** Read the `amr` claim (authentication methods) from a `Bearer <token>` header. */
+export function amrFromAuthHeader(authHeader: string): Array<{ method?: string }> {
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const claims = decodeJwtPayload(token);
+  return Array.isArray(claims?.amr) ? (claims.amr as Array<{ method?: string }>) : [];
+}
+
+/** True when the caller signed in via an email magic link (`otp` AMR). */
+export function hasMagicLinkAmr(authHeader: string): boolean {
+  return amrFromAuthHeader(authHeader).some((a) => a.method === "otp");
+}
+
+/**
+ * Require a second authentication factor. The app treats an email magic-link
+ * sign-in as primary 2FA, so an `otp` AMR session satisfies the check without
+ * a TOTP challenge; any other session must be at AAL2. The caller must already
+ * be confirmed as an admin/coadmin from a verified token before this runs.
+ */
+export function requireSecondFactor(aal: Aal, authHeader: string): void {
+  if (aal === "aal2" || hasMagicLinkAmr(authHeader)) return;
+  throw new Error("Two-factor authentication required");
+}
+
 /**
  * Throw unless the caller's current session is at AAL2 (MFA completed).
  * Call after confirming the caller is an admin/coadmin.
