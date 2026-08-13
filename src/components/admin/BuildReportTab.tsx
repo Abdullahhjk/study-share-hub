@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -15,9 +15,35 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Mail, Trash2, Plus, Pencil, FileText, Loader2 } from "lucide-react";
+import { Mail, Trash2, Plus, Pencil, FileText, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import BuildReportDialog, { BuildReport, Subscriber } from "./build-report/BuildReportDialog";
+
+type ScreenSize = "small" | "medium" | "large";
+
+const REPORT_THRESHOLDS: Record<ScreenSize, number> = {
+    small: 3,
+    medium: 6,
+    large: 8,
+};
+
+function getScreenSize(width: number): ScreenSize {
+    if (width >= 1024) return "large";
+    if (width >= 768) return "medium";
+    return "small";
+}
+
+function useScreenSize(): ScreenSize {
+    const [size, setSize] = useState<ScreenSize>(() =>
+        typeof window === "undefined" ? "large" : getScreenSize(window.innerWidth)
+    );
+    useEffect(() => {
+        const onResize = () => setSize(getScreenSize(window.innerWidth));
+        window.addEventListener("resize", onResize);
+        return () => window.removeEventListener("resize", onResize);
+    }, []);
+    return size;
+}
 
 export default function BuildReportTab() {
     const qc = useQueryClient();
@@ -25,6 +51,11 @@ export default function BuildReportTab() {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingReport, setEditingReport] = useState<BuildReport | null>(null);
     const [copiedEmailId, setCopiedEmailId] = useState<string | null>(null);
+    const [showAllReports, setShowAllReports] = useState(false);
+    const [showAllSubscribers, setShowAllSubscribers] = useState(false);
+    const screenSize = useScreenSize();
+    const reportThreshold = REPORT_THRESHOLDS[screenSize];
+    const subscriberThreshold = REPORT_THRESHOLDS[screenSize];
 
     const { data: subscribers = [] } = useQuery({
         queryKey: ["newsletter-subscribers"],
@@ -42,6 +73,15 @@ export default function BuildReportTab() {
             return (data ?? []) as BuildReport[];
         },
     });
+
+    const hasMoreReports = reports.length > reportThreshold;
+    const visibleReports = reports.slice(0, showAllReports ? reports.length : reportThreshold);
+
+    const filteredSubscribers = subscribers.filter((s) =>
+        showUnsubscribed ? s.is_active === false : true
+    );
+    const hasMoreSubscribers = filteredSubscribers.length > subscriberThreshold;
+    const visibleSubscribers = filteredSubscribers.slice(0, showAllSubscribers ? filteredSubscribers.length : subscriberThreshold);
 
     const deleteReport = useMutation({
         mutationFn: async (id: string) => {
@@ -133,8 +173,8 @@ export default function BuildReportTab() {
                             No saved reports yet. Click "Add Report" to build your first one.
                         </p>
                     ) : (
-                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                            {reports.map((r) => (
+                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
+                            {visibleReports.map((r) => (
                                 <div key={r.id} className="rounded-lg border p-3">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
@@ -188,6 +228,29 @@ export default function BuildReportTab() {
                             ))}
                         </div>
                     )}
+
+                    {hasMoreReports && (
+                        <div className="mt-4 flex justify-center">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowAllReports((v) => !v)}
+                                className="gap-1.5"
+                            >
+                                {showAllReports ? (
+                                    <>
+                                        <ChevronUp className="h-4 w-4" />
+                                        Show less ({reportThreshold})
+                                    </>
+                                ) : (
+                                    <>
+                                        <ChevronDown className="h-4 w-4" />
+                                        See more ({reports.length - reportThreshold} more)
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -220,16 +283,13 @@ export default function BuildReportTab() {
                 </CardHeader>
 
                 <CardContent>
-                    {subscribers.length === 0 ||
-                        subscribers.filter((s) =>
-                            !showUnsubscribed ? true : s.is_active === false
-                        ).length === 0 ? (
+                    {filteredSubscribers.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
                             No {showUnsubscribed ? "Unsubscribed" : "Active"} subscribers yet.
                         </p>
                     ) : (
                         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                            {subscribers.map((s) => (
+                            {visibleSubscribers.map((s) => (
                                 <div
                                     key={s.id}
                                     className="rounded-lg border p-3"
@@ -274,6 +334,29 @@ export default function BuildReportTab() {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    )}
+
+                    {hasMoreSubscribers && (
+                        <div className="mt-4 flex justify-center">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowAllSubscribers((v) => !v)}
+                                className="gap-1.5"
+                            >
+                                {showAllSubscribers ? (
+                                    <>
+                                        <ChevronUp className="h-4 w-4" />
+                                        Show less ({subscriberThreshold})
+                                    </>
+                                ) : (
+                                    <>
+                                        <ChevronDown className="h-4 w-4" />
+                                        See more ({filteredSubscribers.length - subscriberThreshold} more)
+                                    </>
+                                )}
+                            </Button>
                         </div>
                     )}
                 </CardContent>
