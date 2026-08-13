@@ -96,6 +96,22 @@
 .btn-shimmer:active {
 	transform: scale(0.97);
 }
+
+.txt-shimmer {
+	background: linear-gradient(
+		90deg,
+		hsl(0 0% 45%) 0%,
+		hsl(0 0% 45%) 35%,
+		hsl(0 0% 72%) 50%,
+		hsl(0 0% 45%) 65%,
+		hsl(0 0% 45%) 100%
+	);
+	background-size: 200% auto;
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	animation: liveShimmer 3s ease-in-out infinite;
+}
 /* EduNotes Design System - Clean, Professional, Educational */
 @layer base {
 	html {

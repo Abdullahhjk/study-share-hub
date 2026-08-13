@@ -15,6 +15,7 @@
 		"updateGit": "git init && git add . && git commit -m \"Commit via CLI $(date '+%Y-%m-%d %H:%M:%S')\" && git push -u origin main --force"
 	},
 	"dependencies": {
+		"@codemirror/lang-html": "^6.4.12",
 		"@codemirror/lang-json": "^6.0.2",
 		"@hookform/resolvers": "^3.10.0",
 		"@radix-ui/react-accordion": "^1.2.11",

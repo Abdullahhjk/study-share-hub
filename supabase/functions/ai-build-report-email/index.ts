@@ -147,6 +147,9 @@ Version: ${version}
 Changelog: ${changelog}
 `;
 
+    const systemContent =
+      'You are a SaaS newsletter writer. Return ONLY raw valid JSON with exactly this shape: {"subject":"...","html":"..."}. No markdown, no backticks, no code fences, no commentary before or after the JSON. Pure JSON only.';
+
     const cohereResponse = await fetch(
       "https://api.cohere.com/v2/chat",
       {
@@ -158,11 +161,10 @@ Changelog: ${changelog}
         body: JSON.stringify({
           model: "command-a-03-2025",
           messages: [
-            {
-              role: "user",
-              content: prompt,
-            },
+            { role: "system", content: systemContent },
+            { role: "user", content: prompt },
           ],
+          response_format: { type: "json_object" },
         }),
       }
     );
@@ -191,19 +193,65 @@ Changelog: ${changelog}
       throw new Error("No text returned from Cohere");
     }
 
-    let result;
+    const cleaned = aiText
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/g, "")
+      .trim();
 
-    try {
-      result = JSON.parse(aiText.replace("```json", "").replace("```", ""));
-    } catch {
-      throw new Error(
-        `AI did not return valid JSON.\n\n${aiText}`
+    const parseJson = (text: string) => {
+      try {
+        return JSON.parse(text);
+      } catch {
+        const start = text.indexOf("{");
+        const end = text.lastIndexOf("}");
+        if (start !== -1 && end > start) {
+          try {
+            return JSON.parse(text.slice(start, end + 1));
+          } catch {
+            return null;
+          }
+        }
+        return null;
+      }
+    };
+
+    const result = parseJson(cleaned);
+
+    if (!result || typeof result !== "object") {
+      return new Response(
+        JSON.stringify({
+          error:
+            "AI did not return valid JSON. Fix the output on the right and press 'Apply correction'.",
+          raw: cleaned,
+        }),
+        {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
       );
     }
 
-    if (!result.subject || !result.html) {
-      throw new Error(
-        "AI response missing subject or html field"
+    const subject =
+      typeof result.subject === "string" ? result.subject : "";
+    const html = typeof result.html === "string" ? result.html : "";
+
+    if (!subject || !html) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "AI response is missing the 'subject' or 'html' field. Fix the output on the right and press 'Apply correction'.",
+          raw: cleaned,
+        }),
+        {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
       );
     }
 

@@ -3,60 +3,56 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import DOMPurify from "dompurify";
-import { Sparkles, Trash2, Mail, Copy, Send, Rocket, Loader2 } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Mail, Trash2, Plus, Pencil, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { VERSION } from "../../../version";
+import BuildReportDialog, { BuildReport, Subscriber } from "./build-report/BuildReportDialog";
 
 export default function BuildReportTab() {
     const qc = useQueryClient();
-    const [version, setVersion] = useState(VERSION);
-    const [changelog, setChangelog] = useState("");
-    const [subject, setSubject] = useState("");
-    const [html, setHtml] = useState("");
     const [showUnsubscribed, setShowUnsubscribed] = useState(false);
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [editingReport, setEditingReport] = useState<BuildReport | null>(null);
+    const [copiedEmailId, setCopiedEmailId] = useState<string | null>(null);
 
     const { data: subscribers = [] } = useQuery({
         queryKey: ["newsletter-subscribers"],
         queryFn: async () => {
             const { data } = await supabase.from("newsletter_subscribers").select("*").order("created_at", { ascending: false });
-            return data || [];
+            return (data ?? []) as Subscriber[];
         },
     });
 
-    const generate = useMutation({
-        mutationFn: async () => {
-            const tid = toast.loading("Generating with AI...", { description: "Cohere command-a-03-2025" });
-            try {
-                const { data, error } = await supabase.functions.invoke("ai-build-report-email", {
-                    body: { version, changelog },
-                });
-                if (error) throw error;
-                if (data?.error) throw new Error(data.error);
-                toast.success("Email generated!", { id: tid });
-                return data as { subject: string; html: string };
-            } catch (e) {
-                toast.error("Generation failed", { id: tid, description: e instanceof Error ? e.message : String(e) });
-                throw e;
-            }
+    const { data: reports = [], isLoading: reportsLoading } = useQuery({
+        queryKey: ["build-reports"],
+        queryFn: async () => {
+            const { data, error } = await supabase.from("build_reports").select("*").order("created_at", { ascending: false });
+            if (error) throw error;
+            return (data ?? []) as BuildReport[];
         },
-        onSuccess: (data) => { setSubject(data.subject); setHtml(data.html); },
     });
 
-    const saveReport = useMutation({
-        mutationFn: async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            const { error } = await supabase.from("build_reports").insert({
-                version, changelog, subject, html, created_by: user?.id,
-            });
+    const deleteReport = useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase.from("build_reports").delete().eq("id", id);
             if (error) throw error;
         },
-        onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["build-reports"] }); },
-        onError: (e: any) => toast.error(e.message),
+        onSuccess: () => {
+            toast.success("Report deleted");
+            qc.invalidateQueries({ queryKey: ["build-reports"] });
+        },
+        onError: (e: Error) => toast.error("Failed to delete report", { description: e.message }),
     });
 
     const toggleSubscriberActive = useMutation({
@@ -73,7 +69,7 @@ export default function BuildReportTab() {
                 });
             }, 500);
         },
-        onError: (e: any) => toast.error("Failed to update subscriber status", { description: e.message }),
+        onError: (e: Error) => toast.error("Failed to update subscriber status", { description: e.message }),
     });
 
     const removeSubscriber = useMutation({
@@ -84,106 +80,116 @@ export default function BuildReportTab() {
         onSuccess: () => { toast.success("Removed"); qc.invalidateQueries({ queryKey: ["newsletter-subscribers"] }); },
     });
 
-    const sendViaFunction = useMutation({
-        mutationFn: async () => {
-            if (!subject || !html) throw new Error("Generate subject + HTML first");
-            const emails = (subscribers as any[]).filter(s => s.is_active !== false).map(s => s.email);
-            if (!emails.length) throw new Error("No active subscribers");
-            const { data, error } = await supabase.functions.invoke("send-emails", {
-                body: { html, subject, emails },
-            });
-            if (error) throw error;
-            if (!data?.success) throw new Error(data?.error || "Send failed");
-            // Save report and mark sent
-            const { data: { user } } = await supabase.auth.getUser();
-            await supabase.from("build_reports").insert({
-                version, changelog, subject, html, created_by: user?.id, sent_at: new Date().toISOString(),
-            });
-            return emails.length;
-        },
-        onSuccess: (count) => {
-            toast.success(`Sent to ${count} subscriber${count === 1 ? "" : "s"}`);
-            qc.invalidateQueries({ queryKey: ["build-reports"] });
-        },
-        onError: (e: any) => toast.error("Send failed", { description: e.message }),
-    });
-
-    const mailtoAll = () => {
-        if (!subscribers.length || !subject) return;
-        const bcc = subscribers.map((s: any) => s.email).join(",");
-        const body = "View this email as HTML in your browser. Plain-text fallback:\n\n" + changelog;
-        window.location.href = `mailto:?to=${encodeURIComponent("scholarshare.noreply@gmail.com")}&bcc=${encodeURIComponent(bcc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const openAdd = () => {
+        setEditingReport(null);
+        setDialogOpen(true);
     };
 
-    const copyHtml = async () => {
-        await navigator.clipboard.writeText(html);
-        toast.success("HTML copied");
+    const openEdit = (report: BuildReport) => {
+        setEditingReport(report);
+        setDialogOpen(true);
+    };
+
+    const copyEmail = async (id: string, email: string) => {
+        try {
+            await navigator.clipboard.writeText(email);
+            setCopiedEmailId(id);
+            toast.success("Email copied to clipboard");
+            setTimeout(() => {
+                setCopiedEmailId((cur) => (cur === id ? null : cur));
+            }, 800);
+        } catch {
+            toast.error("Failed to copy email");
+        }
     };
 
     return (
         <div className="space-y-6 mt-4">
             <Card>
                 <CardHeader>
-                    <CardTitle>Build Report</CardTitle>
-                    <CardDescription>Compose an update email to send to subscribers. AI generates subject + HTML.</CardDescription>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <CardTitle className="flex items-center gap-2">
+                                <FileText className="h-4 w-4" />
+                                Saved Reports
+                            </CardTitle>
+                            <CardDescription>
+                                Compose an update email to send to subscribers. AI generates the subject and HTML.
+                            </CardDescription>
+                        </div>
+                        <Button size="sm" onClick={openAdd} className="gap-1.5 self-start">
+                            <Plus className="h-4 w-4" />
+                            Add Report
+                        </Button>
+                    </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                    <div className="grid gap-2 sm:grid-cols-[160px_1fr]">
-                        <div className="space-y-1">
-                            <Label>Version</Label>
-                            <Input value={version} onChange={e => setVersion(e.target.value)} placeholder="v1.0.5" />
+                <CardContent>
+                    {reportsLoading ? (
+                        <div className="flex justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin" />
                         </div>
-                        <div className="space-y-1">
-                            <Label>Subject (editable)</Label>
-                            <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="What changed in this build" />
+                    ) : reports.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                            No saved reports yet. Click "Add Report" to build your first one.
+                        </p>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                            {reports.map((r) => (
+                                <div key={r.id} className="rounded-lg border p-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Badge variant="secondary">{r.version}</Badge>
+                                                {r.sent_at ? (
+                                                    <Badge variant="default" className="bg-green-600">
+                                                        Sent {new Date(r.sent_at).toLocaleDateString()}
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge variant="outline">Draft</Badge>
+                                                )}
+                                                <span className="text-xs text-muted-foreground">
+                                                    {new Date(r.created_at).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <p className="mt-1.5 truncate font-medium">{r.subject || "No subject"}</p>
+                                            <p className="line-clamp-2 text-xs text-muted-foreground">{r.changelog}</p>
+                                        </div>
+                                        <div className="flex shrink-0 items-center gap-1">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)}>
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Delete report?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This will permanently remove "{r.subject || r.version}". This cannot be undone.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction
+                                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                                            onClick={() => deleteReport.mutate(r.id)}
+                                                        >
+                                                            Delete
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    </div>
-                    <div className="space-y-1">
-                        <Label>Detailed changelog (paste from build-report.txt)</Label>
-                        <Textarea rows={6} value={changelog} onChange={e => setChangelog(e.target.value)}
-                            placeholder="- Added Send Notification modal&#10;- Fixed cancel request bug&#10;- ..." />
-                    </div>
-                    <Button onClick={() => generate.mutate()} disabled={generate.isPending || !changelog.trim() || !version.trim()}>
-                        {generate.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1 inline-block" /> : <Sparkles className="h-4 w-4 mr-1" />}
-                        Generate email with AI
-                    </Button>
+                    )}
                 </CardContent>
             </Card>
-
-            {html && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Preview</CardTitle>
-                        <CardDescription>Edit HTML directly. Send manually using the actions below.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        <Textarea rows={10} value={html} onChange={e => setHtml(e.target.value)} className="font-mono text-xs" />
-                        <div className="rounded-md border bg-background p-4">
-                            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }} />
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            <Button variant="outline" onClick={copyHtml}><Copy className="h-4 w-4 mr-1" /> Copy HTML</Button>
-                            <Button variant="outline" onClick={mailtoAll} disabled={!subscribers.length}>
-                                <Send className="h-4 w-4 mr-1" /> Open mail client (BCC {subscribers.filter((s: any) => s.is_active !== false).length})
-                            </Button>
-                            <Button
-                                variant="default"
-                                onClick={() => sendViaFunction.mutate()}
-                                disabled={sendViaFunction.isPending || !subscribers.length || !html || !subject}
-                            >
-                                {sendViaFunction.isPending
-                                    ? <Loader2 className="h-4 w-4 animate-spin mr-1 inline-block" />
-                                    : <Rocket className="h-4 w-4 mr-1" />}
-                                Send to {(subscribers as any[]).filter(s => s.is_active !== false).length} subscribers
-                            </Button>
-                            <Button onClick={() => saveReport.mutate()} disabled={saveReport.isPending}>
-                                {saveReport.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1 inline-block" /> : null}
-                                Save report
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
 
             <Card>
                 <CardHeader className="space-y-3">
@@ -195,7 +201,7 @@ export default function BuildReportTab() {
 
                         <div className="flex flex-wrap gap-2">
                             <Badge variant="secondary">
-                                Active: {subscribers.filter((s: any) => s.is_active !== false).length}
+                                Active: {subscribers.filter((s) => s.is_active !== false).length}
                             </Badge>
 
                             <Badge variant="secondary">
@@ -215,7 +221,7 @@ export default function BuildReportTab() {
 
                 <CardContent>
                     {subscribers.length === 0 ||
-                        subscribers.filter((s: any) =>
+                        subscribers.filter((s) =>
                             !showUnsubscribed ? true : s.is_active === false
                         ).length === 0 ? (
                         <p className="text-sm text-muted-foreground">
@@ -231,7 +237,7 @@ export default function BuildReportTab() {
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div className="min-w-0">
                                             <p className="truncate max-w-[200px] break-all font-medium">
-                                                <Button onClick={() => navigator.clipboard.writeText(s.email)} variant="link" className="text-ghost-foreground">{s.email}</Button>
+                                                <Button onClick={() => copyEmail(s.id, s.email)} variant="link" className={`text-ghost-foreground ${copiedEmailId === s.id ? "txt-shimmer" : ""}`}>{s.email}</Button>
                                             </p>
                                         </div>
 
@@ -272,6 +278,16 @@ export default function BuildReportTab() {
                     )}
                 </CardContent>
             </Card>
+
+            <BuildReportDialog
+                open={dialogOpen}
+                onOpenChange={setDialogOpen}
+                subscribers={subscribers}
+                editing={editingReport}
+                onSaved={() => {
+                    qc.invalidateQueries({ queryKey: ["build-reports"] });
+                }}
+            />
         </div>
     );
 }
