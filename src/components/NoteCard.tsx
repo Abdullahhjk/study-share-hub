@@ -2,6 +2,7 @@ import { Download, ShoppingCart, Flag, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Note } from "@/lib/types";
 import { useCurrency } from "@/hooks/useCurrency";
 import { proxyImageUrl } from "@/lib/image-proxy";
@@ -86,10 +87,19 @@ export function NoteCard({ note, onRequestPaid, onCardClick, onReport }: NoteCar
                     {note.teacher.full_name}
                   </span>
                   {note.teacher.is_verified && (
-                    <BadgeCheck
-                      className="h-3.5 w-3.5 shrink-0 text-success"
-                      aria-label="Verified teacher"
-                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex shrink-0">
+                          <BadgeCheck
+                            className="h-3.5 w-3.5 text-success"
+                            aria-label="Verified teacher"
+                          />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        Verified Teacher
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
               )}

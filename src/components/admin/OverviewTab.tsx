@@ -337,7 +337,7 @@ export default function OverviewTab() {
                   size="sm"
                   onClick={handleForceFetchFx}
                   disabled={!fxStale || isFxFetching}
-                  className="h-8 flex-1 sm:flex-none gap-1 text-xs"
+                  className="flex-1 sm:flex-none gap-1 text-xs"
                 >
                   {isFxFetching ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -349,15 +349,17 @@ export default function OverviewTab() {
 
                 <CopyRatesButton data={data} />
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setApiDialogOpen(true)}
-                  className="h-8 flex-1 sm:flex-none gap-1.5 text-xs"
-                >
-                  <Activity className="h-3.5 w-3.5" />
-                  API Usage
-                </Button>
+                {isAdmin && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setApiDialogOpen(true)}
+                    className="flex-1 sm:flex-none gap-1.5 text-xs"
+                  >
+                    <Activity className="h-3.5 w-3.5" />
+                    API Usage
+                  </Button>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -434,6 +436,7 @@ export default function OverviewTab() {
       )}
 
       {/* API Usage Dialog */}
+      {isAdmin && (
       <Dialog open={apiDialogOpen} onOpenChange={setApiDialogOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
@@ -523,6 +526,7 @@ export default function OverviewTab() {
           )}
         </DialogContent>
       </Dialog>
+      )}
 
       {/* User Role Stats Dialog */}
       <Dialog open={usersDialogOpen} onOpenChange={setUsersDialogOpen}>
@@ -602,7 +606,7 @@ function CopyRatesButton({ data }: { data: { fxRate?: { rates: unknown; fetched_
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <Button variant="outline" size="sm" onClick={handleCopy} className="h-7 gap-1 text-xs w-28">
+    <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1 text-xs w-28">
       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
       {copied ? "Copied" : "Copy Rates"}
     </Button>

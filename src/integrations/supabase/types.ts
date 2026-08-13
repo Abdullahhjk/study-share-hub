@@ -1055,42 +1055,60 @@ export type Database = {
       teacher_verification_requests: {
         Row: {
           created_at: string
+          details: string | null
           document_name: string | null
-          document_type: string
-          document_url: string
+          document_type: string | null
+          document_url: string | null
           id: string
+          institution_name: string | null
+          method: string
           review_feedback: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
+          subjects_taught: string | null
           teacher_id: string
+          teaching_mode: string | null
           updated_at: string
+          years_experience: string | null
         }
         Insert: {
           created_at?: string
+          details?: string | null
           document_name?: string | null
-          document_type: string
-          document_url: string
+          document_type?: string | null
+          document_url?: string | null
           id?: string
+          institution_name?: string | null
+          method?: string
           review_feedback?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
+          subjects_taught?: string | null
           teacher_id: string
+          teaching_mode?: string | null
           updated_at?: string
+          years_experience?: string | null
         }
         Update: {
           created_at?: string
+          details?: string | null
           document_name?: string | null
-          document_type?: string
-          document_url?: string
+          document_type?: string | null
+          document_url?: string | null
           id?: string
+          institution_name?: string | null
+          method?: string
           review_feedback?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
+          subjects_taught?: string | null
           teacher_id?: string
+          teaching_mode?: string | null
           updated_at?: string
+          years_experience?: string | null
         }
         Relationships: [
           {
@@ -1685,21 +1703,33 @@ export type Database = {
       submit_teacher_verification: {
         Args: {
           p_document_name?: string
-          p_document_type: string
-          p_document_url: string
+          p_document_type?: string
+          p_document_url?: string
+          p_details?: string
+          p_institution_name?: string
+          p_method?: string
+          p_subjects_taught?: string
+          p_teaching_mode?: string
+          p_years_experience?: string
         }
         Returns: {
           created_at: string
+          details: string | null
           document_name: string | null
-          document_type: string
-          document_url: string
+          document_type: string | null
+          document_url: string | null
           id: string
+          institution_name: string | null
+          method: string
           review_feedback: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
+          subjects_taught: string | null
           teacher_id: string
+          teaching_mode: string | null
           updated_at: string
+          years_experience: string | null
         }
         SetofOptions: {
           from: "*"

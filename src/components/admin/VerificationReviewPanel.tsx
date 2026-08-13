@@ -38,6 +38,15 @@ const DOCUMENT_TYPE_LABEL: Record<string, string> = {
   employment_letter: "Employment Verification Letter",
 };
 
+const TEACHING_MODE_LABEL: Record<string, string> = {
+  tuition_center: "Tuition Center",
+  home_tuition: "Home Tuition",
+  online_tutor: "Online Tutoring",
+  youtube_teacher: "YouTube / Content Creator",
+  school_college: "School / College Teacher",
+  other: "Other",
+};
+
 const STATUS_BADGE: Record<string, string> = {
   pending_review: "bg-warning text-warning-foreground",
   verified: "bg-success text-success-foreground",
@@ -48,9 +57,15 @@ const STATUS_BADGE: Record<string, string> = {
 interface VerificationRequest {
   id: string;
   teacher_id: string;
-  document_type: string;
-  document_url: string;
+  method: string;
+  document_type: string | null;
+  document_url: string | null;
   document_name: string | null;
+  teaching_mode: string | null;
+  institution_name: string | null;
+  subjects_taught: string | null;
+  years_experience: string | null;
+  details: string | null;
   status: string;
   review_feedback: string | null;
   created_at: string;
@@ -73,7 +88,7 @@ export function VerificationReviewPanel() {
       let query = supabase
         .from("teacher_verification_requests")
         .select(
-          "id, teacher_id, document_type, document_url, document_name, status, review_feedback, created_at, profile:profiles!teacher_verification_requests_teacher_id_fkey(id, full_name, email, school_name)"
+          "id, teacher_id, method, document_type, document_url, document_name, teaching_mode, institution_name, subjects_taught, years_experience, details, status, review_feedback, created_at, profile:profiles!teacher_verification_requests_teacher_id_fkey(id, full_name, email, school_name)"
         )
         .order("created_at", { ascending: false });
       if (!showAll) query = query.eq("status", "pending_review");
@@ -190,8 +205,8 @@ export function VerificationReviewPanel() {
             Teacher Verification Review
           </CardTitle>
           <CardDescription>
-            Review teacher identity documents. Approved teachers get a public
-            verified badge.
+            Review teacher identity proof — documents or teaching details.
+            Approved teachers get a public verified badge.
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
@@ -223,7 +238,7 @@ export function VerificationReviewPanel() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Teacher</TableHead>
-                  <TableHead>Document</TableHead>
+                  <TableHead>Submission</TableHead>
                   <TableHead>Submitted</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
@@ -247,18 +262,51 @@ export function VerificationReviewPanel() {
                         )}
                       </TableCell>
                       <TableCell className="align-top">
-                        <div>
-                          {DOCUMENT_TYPE_LABEL[req.document_type] ??
-                            req.document_type}
-                        </div>
-                        {req.document_name && (
-                          <div className="text-xs text-muted-foreground">
-                            {req.document_name}
+                        {req.method === "details" ? (
+                          <div className="space-y-1">
+                            <div className="font-medium">
+                              {req.teaching_mode
+                                ? (TEACHING_MODE_LABEL[req.teaching_mode] ??
+                                  req.teaching_mode)
+                                : "Teaching details"}
+                            </div>
+                            {req.subjects_taught && (
+                              <div className="text-xs text-muted-foreground">
+                                Subjects: {req.subjects_taught}
+                              </div>
+                            )}
+                            {req.years_experience && (
+                              <div className="text-xs text-muted-foreground">
+                                Experience: {req.years_experience} yrs
+                              </div>
+                            )}
+                            {req.details && (
+                              <p className="whitespace-pre-wrap text-xs text-muted-foreground">
+                                {req.details}
+                              </p>
+                            )}
+                            {req.review_feedback && (
+                              <div className="text-xs text-muted-foreground">
+                                Feedback: {req.review_feedback}
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {req.review_feedback && (
-                          <div className="text-xs text-muted-foreground">
-                            Feedback: {req.review_feedback}
+                        ) : (
+                          <div>
+                            <div>
+                              {DOCUMENT_TYPE_LABEL[req.document_type ?? ""] ??
+                                req.document_type}
+                            </div>
+                            {req.document_name && (
+                              <div className="text-xs text-muted-foreground">
+                                {req.document_name}
+                              </div>
+                            )}
+                            {req.review_feedback && (
+                              <div className="text-xs text-muted-foreground">
+                                Feedback: {req.review_feedback}
+                              </div>
+                            )}
                           </div>
                         )}
                       </TableCell>
@@ -267,19 +315,21 @@ export function VerificationReviewPanel() {
                       </TableCell>
                       <TableCell className="align-top">
                         <Badge className={STATUS_BADGE[req.status]}>
-                          {req.status.replace("_", " ")}
+                          {req.status.replace("_", " ").toUpperCase()}
                         </Badge>
                       </TableCell>
                       <TableCell className="align-top">
                         <div className="space-y-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => viewDocument(req.document_url)}
-                          >
-                            <Eye className="h-4 w-4" />
-                            <span className="ml-1">View</span>
-                          </Button>
+                          {req.method !== "details" && req.document_url && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => viewDocument(req.document_url!)}
+                            >
+                              <Eye className="h-4 w-4" />
+                              <span className="ml-1">View</span>
+                            </Button>
+                          )}
                           {req.status === "pending_review" && (
                             <div className="flex flex-col gap-2">
                               <div className="flex gap-2">

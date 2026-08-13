@@ -17,6 +17,7 @@ import {
   Settings,
   ChevronDown,
   GraduationCap,
+  BadgeCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,6 +42,8 @@ import { toast } from "sonner";
 type Profile = {
   full_name: string | null;
   avatar_url: string | null;
+  is_verified: boolean;
+  verified_at: string;
 };
 
 export function Header() {
@@ -104,7 +107,7 @@ export function Header() {
 
     supabase
       .from("profiles")
-      .select("full_name, avatar_url")
+      .select("full_name, avatar_url, is_verified, verified_at")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
@@ -267,11 +270,27 @@ export function Header() {
                       className="flex items-center gap-3 px-2 py-2 h-auto w-full justify-start hover:bg-primary"
                     >
                       {profile?.avatar_url ? (
-                        <img
-                          src={profile.avatar_url}
-                          alt="Profile"
-                          className="h-8 w-8 rounded-full object-cover"
-                        />
+                        <div className="relative">
+                          <img
+                            src={profile.avatar_url}
+                            alt="Profile"
+                            className="h-8 w-8 rounded-full object-cover"
+                          />
+                          {(profile.is_verified) &&
+                            profile.is_verified && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="absolute -bottom-1 -right-1 rounded-full bg-background p-0.5 shadow-sm">
+                                    <BadgeCheck
+                                      className="h-1 w-1 sm:h-2 sm:w-2 text-success"
+                                      aria-label="Verified teacher"
+                                    />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">You are a verified teacher. Verified at: {new Date(profile.verified_at).toLocaleString()}</TooltipContent>
+                              </Tooltip>
+                            )}
+                        </div>
                       ) : (
                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-semibold">
                           {(profile?.full_name || "U").charAt(0).toUpperCase()}

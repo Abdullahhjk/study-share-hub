@@ -178,7 +178,7 @@ export default function CoadminDashboard() {
       case "activity": return <ActivityLogs isAdmin />;
       case "approvals": return <TeacherApprovalPanel />;
       case "security": return <SecurityTab />;
-      case "settings": return <ProfileSettings userId={user?.id} />;
+      case "settings": return <ProfileSettings userId={user?.id} role={userRole} />;
       case "auditLog": return <AdminAuditLog />;
       default: return null;
     }

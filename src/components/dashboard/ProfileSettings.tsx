@@ -3,12 +3,13 @@ import { useForm } from "react-hook-form";
 import { SettingsDialog } from "../settings/SettingsDialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Save, LockKeyhole, Upload, Settings, User2, Loader2 } from "lucide-react";
+import { Save, LockKeyhole, Upload, Settings, User2, Loader2, BadgeCheck } from "lucide-react";
 import { proxyImageUrl } from "@/lib/image-proxy";
 import { ActivityLogger } from "@/hooks/useActivityLogger";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Card,
   CardContent,
@@ -37,9 +38,10 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 
 interface ProfileSettingsProps {
   userId: string;
+  role?: string | null;
 }
 
-export function ProfileSettings({ userId }: ProfileSettingsProps) {
+export function ProfileSettings({ userId, role }: ProfileSettingsProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
@@ -218,7 +220,7 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
 
   return (
     <>
-      <PlatformSettingsInfo userId={userId} />
+      {role !== "coadmin" && <PlatformSettingsInfo userId={userId} />}
 
       <Card className="overflow-hidden mt-4">
         <CardHeader>
@@ -234,17 +236,33 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
         <CardContent className="space-y-6 px-4 sm:px-6">
           {/* Avatar Upload */}
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
-            {proxyImageUrl(profile?.avatar_url ?? null) ? (
-              <img
-                src={proxyImageUrl(profile?.avatar_url ?? null)}
-                alt="Avatar"
-                className="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-cover"
-              />
-            ) : (
-              <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-semibold">
-                {(profile?.full_name || "U").charAt(0).toUpperCase()}
-              </div>
-            )}
+            <div className="relative shrink-0">
+              {proxyImageUrl(profile?.avatar_url ?? null) ? (
+                <img
+                  src={proxyImageUrl(profile?.avatar_url ?? null)}
+                  alt="Avatar"
+                  className="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-cover"
+                />
+              ) : (
+                <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-semibold">
+                  {(profile?.full_name || "U").charAt(0).toUpperCase()}
+                </div>
+              )}
+              {(role === "admin" || role === "teacher") &&
+                profile?.is_verified && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="absolute -bottom-1 -right-1 rounded-full bg-background p-0.5 shadow-sm">
+                        <BadgeCheck
+                          className="h-4 w-4 sm:h-5 sm:w-5 text-success"
+                          aria-label="Verified teacher"
+                        />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">You are a verified teacher. Verified at: {new Date(profile.verified_at).toLocaleString()}</TooltipContent>
+                  </Tooltip>
+                )}
+            </div>
             <label
               htmlFor="avatar-upload"
               className="inline-flex w-full sm:w-auto justify-center items-center gap-2 px-4 py-2 border rounded-md cursor-pointer select-none"
@@ -326,18 +344,20 @@ export function ProfileSettings({ userId }: ProfileSettingsProps) {
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="school_name">School/Institution Name</Label>
-                <Input
-                  id="school_name"
-                  {...register("school_name")}
-                  placeholder="Enter your school or institution name"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Enter your school or institution name. You can't change it in
-                  upload tab.
-                </p>
-              </div>
+              {role !== "coadmin" && (
+                <div className="space-y-2">
+                  <Label htmlFor="school_name">School/Institution Name</Label>
+                  <Input
+                    id="school_name"
+                    {...register("school_name")}
+                    placeholder="Enter your school or institution name"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter your school or institution name. You can't change it in
+                    upload tab.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

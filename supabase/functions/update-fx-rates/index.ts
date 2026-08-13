@@ -6,8 +6,28 @@ import { trackFn } from "../_shared/telemetry.ts";
 const API_URL =
   "https://api.apilayer.com/currency_data/live?source=PKR&currencies=USD,PKR,CAD,JPY,CNY,EUR,GBP,SAR";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+};
+
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      ...corsHeaders,
+    },
+  });
+}
+
 Deno.serve(
-  trackFn("update-fx-rates", async () => {
+  trackFn("update-fx-rates", async (req) => {
+    if (req.method === "OPTIONS") {
+      return new Response("ok", { status: 200, headers: corsHeaders });
+    }
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -81,22 +101,14 @@ Deno.serve(
       }
 
       // ------------------------------------------------------------
-      // 4. Get the actual API key from Supabase secrets.
+      // 4. Read the API key.
       //
-      // The "API" column identifies which secret contains the key.
+      // The "API" column holds the actual apilayer key.
       // ------------------------------------------------------------
-      const apiSecretName = selectedRow.API?.trim();
-
-      if (!apiSecretName) {
-        throw new Error("Selected API row has an empty API identifier.");
-      }
-
-      const apiKey = apiSecretName;
+      const apiKey = selectedRow.API?.trim();
 
       if (!apiKey) {
-        throw new Error(
-          `Supabase secret "${apiSecretName}" is not configured.`
-        );
+        throw new Error("Selected API row has an empty API identifier.");
       }
 
       // ------------------------------------------------------------
@@ -141,33 +153,20 @@ Deno.serve(
       // ------------------------------------------------------------
       // 7. Return success.
       // ------------------------------------------------------------
-      return new Response(
-        JSON.stringify({
-          success: true,
-          api: apiSecretName,
-          api_count: newCount,
-          saved: updatedRow,
-          api_response: data,
-        }),
-        {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      return json({
+        success: true,
+        api: apiKey,
+        api_count: newCount,
+        saved: updatedRow,
+        api_response: data,
+      });
     } catch (error) {
-      return new Response(
-        JSON.stringify({
+      return json(
+        {
           success: false,
           error: error instanceof Error ? error.message : String(error),
-        }),
-        {
-          status: 500,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+        },
+        500
       );
     }
   })

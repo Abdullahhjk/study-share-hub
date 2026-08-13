@@ -20,6 +20,13 @@ import {
 import { CheckCircle, XCircle, UserCheck, Loader2, Eye, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const VERIFICATION_DOCUMENT_LABEL: Record<string, string> = {
   institution_id: "Institution ID Card",
@@ -27,6 +34,15 @@ const VERIFICATION_DOCUMENT_LABEL: Record<string, string> = {
   faculty_staff_id: "Faculty/Staff ID Card",
   teaching_license: "Teaching License/Certificate",
   employment_letter: "Employment Verification Letter",
+};
+
+const TEACHING_MODE_LABEL: Record<string, string> = {
+  tuition_center: "Tuition Center",
+  home_tuition: "Home Tuition",
+  online_tutor: "Online Tutoring",
+  youtube_teacher: "YouTube / Content Creator",
+  school_college: "School / College Teacher",
+  other: "Other",
 };
 
 interface PendingTeacher {
@@ -41,14 +57,21 @@ interface PendingTeacher {
   } | null;
   verification: {
     id: string;
-    document_type: string;
-    document_url: string;
+    method: string;
+    document_type: string | null;
+    document_url: string | null;
     document_name: string | null;
+    teaching_mode: string | null;
+    institution_name: string | null;
+    subjects_taught: string | null;
+    years_experience: string | null;
+    details: string | null;
   } | null;
 }
 
 export function TeacherApprovalPanel() {
   const queryClient = useQueryClient();
+  const [verificationDetail, setVerificationDetail] = useState<PendingTeacher["verification"] | null>(null);
 
   const { data: pendingTeachers, isLoading } = useQuery({
     queryKey: ["pending-teachers"],
@@ -71,7 +94,7 @@ export function TeacherApprovalPanel() {
           .in("id", userIds),
         supabase
           .from("teacher_verification_requests")
-          .select("id, teacher_id, document_type, document_url, document_name")
+          .select("id, teacher_id, method, document_type, document_url, document_name, teaching_mode, institution_name, subjects_taught, years_experience, details")
           .in("teacher_id", userIds)
           .eq("status", "pending_review"),
       ]);
@@ -160,15 +183,16 @@ export function TeacherApprovalPanel() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <UserCheck className="h-5 w-5" />
-          Teacher Approval Panel
-        </CardTitle>
-        <CardDescription>
-          Review and approve pending teacher registrations. Only approved
-          teachers can upload notes.
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserCheck className="h-5 w-5" />
+            Teacher Approval Panel
+          </CardTitle>
+          <CardDescription>
+            Review and approve pending teacher registrations. Only approved
+            teachers can upload notes.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -214,25 +238,56 @@ export function TeacherApprovalPanel() {
                   <TableCell>
                     {teacher.verification ? (
                       <div className="space-y-1">
-                        <div className="flex items-center gap-1 text-xs font-medium">
-                          <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-                          {
-                            VERIFICATION_DOCUMENT_LABEL[
-                              teacher.verification.document_type
-                            ] ?? teacher.verification.document_type
-                          }
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2 text-xs"
-                          onClick={() =>
-                            viewDocument(teacher.verification!.document_url)
-                          }
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          <span className="ml-1">View doc</span>
-                        </Button>
+                        {teacher.verification.method === "details" ? (
+                          <>
+                            <div className="flex items-center gap-1 text-xs font-medium">
+                              <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                              {teacher.verification.teaching_mode
+                                ? (TEACHING_MODE_LABEL[
+                                    teacher.verification.teaching_mode
+                                  ] ?? teacher.verification.teaching_mode)
+                                : "Teaching details"}
+                            </div>
+                            {teacher.verification.details && (
+                              <p className="max-w-[220px] truncate text-xs text-muted-foreground">
+                                {teacher.verification.details}
+                              </p>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              onClick={() =>
+                                setVerificationDetail(teacher.verification)
+                              }
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              <span className="ml-1">View details</span>
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1 text-xs font-medium">
+                              <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                              {
+                                VERIFICATION_DOCUMENT_LABEL[
+                                  teacher.verification.document_type ?? ""
+                                ] ?? teacher.verification.document_type
+                              }
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              onClick={() =>
+                                viewDocument(teacher.verification!.document_url!)
+                              }
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              <span className="ml-1">View doc</span>
+                            </Button>
+                          </>
+                        )}
                       </div>
                     ) : (
                       <span className="text-muted-foreground">Not submitted</span>
@@ -282,6 +337,55 @@ export function TeacherApprovalPanel() {
           </Table>
         )}
       </CardContent>
-    </Card>
+      </Card>
+
+      <Dialog
+        open={!!verificationDetail}
+        onOpenChange={(open) => { if (!open) setVerificationDetail(null); }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Teaching Details</DialogTitle>
+            <DialogDescription>
+              How this teacher says they teach.
+            </DialogDescription>
+          </DialogHeader>
+          {verificationDetail && (
+            <div className="space-y-3 text-sm">
+              {verificationDetail.teaching_mode && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Where they teach</p>
+                  <p>{TEACHING_MODE_LABEL[verificationDetail.teaching_mode] ?? verificationDetail.teaching_mode}</p>
+                </div>
+              )}
+              {verificationDetail.institution_name && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Institution / Center</p>
+                  <p>{verificationDetail.institution_name}</p>
+                </div>
+              )}
+              {verificationDetail.subjects_taught && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Subjects</p>
+                  <p>{verificationDetail.subjects_taught}</p>
+                </div>
+              )}
+              {verificationDetail.years_experience && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Experience</p>
+                  <p>{verificationDetail.years_experience} yrs</p>
+                </div>
+              )}
+              {verificationDetail.details && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Details</p>
+                  <p className="whitespace-pre-wrap">{verificationDetail.details}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

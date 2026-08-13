@@ -467,7 +467,7 @@ export default function Dashboard() {
             </AlertDescription>
           </Alert>
         ) : (
-          <ProfileSettings userId={user?.id} />
+          <ProfileSettings userId={user?.id} role={userRole} />
         );
       case "activity":
         return <ActivityLogs userId={user?.id} />;
