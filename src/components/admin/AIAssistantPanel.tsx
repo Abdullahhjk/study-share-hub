@@ -43,7 +43,7 @@ export default function AIAssistantPanel() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const isMobile = useIsMobile();
-  const { open, setOpen, panelWidth, setPanelWidth, activePanel, setActivePanel } = useAIPanel();
+  const { open, setOpen, panelWidth, setPanelWidth, activePanel, setActivePanel, systemContext } = useAIPanel();
   const isOnAiTab = (location.pathname === "/admin" || location.pathname === "/coadmin") && searchParams.get("tab") === "aiAssistant";
 
   const isArchonActive = activePanel === "archon";
@@ -154,7 +154,7 @@ export default function AIAssistantPanel() {
         .eq("user_id", user?.id)
         .maybeSingle();
 
-      const keys: { key: string; label: string; request_count: number }[] = settings?.cohere_api_keys || [];
+      const keys = (settings?.cohere_api_keys as { key: string; label: string; request_count: number }[]) ?? [];
       setUserKeys(keys);
 
       if (keys.length === 0) {
@@ -164,7 +164,7 @@ export default function AIAssistantPanel() {
         return;
       }
 
-      const availableKeys = keys.filter(k => k.request_count < 1000);
+      const availableKeys = keys.filter(k => k.request_count < 1000);;
       if (availableKeys.length === 0) {
         setIsQuotaExhausted(true);
         setResetAt(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString());
@@ -403,7 +403,7 @@ export default function AIAssistantPanel() {
       .eq("user_id", user?.id)
       .maybeSingle();
 
-    const keys: { key: string; label: string; request_count: number }[] = settings?.cohere_api_keys || [];
+    const keys = (settings?.cohere_api_keys as { key: string; label: string; request_count: number }[]) ?? [];
     const available = keys.filter(k => k.request_count < 1000);
     if (available.length === 0) {
       setIsQuotaExhausted(true);
@@ -440,6 +440,7 @@ export default function AIAssistantPanel() {
       role: "system" as const,
       content:
         config.systemPrompt +
+        (systemContext ? "\n\n## Admin System Context (selected section):\n" + systemContext : "") +
         "\n\nCurrent Date: " +
         new Date().toLocaleDateString("en-CA") +
         "\n\nCurrent Time: " +

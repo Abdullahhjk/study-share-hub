@@ -18,6 +18,7 @@ import {
   ChevronDown,
   GraduationCap,
   BadgeCheck,
+  Cpu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -387,6 +388,15 @@ export function Header() {
                   <Link to="/admin" className="flex items-center gap-2">
                     <Shield className="h-4 w-4" />
                     Admin Dashboard
+                  </Link>
+                </DropdownMenuItem>
+              )}
+
+              {user && userRole === "admin" && (
+                <DropdownMenuItem asChild>
+                  <Link to="/system-blueprint" className="flex items-center gap-2">
+                    <Cpu className="h-4 w-4" />
+                    System Blueprint
                   </Link>
                 </DropdownMenuItem>
               )}

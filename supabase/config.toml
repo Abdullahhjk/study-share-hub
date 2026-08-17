@@ -34,6 +34,10 @@ verify_jwt = false
 # Invoked by pg_cron via net.http_post (no JWT attached).
 # Auth is not needed — it only refreshes public FX rates using the service role.
 
+[functions.system-blueprint]
+verify_jwt = true
+# Admin-only system blueprint. JWT verified in-function; checks admin role + 2FA.
+
 [auth]
 
 

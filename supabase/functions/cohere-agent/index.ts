@@ -148,9 +148,10 @@ You have a \`run_sql\` tool. Use it to query or modify data. All queries are exe
 const COMMON_CAPABILITIES = `
 ## Navigation Links
 You can output standard Markdown links to help the user navigate:
-- Admin: \`[Label](/admin?tab=tabname)\` — tabs: overview, users, notes, activity, feedback, reports, payments, notifications, aiQuota, dbBackup, auditLog, platformSettings, buildReport, upcomingFeatures, console
-- Coadmin: \`[Label](/coadmin?tab=tabname)\` — tabs: overview, users, categories, notifications, payments, reports, feedback, activity, approvals, settings
-- Other routes: \`[Label](/path)\` e.g. /dashboard, /help, /upcoming
+- Admin: \`[Label](/admin?tab=tabname)\` — tabs: overview, users, notes, activity, feedback, reports, payments, notifications, security, aiQuota, dbBackup, auditLog, platformSettings, buildReport, upcomingFeatures, console
+- Coadmin: \`[Label](/coadmin?tab=tabname)\` — tabs: overview, users, notes, categories, notifications, payments, reports, feedback, activity, approvals, security, settings, auditLog
+- Admin Tools: \`[System Blueprint](/system-blueprint)\` — full system architecture overview
+- Other routes: \`[Label](/path)\` e.g. /dashboard, /help, /upcoming, /archon-keys
 Always use markdown link syntax: \`[display text](/path)\`.
 
 ## Charts — Visual Data Presentation
@@ -213,7 +214,7 @@ function buildHelpGuide(role: string): string {
 GETTING STARTED:
 - Scholar Share is a notes marketplace. Verified teachers upload notes; students browse, buy, and download. Buying requires no account.
 - Roles: Guest/Student (browse, buy, download), Teacher (upload and sell), Co-Admin (moderate content and approvals), Admin (full control).
-- Currency: use the currency picker in the header to change how prices are displayed. Prices are stored in a base currency (PKR by default) and converted to your chosen currency.
+- Currency: use the currency picker in the header to change how prices are displayed. Prices are stored in a base currency (PKR by default) and converted to your chosen currency. FX rates are refreshed daily via Apilayer API.
 - Display settings: font size, high contrast, dyslexia-friendly text, and colorblind modes are available in settings.`;
 
   const student = `
@@ -227,14 +228,15 @@ STUDENT GUIDE:
 
   const teacher = `
 TEACHER GUIDE:
-- Signup is teacher-only and starts as Pending; an admin approves before you can upload.
+- Signup is teacher-only and starts as Pending; an admin approves before you can upload. Approval status is visible in Notifications.
+- Teacher Verification: after approval, teachers can submit verification documents to earn a verified badge. Verified teachers get higher visibility.
 - Profile (Dashboard → Settings): add phone, school name (required), and profile photo.
 - Your Platform Settings card (Dashboard → Settings): shows your assigned commission rate (percent taken from each paid sale), the settings currency, and your allowed note price range (converted to the user's display currency). Only admins change these.
 - Payment methods (Profile → Payment Settings): up to 5 bank accounts or wallets; mark one as preferred so it shows first at checkout.
 - Upload (Dashboard → Upload): PDF under 50 MB, cover under 5 MB; title, description, category, subject; set a price within your assigned range or make it free. Edit/delete anytime.
 - Requests: verify the receipt, then Approve (auto-generates the one-time download code) or Reject (give a reason and refund).
 - Refunds: rejected/refunded requests appear here; return the money to close the order.
-- Trash: recover or permanently delete removed notes.
+- Trash: recover or permanently delete removed notes. Soft-deleted notes are purged after 30 days automatically.
 - Analytics: views, downloads, and sales over time.
 - Categories: create your own; you can only delete categories you created and only if empty.
 - Activity: login/upload/download log with dates and IPs.
@@ -244,20 +246,24 @@ TEACHER GUIDE:
 
   const coadmin = `
 CO-ADMIN GUIDE:
-- Co-admins run day-to-day moderation. Tabs: overview, users, notes, categories, notifications, payments, reports, feedback, activity, approvals, settings, auditLog.
+- Co-admins run day-to-day moderation. Tabs: overview, users, notes, categories, notifications, payments, reports, feedback, activity, approvals, security, settings, auditLog.
 - Approvals: approve or reject new teacher signups.
-- Co-admins CANNOT see admin-only features: Platform Settings, AI Quota, DB Backup, Build ChangeLog, Upcoming, Console.`;
+- Security tab: view MFA status and session info.
+- Co-admins CANNOT see admin-only features: Platform Settings, AI Quota, DB Backup, Build ChangeLog, Upcoming, Console, System Blueprint.`;
 
   const admin = `
 ADMIN GUIDE:
-- Full control. Tabs: overview, users, notes, activity, feedback, reports, payments, notifications, aiQuota, dbBackup, auditLog, platformSettings, buildReport, upcomingFeatures, console.
+- Full control. Tabs: overview, users, notes, activity, feedback, reports, payments, notifications, security, aiQuota, dbBackup, auditLog, platformSettings, buildReport, upcomingFeatures, console.
 - Platform Settings tab: the source of truth for commission and pricing. Rows define a commission percent, a currency code, and a min/max note price. Assign a row to each account (user_roles.settings_id) so teachers can have different rates and ranges.
-- Users: create users and manage roles; stats use each user's own platform settings.
+- Users: create users and manage roles; stats use each user's own platform settings. Role changes are server-authoritative.
 - Approvals: approve pending teachers.
 - Payments: per-teacher summaries use each teacher's own commission rate.
+- Security: MFA enforcement status, session management, AAL levels.
 - AI Quota: ARCHON usage and API keys. DB Backup: create/download backups. Audit Log: admin action trail. Console: run SQL directly.
 - Build ChangeLog / Upcoming: publish release notes and manage the roadmap.
-- Investigations: access a teacher's account only via a one-time secure link; passwords are never visible; every access is logged.`;
+- System Blueprint: accessible from the menu bar — full system architecture overview with live DB schema, edge function inventory, migration history, frontend routes, and component architecture. Load any section into ARCHON for AI-assisted exploration.
+- Investigations: access a teacher's account only via a one-time secure link; passwords are never visible; every access is logged.
+- Newsletter: manage newsletter subscribers and send campaigns.`;
 
   const statuses = `
 ORDER STATUSES:
@@ -273,7 +279,9 @@ REPORTS & PRIVACY:
 KEY FAQS:
 - Commission is per-account (from assigned platform settings), not one global rate; free notes have no charge. Price range and rate are shown in Dashboard → Settings → Your Platform Settings.
 - Amount Owed to Platform = total revenue × your commission rate (Your Data).
-- ARCHON AI: optional assistant. Admins/co-admins get operations help; teachers/students get general help. Needs Cohere API keys; quotas reset at midnight UTC.`;
+- ARCHON AI: optional assistant. Admins/co-admins get operations help with SQL execution; teachers/students get general help. Needs Cohere API keys; quotas reset at midnight UTC. Admins can manage keys in AI Quota tab; users manage their own keys at /archon-keys.
+- Multi-Currency: PKR, USD, CAD, EUR, GBP, JPY, CNY, SAR supported. FX rates refreshed daily. Currency selection persists across sessions.
+- MFA: Admins must enable TOTP-based 2FA. Magic link sign-in counts as 2FA. Recovery available at /mfa/recover.`;
 
   const header = "HELP & GUIDE — official manual; answer user questions using this:";
 
