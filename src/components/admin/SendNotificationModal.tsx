@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Send, Pencil, Loader2 } from "lucide-react";
+import { Sparkles, Send, Pencil, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import NotificationMarkdown from "@/components/notifications/NotificationMarkdown";
 
 const TEMPLATES: Record<string, { title: string; message: string }> = {
     "Payment Pending": {
@@ -56,6 +57,7 @@ export function SendNotificationModal({ open, onOpenChange, recipientId, recipie
     const [title, setTitle] = useState(TEMPLATES["Payment Pending"].title);
     const [message, setMessage] = useState(TEMPLATES["Payment Pending"].message);
     const [recipient, setRecipient] = useState<string>(recipientId ?? "all");
+    const [showPreview, setShowPreview] = useState(false);
 
     useEffect(() => {
         setRecipient(recipientId ?? "all");
@@ -136,7 +138,7 @@ export function SendNotificationModal({ open, onOpenChange, recipientId, recipie
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         {editTarget ? <Pencil className="h-4 w-4" /> : <Send className="h-4 w-4" />}
@@ -184,8 +186,39 @@ export function SendNotificationModal({ open, onOpenChange, recipientId, recipie
                         <Input placeholder="Notification title..." value={title} onChange={e => setTitle(e.target.value)} />
                     </div>
                     <div className="space-y-1">
-                        <Label>Message</Label>
-                        <Textarea placeholder="Notification message..." value={message} onChange={e => setMessage(e.target.value)} rows={5} />
+                        <div className="flex items-center justify-between">
+                            <Label>Message</Label>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 gap-1 px-2 text-[11px] text-muted-foreground"
+                                onClick={() => setShowPreview(v => !v)}
+                            >
+                                {showPreview ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                                {showPreview ? "Hide preview" : "Preview"}
+                            </Button>
+                        </div>
+                        <Textarea
+                            placeholder="Notification message — Markdown & LaTeX supported, e.g. **bold**, - lists, $E = mc^2$..."
+                            value={message}
+                            onChange={e => setMessage(e.target.value)}
+                            rows={5}
+                            className="font-mono text-xs"
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                            Markdown supported: blank line = new paragraph, **bold**, *italic*, - bullets. LaTeX: $inline$ or $$block$$.
+                        </p>
+                        {showPreview && (
+                            <div className="rounded-md border bg-background p-3">
+                                <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Preview</p>
+                                <p className="text-sm font-medium">{title}</p>
+                                <NotificationMarkdown
+                                    content={message}
+                                    className="mt-1 text-xs text-muted-foreground [&_.katex]:text-[1em]"
+                                />
+                            </div>
+                        )}
                     </div>
                     <Button
                         type="button" variant="secondary" size="sm"

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import NotificationMarkdown from "@/components/notifications/NotificationMarkdown";
 
 interface TeacherNotificationsProps {
   userId: string;
@@ -67,7 +68,9 @@ export function TeacherNotifications({ userId }: TeacherNotificationsProps) {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-medium text-sm">{n.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{n.message}</p>
+                    <div className="text-xs text-muted-foreground mt-0.5 [&_.katex]:text-[1em] [&_.katex-display]:my-1 [&_.katex-display]:overflow-x-auto">
+                      <NotificationMarkdown content={n.message} />
+                    </div>
                   </div>
                   {!n.is_read && <Badge variant="default" className="text-[10px] shrink-0">New</Badge>}
                 </div>

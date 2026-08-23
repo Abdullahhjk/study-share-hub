@@ -654,6 +654,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          current_version: number
           id: string
           is_dismissed: boolean
           is_read: boolean
@@ -664,6 +665,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          current_version?: number
           id?: string
           is_dismissed?: boolean
           is_read?: boolean
@@ -674,6 +676,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          current_version?: number
           id?: string
           is_dismissed?: boolean
           is_read?: boolean
@@ -692,6 +695,54 @@ export type Database = {
           {
             foreignKeyName: "notifications_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_versions: {
+        Row: {
+          created_at: string
+          edited_by: string | null
+          id: string
+          message: string
+          notification_id: string
+          title: string
+          user_id: string | null
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          edited_by?: string | null
+          id?: string
+          message: string
+          notification_id: string
+          title: string
+          user_id?: string | null
+          version: number
+        }
+        Update: {
+          created_at?: string
+          edited_by?: string | null
+          id?: string
+          message?: string
+          notification_id?: string
+          title?: string
+          user_id?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_versions_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_versions_edited_by_fkey"
+            columns: ["edited_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

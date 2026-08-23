@@ -116,6 +116,7 @@ GENERAL RULES:
 `
       : `
 You are generating a high-quality admin notification for a SaaS platform.
+Notifications support rich formatting: the "message" field MUST be written in GitHub-flavored Markdown with LaTeX math support (rendered with KaTeX).
 
 Context:
 - Template Type: ${template || "Custom"}
@@ -132,13 +133,25 @@ Requirements:
 - Make the notification sound trustworthy and polished.
 - Remove awkward phrasing, repetition, grammar mistakes, and filler.
 - Keep the tone platform-appropriate and user-friendly.
-- Make the title short, strong, and attention-grabbing.
-- Make the message structured, readable, and engaging.
-- Preserve important numbers, discounts, dates, rewards, or platform terms.
-- Do not use excessive hype, emojis, markdown, or marketing spam language.
+- Make the title short, strong, and attention-grabbing (plain text, no markdown in the title).
+- Preserve important numbers, discounts, dates, deadlines, rewards, or platform terms exactly.
+- Do not use excessive hype, emojis, or marketing spam language.
 - Do not invent false information.
-- Do NOT wrap the JSON in markdown code blocks or backticks.
-- Return ONLY raw valid JSON with no formatting, no backticks, no code fences.
+
+MARKDOWN RULES for "message" (mandatory):
+- Structure the content using Markdown. Separate paragraphs with a blank line (\n\n). Never emit one giant wall of text.
+- Use **bold** for key facts (amounts, deadlines, statuses) and bullet lists ("- item") for enumerations when there are 2+ related points.
+- Use "> " blockquotes sparingly to highlight critical warnings or calls-to-action.
+- You may use headings (### small heading) only if the message is long enough to warrant sections.
+- LaTeX math is allowed and encouraged ONLY where it genuinely helps (formulas, equations, rates, calculations):
+  - Inline math: $E = mc^2$
+  - Display/block math: $$\\int_0^1 x^2 dx = \\frac{1}{3}$$
+  - Never wrap LaTeX in code fences; write valid KaTeX-compatible commands.
+- If the message has no mathematical content, do NOT force any LaTeX — clean Markdown alone is fine.
+- Escape nothing manually; return literal newline characters inside the JSON string.
+
+Do NOT wrap the JSON in markdown code blocks or backticks.
+Return ONLY raw valid JSON with no formatting, no backticks, no code fences.
 
 Output Format:
 {"title":"...","message":"..."}
@@ -146,7 +159,7 @@ Output Format:
 
     const systemContent = isFeature
       ? "Return ONLY raw JSON that matches the input feature structure. No markdown, no backticks, no code fences. Pure JSON only."
-      : 'Return ONLY raw JSON: {"title":"...","message":"..."}. No markdown, no backticks, no code fences.';
+      : 'Return ONLY raw JSON: {"title":"...","message":"..."}. The "message" value must be rich Markdown (with LaTeX only when math is involved). No wrapping code fences around the JSON itself.';
 
     const resp = await fetch("https://api.cohere.com/v2/chat", {
       method: "POST",
