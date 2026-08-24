@@ -66,7 +66,7 @@ export default function MfaVerify() {
   }, [code]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     localStorage.clear();
     sessionStorage.clear();
     navigate("/login", { replace: true });

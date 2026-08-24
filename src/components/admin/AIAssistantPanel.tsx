@@ -892,7 +892,7 @@ export default function AIAssistantPanel() {
           onClick={openArchonTab}
           className={`fixed z-[61] transition-all duration-300 ease-in-out ${open
             ? "right-0 top-1/2 -translate-y-1/2 rounded-l-md border border-r-0 bg-background px-1.5 py-4 shadow-md hover:bg-accent flex flex-col items-center gap-1 group"
-            : "bottom-28 right-5 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90"
+            : `${role === "admin" ? "bottom-28" : "bottom-5"} right-5 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90`
             } ${archonShown ? "opacity-0 pointer-events-none" : ""}`}
           title="Open A.R.C.H.O.N."
         >
@@ -951,7 +951,7 @@ export default function AIAssistantPanel() {
           ? "opacity-0 pointer-events-none"
           : open && activePanel === "sql"
             ? "-translate-y-1/2 opacity-100"
-            : "-translate-y-[calc(100%+12px)] opacity-100"
+            : `${role !== "admin" ? "-translate-y-1/2" : "-translate-y-[calc(100%+12px)]"} opacity-100`
           }`}
         title="Open A.R.C.H.O.N."
       >

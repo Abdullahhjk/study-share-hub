@@ -203,7 +203,7 @@ export default function MfaRecover() {
   };
 
   const handleCancelEnroll = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     localStorage.clear();
     sessionStorage.clear();
     navigate("/login", { replace: true });
@@ -211,7 +211,7 @@ export default function MfaRecover() {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     localStorage.clear();
     sessionStorage.clear();
     navigate("/login", { replace: true });

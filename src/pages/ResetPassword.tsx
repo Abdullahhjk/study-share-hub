@@ -137,7 +137,7 @@ export default function ResetPassword() {
       navigate("/dashboard");
       return;
     }
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     navigate("/login");
   };
 

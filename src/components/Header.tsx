@@ -19,6 +19,7 @@ import {
   GraduationCap,
   BadgeCheck,
   Cpu,
+  MonitorSmartphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -153,7 +154,7 @@ export function Header() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     localStorage.clear()
     sessionStorage.clear()
     window.location.reload();
@@ -379,6 +380,15 @@ export function Header() {
                   <Link to="/database-data" className="flex items-center gap-2">
                     <FolderLock className="h-4 w-4" />
                     Your Data
+                  </Link>
+                </DropdownMenuItem>
+              )}
+
+              {user && (
+                <DropdownMenuItem asChild>
+                  <Link to="/active-sessions" className="flex items-center gap-2">
+                    <MonitorSmartphone className="h-4 w-4" />
+                    Active Sessions
                   </Link>
                 </DropdownMenuItem>
               )}

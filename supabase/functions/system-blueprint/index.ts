@@ -182,6 +182,7 @@ function buildEdgeFunctions(): Section {
   const functions = [
     { name: "cohere-agent", desc: "ARCHON AI assistant backend. Actions: init (get API key + system prompt), sql (execute SQL), increment (track quota). Multi-key rotation, daily quota (130/day), monthly per-key limit (1000).", auth: "JWT verified in-function", adminOnly: false },
     { name: "system-blueprint", desc: "Returns full system architecture data for admin debugging. Live DB schema + static metadata about frontend, routes, migrations.", auth: "Admin + 2FA required", adminOnly: true },
+    { name: "session-manager", desc: "Multi-session management. Actions: list (own sessions with IP/device), revoke (kill one other session), revokeOthers, enforce (max 5 concurrent sessions — oldest removed on new login). User-initiated logouts use local scope so other devices stay signed in.", auth: "JWT verified in-function", adminOnly: false },
     { name: "admin-change-role", desc: "Change a user's role (teacher, coadmin, admin, etc.). Validates target role exists in app_role enum.", auth: "Admin JWT", adminOnly: true },
     { name: "admin-create-user", desc: "Create a new user account with email, password, and role. Sends welcome email.", auth: "Admin JWT", adminOnly: true },
     { name: "admin-delete-user", desc: "Permanently delete a user and their data from Supabase Auth + all related tables.", auth: "Admin JWT", adminOnly: true },
@@ -285,6 +286,7 @@ function buildFrontendRoutes(): Section {
     { path: "/upcoming", component: "UpcomingFeatures.tsx", desc: "Feature roadmap (public)", auth: "Public" },
     { path: "/archon-keys", component: "ArchonKeysPage.tsx", desc: "Manage personal Cohere API keys for ARCHON", auth: "Any logged in" },
     { path: "/system-blueprint", component: "SystemBlueprint.tsx", desc: "System architecture overview for admins", auth: "Admin" },
+    { path: "/active-sessions", component: "ActiveSessions.tsx", desc: "View/revoke active login sessions across devices", auth: "Any logged in" },
     { path: "/test", component: "QATesting.tsx", desc: "QA testing info (dev only)", auth: "Dev mode" },
     { path: "/unsubscribe", component: "Unsubscribe.tsx", desc: "Newsletter unsubscribe", auth: "Public" },
   ];

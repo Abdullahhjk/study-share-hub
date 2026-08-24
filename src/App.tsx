@@ -37,6 +37,7 @@ import Unsubscribe from "./pages/Unsubscribe";
 import UpcomingFeatures from "./pages/UpcomingFeatures";
 import ArchonKeysPage from "./pages/ArchonKeysPage";
 import SystemBlueprint from "./pages/SystemBlueprint";
+import ActiveSessions from "./pages/ActiveSessions";
 import NotesLoading from "@/components/NotesLoading";
 import { fetchNotesQuery } from "@/hooks/useNotes";
 import { supabase } from "@/integrations/supabase/client";
@@ -148,6 +149,7 @@ function AppContent() {
           <Route path="/upcoming" element={<UpcomingFeatures />} />
           <Route path="/archon-keys" element={<ProtectedRoute><ArchonKeysPage /></ProtectedRoute>} />
           <Route path="/system-blueprint" element={<ProtectedRoute requiredRole="admin"><SystemBlueprint /></ProtectedRoute>} />
+          <Route path="/active-sessions" element={<ProtectedRoute><ActiveSessions /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>

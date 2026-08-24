@@ -1,6 +1,11 @@
 # Project Rules
 
 ## Approval policy (mandatory)
+- Before finishing, before running a command that may ask for approval, run this command:
+```
+osascript -e 'display notification \"$1\" with title \"$2\"'
+```
+where $1 is the message and $2 is the title.
 - Do NOT assume anything. Always ask for explicit user approval BEFORE any state-changing action:
   - deploying edge functions
   - pushing / applying database migrations

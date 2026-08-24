@@ -38,6 +38,10 @@ verify_jwt = false
 verify_jwt = true
 # Admin-only system blueprint. JWT verified in-function; checks admin role + 2FA.
 
+[functions.session-manager]
+verify_jwt = true
+# Multi-session management: list/revoke own sessions, enforce session limit.
+
 [auth]
 
 

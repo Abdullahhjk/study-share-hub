@@ -190,7 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (wantsRecovery) sessionStorage.setItem(RECOVERY_KEY, userId);
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
       setAmr(amrOf(newSession));
@@ -198,6 +198,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         markImpersonation(newSession.user.id);
         markRecovery(newSession.user.id);
         void loadAuthDetails(newSession.user.id);
+        if (event === "SIGNED_IN") {
+          supabase.functions.invoke("session-manager", { body: { action: "enforce" } }).catch(() => {});
+        }
       } else {
         sessionStorage.removeItem(IMPERSONATION_KEY);
         sessionStorage.removeItem(RECOVERY_KEY);
