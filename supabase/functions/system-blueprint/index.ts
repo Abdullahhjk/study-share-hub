@@ -10,6 +10,39 @@ const ALLOWED_ORIGINS = [
   "http://localhost:3000",
 ];
 
+// Fallback table list used only when the live information_schema query fails.
+// Mirrors the public schema after 033_remove_dead_objects.sql (verified against
+// a fresh `npm run updateSupabase`). Update this whenever a migration lands.
+const LIVE_TABLE_LIST = [
+  "activity_logs",
+  "apilayer_api_track",
+  "approved_banks",
+  "bank_creds",
+  "build_reports",
+  "categories",
+  "cohere_api_keys",
+  "cohere_daily_quota",
+  "deleted_avatars",
+  "feedback",
+  "fx_rates",
+  "newsletter_subscribers",
+  "note_reports",
+  "note_requests",
+  "notes",
+  "notification_versions",
+  "notifications",
+  "payment_credentials",
+  "payment_records",
+  "platform_settings",
+  "profiles",
+  "request_notes",
+  "subcategories",
+  "teacher_verification_requests",
+  "upcoming_features",
+  "user_roles",
+  "user_settings",
+].join(", ");
+
 function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("Origin") || "";
   const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
@@ -189,7 +222,7 @@ function buildEdgeFunctions(): Section {
     { name: "admin-impersonate", desc: "Generate a one-time magic link to impersonate a user. Access is logged in activity_logs.", auth: "Admin JWT", adminOnly: true },
     { name: "ai-build-report-email", desc: "AI-generated build changelog email. Uses Cohere to draft release notes from version diff, sends via Resend.", auth: "Service role", adminOnly: true },
     { name: "ai-enhance-notification", desc: "AI-powered notification content enhancement. Takes draft text, returns polished version via Cohere.", auth: "JWT verified", adminOnly: false },
-    { name: "cleanup-deleted-notes", desc: "Purge soft-deleted notes (deleted_at older than 30 days). Removes files from storage.", auth: "Service role (pg_cron)", adminOnly: true },
+    { name: "cleanup-deleted-notes", desc: "Purge soft-deleted notes (deleted_at older than 30 days). Removes files from storage. Not referenced by any app code and no pg_cron schedule was found in the migration history — schedule needs verification.", auth: "Service role (intended pg_cron)", adminOnly: true },
     { name: "db-backup", desc: "Full SQL database backup. Queries information_schema + pg_dump style output. Includes edge function metadata.", auth: "Admin JWT", adminOnly: true },
     { name: "email-template", desc: "Renders email HTML templates. Called internally by send-emails (server-to-server).", auth: "Public (internal)", adminOnly: false },
     { name: "image-preview-proxy", desc: "Proxies note cover images to bypass CORS. Returns image bytes with proper content-type.", auth: "Public (img tags can't send JWT)", adminOnly: false },
@@ -221,7 +254,7 @@ function buildMigrations(): Section {
   const migrations = [
     { file: "001_types.sql", purpose: "Define custom PostgreSQL ENUM types (app_role, etc.)" },
     { file: "002_sequences.sql", purpose: "Create sequences for auto-incrementing IDs" },
-    { file: "003_tables.sql", purpose: "Core tables: profiles, user_roles, user_settings, categories, subcategories, notes, access_codes, note_requests, request_notes, note_reports, notifications, activity_logs, feedback, approved_banks, bank_creds, fx_rates, blocked_clients, request_audit, build_reports, newsletter_subscribers, deleted_avatars, upcoming_features" },
+    { file: "003_tables.sql", purpose: "Core tables: profiles, user_roles, user_settings, categories, subcategories, notes, note_requests, request_notes, note_reports, notifications, activity_logs, feedback, approved_banks, bank_creds, fx_rates, build_reports, newsletter_subscribers, deleted_avatars, upcoming_features. NOTE: access_codes, blocked_clients and request_audit were also created here but dropped in 033_remove_dead_objects.sql." },
     { file: "004_constraints.sql", purpose: "Primary keys, unique constraints, CHECK constraints on all tables" },
     { file: "005_indexes.sql", purpose: "Performance indexes on frequently queried columns (user_id, status, teacher_id, etc.)" },
     { file: "006_functions.sql", purpose: "Database functions: updated_at trigger, role checks, request ID generation, download code generation" },
@@ -248,12 +281,16 @@ function buildMigrations(): Section {
     { file: "027_reset_apilayer_api_track_counts.sql", purpose: "Reset Apilayer FX API usage counters" },
     { file: "028_lockdown_apilayer_api_track.sql", purpose: "Rate-limit Apilayer API calls to prevent abuse" },
     { file: "029_teacher_verification_details.sql", purpose: "Extended teacher verification: document uploads, verification history" },
+    { file: "030_notification_markdown_versions.sql", purpose: "notification_versions table for markdown-formatted notification content" },
+    { file: "031_admin_view_all_notifications.sql", purpose: "RLS so admins can read every notification" },
+    { file: "032_adjust_cohere_usage.sql", purpose: "Admin RPC adjust_cohere_usage() to correct ARCHON key/daily quota counters (logs to activity_logs). Creates cohere_daily_quota if missing." },
+    { file: "033_remove_dead_objects.sql", purpose: "Remove unreferenced objects: 5 tables (CAR_PROJECT, access_codes, note_access_codes, blocked_clients, request_audit), 3 views (all of them), 11 dead functions. Kept has_role, is_subcategory_in_use, create_app_bucket, pgp_armor_headers." },
     { file: "NEW_create_note_request_rpc.sql", purpose: "RPC function for creating note purchase requests" },
     { file: "NEW_fix_rls_policies.sql", purpose: "RLS policy fixes and hardening" },
   ];
 
   let display = "# Migrations\n\n";
-  let context = "## Migrations (31 files)\n";
+  let context = `## Migrations (${migrations.length} files)\n`;
 
   for (const m of migrations) {
     display += `### ${m.file}\n${m.purpose}\n\n`;
@@ -332,8 +369,8 @@ function buildComponentArchitecture(): Section {
       files: ["SettingsDialog.tsx, AppearanceSection.tsx, CurrencySection.tsx, AccessibilitySection.tsx, TotpDialog.tsx, TotpEnrollPanel.tsx"],
     },
     {
-      name: "UI Primitives (src/components/ui/ — 49 shadcn/ui components)",
-      files: ["accordion, alert, badge, button, card, chart, dialog, dropdown-menu, input, label, radio-group, scroll-area, separator, sheet, sonner, switch, table, tabs, toast, toaster, toggle, tooltip, etc."],
+      name: "UI Primitives (src/components/ui/ — 27 shadcn/ui components)",
+      files: ["accordion, alert-dialog, alert, badge, button, card, chart, checkbox, dialog, dropdown-menu, form, input, label, radio-group, scroll-area, select, separator, skeleton, slider, sonner, switch, table, tabs, textarea, toast, toaster, tooltip"],
     },
     {
       name: "Providers",
@@ -341,7 +378,7 @@ function buildComponentArchitecture(): Section {
     },
     {
       name: "Hooks",
-      files: ["useNotes.ts (notes fetch/mutation)", "useCurrency.ts (currency conversion)", "useActivityLogger.ts (activity tracking)", "usePlatformSettings.ts (per-teacher settings)", "useNoteMutations.ts (create/update/delete notes)", "use-mobile.tsx (responsive detection)", "use-toast.ts"],
+      files: ["useNotes.ts (notes fetch/mutation)", "useCurrency.ts (currency conversion)", "useActivityLogger.ts (activity tracking)", "usePlatformSettings.ts (per-teacher settings)", "useNoteMutations.ts (create/update/delete notes)", "use-mobile.tsx (responsive detection)", "use-toast.ts (shadcn toast store)", "getPrefaceUrl.ts (storage signed-URL resolution for avatars, receipts, documents, notes)"],
     },
     {
       name: "Lib Utilities",
@@ -527,8 +564,8 @@ Deno.serve(trackFn("system-blueprint", async (req) => {
         id: "db-schema",
         title: "Database Schema",
         description: "Could not query live schema — showing static table list.",
-        content: `# Database Schema\n\nLive query failed: ${dbErr.message}\n\n## Known Tables\n\nprofiles, user_roles, user_settings, categories, subcategories, notes, access_codes, note_access_codes, note_requests, request_notes, note_reports, notifications, activity_logs, feedback, approved_banks, bank_creds, fx_rates, blocked_clients, request_audit, build_reports, newsletter_subscribers, deleted_avatars, upcoming_features, cohere_api_keys, cohere_daily_quota, edge_function_invocations, platform_settings, teacher_verification`,
-        contextForArchon: `## Database Schema (static list)\nTables: profiles, user_roles, user_settings, categories, subcategories, notes, access_codes, note_access_codes, note_requests, request_notes, note_reports, notifications, activity_logs, feedback, approved_banks, bank_creds, fx_rates, blocked_clients, request_audit, build_reports, newsletter_subscribers, deleted_avatars, upcoming_features, cohere_api_keys, cohere_daily_quota, edge_function_invocations, platform_settings, teacher_verification.`,
+        content: `# Database Schema\n\nLive query failed: ${dbErr.message}\n\n## Known Tables (27)\n\n${LIVE_TABLE_LIST}\n\nNo views exist — all three were dropped in 033_remove_dead_objects.sql.`,
+        contextForArchon: `## Database Schema (static list)\nTables: ${LIVE_TABLE_LIST}. No views.`,
       };
     }
 

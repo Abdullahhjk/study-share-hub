@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { SystemEventReporter } from "@/components/SystemEventReporter";
 import { ColorblindFilters } from "@/components/ColorblindFilters";
 import { CurrencyProvider } from "@/components/providers/CurrencyProvider";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -15,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import MfaVerify from "@/pages/MfaVerify";
 import MfaRecover from "@/pages/MfaRecover";
 import DevNotice from "@/components/DevNotice";
+import InstallPrompt from "@/components/InstallPrompt";
 import AIAssistantPanel from "@/components/admin/AIAssistantPanel";
 import SQLExecPanel from "@/components/admin/SQLExecPanel";
 import { AIPanelProvider, useAIPanel } from "@/components/admin/AIPanelContext";
@@ -120,13 +120,13 @@ function AppContent() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Toaster />
       <Sonner />
-      <SystemEventReporter />
 
       <div style={{
         maxWidth: panelOpen ? `${100 - panelWidth}vw` : "100%",
         transition: "max-width 200ms ease-in-out",
       }}>
         <DevNotice />
+        <InstallPrompt />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />

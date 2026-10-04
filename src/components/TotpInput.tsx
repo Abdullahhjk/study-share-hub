@@ -9,7 +9,10 @@ interface TotpInputProps {
   onChange: (value: string) => void;
   autoFocus?: boolean;
   disabled?: boolean;
+  /** Applied to each individual digit box. */
   className?: string;
+  /** Applied to the wrapping grid. Use this to control layout/width. */
+  containerClassName?: string;
   ariaLabel?: string;
 }
 
@@ -29,6 +32,7 @@ export function TotpInput({
   autoFocus,
   disabled,
   className,
+  containerClassName,
   ariaLabel = "6-digit authentication code",
 }: TotpInputProps) {
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
@@ -109,7 +113,7 @@ export function TotpInput({
   for (let i = 0; i < 6; i++) {
     if (i === 3) {
       inputs.push(
-        <div key="separator" className="h-auto w-auto text-center text-2xl font-semibold tabular-nums sm:w-auto">
+        <div key="separator" className="w-2 shrink-0 text-center text-sm leading-none tabular-nums sm:text-xl">
           -
         </div>
       );
@@ -136,7 +140,7 @@ export function TotpInput({
         }}
         aria-label={ariaLabel}
         className={cn(
-          "h-14 w-12 text-center text-2xl font-semibold tabular-nums sm:w-14",
+          "h-11 w-full min-w-0 px-0 text-center text-lg font-semibold tabular-nums sm:h-14 sm:text-2xl",
           className,
         )}
         onChange={(e) => handleChange(i, e.target.value)}
@@ -148,7 +152,10 @@ export function TotpInput({
 
   return (
     <div
-      className="flex items-center justify-center gap-2"
+      className={cn(
+        "mx-auto grid w-full max-w-[16rem] grid-cols-[repeat(3,minmax(0,1fr))_auto_repeat(3,minmax(0,1fr))] items-center gap-1.5 sm:max-w-md sm:gap-2.5",
+        containerClassName,
+      )}
       onPaste={handlePaste}
     >
       {inputs}

@@ -51,6 +51,7 @@ export default function ActiveSessions() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [maxSessions, setMaxSessions] = useState(5);
   const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
   const [revoking, setRevoking] = useState<string | null>(null);
 
@@ -90,6 +91,7 @@ export default function ActiveSessions() {
 
   const revokeOthers = async () => {
     try {
+      setProcessing(true);
       const { data, error } = await supabase.functions.invoke("session-manager", { body: { action: "revokeOthers" } });
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
@@ -97,6 +99,10 @@ export default function ActiveSessions() {
       fetchSessions();
     } catch (e: any) {
       toast.error(`Failed: ${e.message}`);
+      setProcessing(false);
+    }
+    finally {
+      setProcessing(false);
     }
   };
 
@@ -138,7 +144,7 @@ export default function ActiveSessions() {
     <div className="min-h-screen flex flex-col">
       <Header />
       <div className="flex-1 container max-w-3xl mx-auto px-4 py-8 space-y-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <MonitorSmartphone className="h-8 w-8 text-primary" />
@@ -149,8 +155,8 @@ export default function ActiveSessions() {
             </p>
           </div>
           {othersCount > 0 && (
-            <Button variant="outline" size="sm" onClick={revokeOthers}>
-              <LogOut className="h-4 w-4 mr-2" />
+            <Button variant="outline" size="sm" onClick={revokeOthers} disabled={processing} className={`${processing ? "cursor-not-allowed" : "cursor-pointer"}`}>
+              {processing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <LogOut className="h-4 w-4 mr-2" />}
               Sign out others ({othersCount})
             </Button>
           )}

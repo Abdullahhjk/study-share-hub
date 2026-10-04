@@ -5,6 +5,7 @@ import AIMarkdown from "./AIMarkdown";
 import ToolCallSection from "./ToolCallSection";
 import AIEmptyState from "./AIEmptyState";
 import type { ChatMessage } from "./chat-store";
+import { Separator } from "@radix-ui/react-dropdown-menu";
 
 interface ChatMessageListProps {
   messages: ChatMessage[];
@@ -51,8 +52,8 @@ export default function ChatMessageList({
         <div className="flex justify-center animate-fade-in">
           <div
             className={`text-xs font-medium px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-md ${isQuotaExhausted
-                ? "bg-muted text-muted-foreground"
-                : "bg-success text-success-foreground"
+              ? "bg-muted text-muted-foreground"
+              : "bg-success text-success-foreground"
               }`}
           >
             <span>Initialized</span>
@@ -78,11 +79,11 @@ export default function ChatMessageList({
             className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
           >
             <div
-              className={`min-w-[50%] max-w-[95%] rounded-2xl px-4 py-3 text-sm group relative backdrop-blur-sm transition-all duration-200 ${msg.role === "user" && streamMode === "stream"
-                  ? "bg-success/70 text-foreground border border-success/20"
-                  : msg.role === "user" && streamMode === "collect"
-                    ? "bg-primary/70 text-foreground border border-primary/20"
-                    : "bg-muted border border-border/40"
+              className={`min-w-[50%] max-w-[95%] rounded-2xl px-4 py-3 text-sm group hover:border-primary/50 relative backdrop-blur-sm transition-all duration-200 ${msg.role === "user" && streamMode === "stream"
+                ? "bg-success/70 text-foreground border border-success/20 "
+                : msg.role === "user" && streamMode === "collect"
+                  ? "bg-primary/70 text-foreground border border-primary/20"
+                  : "bg-muted border border-border"
                 } ${isNewAssistant ? "animate-fade-in" : ""} ${editingIndex === i ? "ring-2 ring-success/60" : ""}`}
             >
               {msg.role === "user" ? (

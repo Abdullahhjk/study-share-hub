@@ -6,11 +6,25 @@
     <title>Scholar Share — Share notes. Build mastery.</title>
     <meta name="description" content="Share notes. Build mastery." />
     <link rel="icon" type="image/x-icon" href="favicon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Scholar Share" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="author" content="Abdullah Waqas" />
   </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("/sw.js").catch(function () {});
+        });
+      }
+    </script>
   </body>
 </html>

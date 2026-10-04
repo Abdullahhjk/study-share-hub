@@ -1,0 +1,46 @@
+{
+  "name": "Scholar Share",
+  "short_name": "Scholar Share",
+  "description": "Share notes. Build mastery. Install the app on your Home Screen.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "lang": "en",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Browse Notes",
+      "url": "/",
+      "description": "Browse the latest notes"
+    },
+    {
+      "name": "My Orders",
+      "url": "/my-orders",
+      "description": "Track your requests and orders"
+    }
+  ]
+}

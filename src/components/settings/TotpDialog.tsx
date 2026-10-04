@@ -193,10 +193,10 @@ export function TotpDialog({ open, onOpenChange }: TotpDialogProps) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] max-w-2xl rounded-2xl">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[95vw] max-w-2xl flex-col overflow-hidden rounded-2xl sm:rounded-2xl">
+          <DialogHeader className="shrink-0 pr-8">
             <DialogTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5" />
+              <ShieldCheck className="h-5 w-5 shrink-0" />
               Two-factor authentication
             </DialogTitle>
             <DialogDescription>
@@ -204,7 +204,7 @@ export function TotpDialog({ open, onOpenChange }: TotpDialogProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
             {loading ? (
               <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -212,10 +212,15 @@ export function TotpDialog({ open, onOpenChange }: TotpDialogProps) {
               </div>
             ) : factor && !enrollment ? (
               <>
-                <div className="flex flex-col items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-2">
-                    <Smartphone className="h-3.5 w-3.5 text-green-600" />
-                    Enabled — <span className="font-medium text-foreground">'scholar-share.netlify.app: {user?.email}'.</span>
+                <div className="flex flex-col items-center gap-1.5 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-muted-foreground">
+                  <span className="flex flex-wrap items-center justify-center gap-1.5">
+                    <Smartphone className="h-3.5 w-3.5 shrink-0 text-green-600" />
+                    <span>Enabled on</span>
+                    {user?.email && (
+                      <span className="font-medium break-all text-foreground">
+                        {user.email}
+                      </span>
+                    )}
                   </span>
                   <span>You'll enter a code from this app after signing in.</span>
                 </div>
@@ -274,9 +279,9 @@ export function TotpDialog({ open, onOpenChange }: TotpDialogProps) {
             )}
 
             {!loading && (
-              <p className="flex items-center gap-1.5 pt-1 text-[11px] text-muted-foreground">
-                <KeyRound className="h-3 w-3" />
-                Lost your authenticator?{" "}
+              <p className="flex flex-wrap items-center gap-x-1.5 pt-1 text-[11px] text-muted-foreground">
+                <KeyRound className="h-3 w-3 shrink-0" />
+                <span>Lost your authenticator?</span>
                 <button
                   type="button"
                   className="text-primary underline-offset-2 hover:underline"
@@ -291,7 +296,7 @@ export function TotpDialog({ open, onOpenChange }: TotpDialogProps) {
       </Dialog >
 
       <AlertDialog open={disableOpen} onOpenChange={setDisableOpen}>
-        <AlertDialogContent className="w-[95vw] rounded-2xl">
+        <AlertDialogContent className="max-h-[calc(100dvh-1rem)] w-[95vw] overflow-y-auto rounded-2xl sm:rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Disable two-factor authentication?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -314,10 +319,10 @@ export function TotpDialog({ open, onOpenChange }: TotpDialogProps) {
           </form>
 
           <AlertDialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDisableOpen(false)} disabled={disabling}>
+            <Button type="button" variant="outline" onClick={() => setDisableOpen(false)} disabled={disabling} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="submit" disabled={disabling || disableCode.length !== 6}>
+            <Button type="submit" disabled={disabling || disableCode.length !== 6} className="w-full sm:w-auto">
               {disabling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Confirm
             </Button>

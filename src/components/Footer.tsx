@@ -7,7 +7,7 @@ import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-import { Mail, MessageSquare, Send, Loader2 } from "lucide-react";
+import { Mail, MessageSquare, Send, Loader2, ChevronDown } from "lucide-react";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Textarea } from "./ui/textarea";
@@ -48,6 +48,18 @@ const footerLinks = [
   { label: "Terms", href: "/terms" },
   { label: "Upcoming", href: "/upcoming" },
 ];
+
+// Mobile keeps only the navigational essentials visible; the rest collapse
+// behind the "More" disclosure so the footer stays short on small screens.
+const primaryFooterPaths = ["/dashboard", "/my-orders", "/help"];
+
+const primaryFooterLinks = footerLinks.filter((link) =>
+  primaryFooterPaths.includes(link.href)
+);
+
+const secondaryFooterLinks = footerLinks.filter(
+  (link) => !primaryFooterPaths.includes(link.href)
+);
 
 export function Footer() {
   const updatedDate = new Date(UPDATE_TIME);
@@ -140,13 +152,13 @@ export function Footer() {
 
   return (
     <footer className="border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-      <div className="container py-6">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+      <div className="container py-4 md:py-6">
+        <div className="flex flex-col gap-4 md:gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex flex-col gap-3">
             <Link to="/" className="flex w-fit items-center gap-3">
-              <img src="/preview.png" alt="Logo" className="h-11 w-11 rounded-xl border object-cover shadow-sm" />
+              <img src="/preview.png" alt="Logo" className="h-9 w-9 rounded-xl border object-cover shadow-sm md:h-11 md:w-11" />
               <div>
-                <p className="font-display text-lg font-semibold tracking-tight text-foreground">Scholar Share</p>
+                <p className="font-display text-base font-semibold tracking-tight text-foreground md:text-lg">Scholar Share</p>
                 <p className="text-xs text-muted-foreground">Share notes. Build mastery.</p>
               </div>
             </Link>
@@ -157,7 +169,7 @@ export function Footer() {
             </div>
           </div>
 
-          <div className="flex max-w-3xl flex-wrap items-center justify-start gap-2 lg:justify-end">
+          <div className="hidden max-w-3xl flex-wrap items-center justify-start gap-2 md:flex lg:justify-end">
             {footerLinks.map((link) => (
               <Link key={link.href} to={link.href}
                 className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-all hover:bg-muted hover:text-foreground">
@@ -165,16 +177,43 @@ export function Footer() {
               </Link>
             ))}
           </div>
+
+          <div className="flex items-center justify-between gap-2 md:hidden">
+            <div className="flex flex-wrap items-center gap-1">
+              {primaryFooterLinks.map((link) => (
+                <Link key={link.href} to={link.href}
+                  className="rounded-md px-2.5 py-1.5 text-xs text-muted-foreground transition-all hover:bg-muted hover:text-foreground">
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+
+            <details className="group relative">
+              <summary className="flex cursor-pointer list-none items-center gap-1 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground transition-all hover:bg-muted hover:text-foreground [&::-webkit-details-marker]:hidden">
+                More
+                <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+              </summary>
+
+              <div className="absolute bottom-full right-0 z-20 mb-1 w-40 overflow-hidden rounded-lg border bg-popover p-1 shadow-md">
+                {secondaryFooterLinks.map((link) => (
+                  <Link key={link.href} to={link.href}
+                    className="block rounded-md px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </details>
+          </div>
         </div>
-        <div className="mt-8 rounded-2xl border bg-muted/20 p-6">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div className="mt-6 rounded-2xl border bg-muted/20 p-4 md:mt-8 md:p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-6">
 
             <div className="max-w-xl space-y-2">
-              <h2 className="text-lg font-semibold tracking-tight">
+              <h2 className="text-base font-semibold tracking-tight md:text-lg">
                 Stay Connected with us!
               </h2>
 
-              <p className="text-sm leading-relaxed text-muted-foreground">
+              <p className="hidden text-sm leading-relaxed text-muted-foreground md:block">
                 Subscribe for new updates or send feedback to help improve the app experience.
               </p>
             </div>
@@ -348,11 +387,11 @@ export function Footer() {
             © {new Date().getFullYear()} M. Abdullah Waqas. All rights reserved.
           </p>
 
-          <p className="text-xs text-muted-foreground">
+          <p className="hidden text-xs text-muted-foreground md:block">
             Built with React, TypeScript, TailwindCSS and Vite.
           </p>
 
-          <p className="text-xs text-muted-foreground">
+          <p className="hidden text-xs text-muted-foreground md:block">
             {CODEBASE_INFO.files} custom files • {CODEBASE_INFO.lines} lines written • {CODEBASE_INFO.chars} characters
           </p>
         </div>

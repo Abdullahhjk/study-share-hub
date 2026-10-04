@@ -1,10 +1,12 @@
 // Shared edge-function execution telemetry.
 //
-// Captures SAFE operational metrics only:
-//   function name, timestamp, duration, HTTP status, success, error category.
-// It NEVER stores request bodies, API keys, access tokens, passwords or
-// personal information. Telemetry failures are swallowed so they can never
-// break the instrumented function.
+// Status: DISABLED (no-op).
+//
+// The destination table `edge_function_invocations` was removed from the
+// database by migration 024_sys_observability.sql (a REVERT migration), so
+// every record() call was firing an insert that could never succeed and its
+// error was discarded. trackFn() is still wired up so timing/observability
+// can be restored by re-creating the table and re-enabling record() below.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -28,28 +30,10 @@ export interface TelemetryInfo {
   error?: string | null;
 }
 
-function categoryFor(status: number, error?: string | null): string | null {
-  if (status >= 500) return "server_error";
-  if (status === 401 || status === 403) return "auth_error";
-  if (status >= 400) return "request_error";
-  if (error) return error.slice(0, 200);
-  return null;
-}
-
 export async function record(name: string, info: TelemetryInfo): Promise<void> {
-  try {
-    await admin()
-      .from("edge_function_invocations")
-      .insert({
-        function_name: name,
-        duration_ms: Math.max(0, Math.round(info.durationMs)),
-        status: info.status,
-        success: info.ok,
-        error_category: info.ok ? null : categoryFor(info.status, info.error),
-      });
-  } catch {
-    // telemetry must never break the function
-  }
+  void admin;
+  void name;
+  void info;
 }
 
 export function trackFn(

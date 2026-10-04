@@ -97,10 +97,10 @@ export function TotpEnrollPanel({
         <img
           src={enrollment.qr}
           alt="Scan with your authenticator app"
-          className="h-44 w-44 shrink-0 rounded-lg border border-border bg-white p-2"
+          className="h-40 w-40 shrink-0 rounded-lg border border-border bg-white p-2 sm:h-44 sm:w-44"
         />
 
-        <div className="w-full space-y-3">
+        <div className="w-full min-w-0 space-y-3">
           <div className="space-y-1">
             <Label htmlFor="totp-secret" className="text-xs text-muted-foreground">
               Manual entry code
@@ -110,7 +110,7 @@ export function TotpEnrollPanel({
                 id="totp-secret"
                 readOnly
                 value={enrollment.secret}
-                className="font-mono text-xs"
+                className="min-w-0 flex-1 font-mono text-xs"
               />
               <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={handleCopySecret}>
                 {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
@@ -121,14 +121,15 @@ export function TotpEnrollPanel({
           <form onSubmit={handleVerify} noValidate className="space-y-2">
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Enter the 6-digit code</Label>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
                 <TotpInput
                   value={code}
                   onChange={(v) => setCode(v)}
                   disabled={verifying}
                   ariaLabel="Verification code"
+                  containerClassName="w-full"
                 />
-                <Button type="submit" disabled={verifying || code.length !== 6}>
+                <Button type="submit" disabled={verifying || code.length !== 6} className="w-full shrink-0 sm:w-auto">
                   {verifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {verifyLabel}
                 </Button>
@@ -142,7 +143,7 @@ export function TotpEnrollPanel({
       </div>
 
       {onCancel && (
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={cancelDisabled}>
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={cancelDisabled} className="w-full sm:w-auto">
           Cancel
         </Button>
       )}

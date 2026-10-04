@@ -363,10 +363,10 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="w-[95vw] max-w-lg rounded-2xl overflow-hidden p-0">
+        <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[95vw] max-w-lg flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:rounded-2xl">
           {/* ── Header ── */}
-          <div className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
-            <DialogHeader className="px-5 py-4 text-left">
+          <div className="z-10 shrink-0 border-b bg-background/95 backdrop-blur">
+            <DialogHeader className="px-5 py-4 pr-12 text-left">
               <DialogTitle className="flex items-center gap-2 text-lg">
                 <Settings className="h-5 w-5" />
                 Settings
@@ -388,7 +388,7 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
           </div>
 
           {/* ── Body ── */}
-          <div className="max-h-[65vh] space-y-4 overflow-y-auto px-4 pb-4 pt-2">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 pb-4 pt-2">
             <div className="rounded-lg border bg-card p-4 space-y-3">
               <AppearanceSection onThemeChange={(v) => patch({ appearance: v })} />
             </div>
@@ -401,7 +401,7 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
               />
               <Separator />
               <div className="flex items-center justify-between gap-4">
-                <div className="space-y-0.5">
+                <div className="min-w-0 flex-1 space-y-0.5">
                   <span className="text-sm font-medium">Header Dropdown</span>
                   <p className="text-xs text-muted-foreground">
                     Show currency selector in header for quick switching
@@ -410,10 +410,11 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                 <Switch
                   checked={current.showDropdown}
                   onCheckedChange={(v) => patch({ showDropdown: v })}
+                  className="shrink-0"
                 />
               </div>
               <div className="flex items-center justify-between gap-4">
-                <div className="space-y-0.5">
+                <div className="min-w-0 flex-1 space-y-0.5">
                   <span className="text-sm font-medium">
                     Auto-detect
                   </span>
@@ -427,6 +428,7 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                   checked={current.autoCurrency}
                   onCheckedChange={handleAutoCurrencyToggle}
                   disabled={isAutoDetecting}
+                  className="shrink-0"
                 />
               </div>
             </div>
@@ -434,7 +436,7 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
             {isAdmin && (
               <div className="rounded-xl border bg-card/80 backdrop-blur-sm p-5 space-y-4 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1">
+                  <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold tracking-tight">
                         Developer Show Mode
@@ -445,7 +447,7 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                       </span>
                     </div>
 
-                    <p className="max-w-[420px] text-xs leading-relaxed text-muted-foreground">
+                    <p className="max-w-[420px] break-words text-xs leading-relaxed text-muted-foreground">
                       Visualizes all live DOM nodes with debug outlines and labels. Can
                       heavily impact rendering performance on large pages.
                     </p>
@@ -462,6 +464,7 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                         window.__DOM_DEBUGGER__?.stop();
                       }
                     }}
+                    className="shrink-0"
                   />
                 </div>
 
@@ -535,26 +538,29 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
           </div>
 
           {/* ── Footer with Save ── */}
-          <div className="border-t bg-background px-4 py-3 flex items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button variant="outline" onClick={() => reset(false)} disabled={isSaving}>
-              Reset Settings
-            </Button>
-            <Button onClick={handleSave} disabled={!isDirty || isSaving || isAutoDetecting} variant={!isDirty || isSaving || isAutoDetecting ? "ghost" : "default"}>
-              {isSaving ? <><Loader2 className="h-4 w-4 animate-spin mr-2 inline-block" />Saving...</> : "Save"}
-            </Button>
+          <div className="shrink-0 border-t bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+              <Button
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+                disabled={isSaving}
+                className="w-full sm:w-auto"
+              >
+                Cancel
+              </Button>
+              <Button variant="outline" onClick={() => reset(false)} disabled={isSaving} className="w-full sm:w-auto">
+                Reset Settings
+              </Button>
+              <Button onClick={handleSave} disabled={!isDirty || isSaving || isAutoDetecting} variant={!isDirty || isSaving || isAutoDetecting ? "ghost" : "default"} className="w-full sm:w-auto">
+                {isSaving ? <><Loader2 className="h-4 w-4 animate-spin mr-2 inline-block" />Saving...</> : "Save"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showUnsavedAlert} onOpenChange={setShowUnsavedAlert}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-h-[calc(100dvh-1rem)] w-[95vw] max-w-sm overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
@@ -565,11 +571,11 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex justify-end gap-2">
-            <Button variant="destructive" onClick={handleCloseNow}>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="destructive" onClick={handleCloseNow} className="w-full sm:w-auto">
               Close now
             </Button>
-            <Button onClick={handleSave} disabled={!isDirty || isSaving} variant={!isDirty || isSaving ? "ghost" : "default"}>
+            <Button onClick={handleSave} disabled={!isDirty || isSaving} variant={!isDirty || isSaving ? "ghost" : "default"} className="w-full sm:w-auto">
               {isSaving ? <><Loader2 className="h-4 w-4 animate-spin mr-2 inline-block" />Saving...</> : "Save"}
             </Button>
           </div>

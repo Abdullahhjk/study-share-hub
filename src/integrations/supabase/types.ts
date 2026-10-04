@@ -14,38 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      access_codes: {
-        Row: {
-          code: string
-          created_at: string
-          id: string
-          label: string
-          teacher_id: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          id?: string
-          label: string
-          teacher_id: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          id?: string
-          label?: string
-          teacher_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "access_codes_teacher_id_fkey"
-            columns: ["teacher_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       activity_logs: {
         Row: {
           action: string
@@ -173,36 +141,6 @@ export type Database = {
           },
         ]
       }
-      blocked_clients: {
-        Row: {
-          blocked_by: string | null
-          blocked_until: string | null
-          created_at: string
-          fingerprint_hash: string | null
-          id: string
-          ip_hash: string | null
-          reason: string
-        }
-        Insert: {
-          blocked_by?: string | null
-          blocked_until?: string | null
-          created_at?: string
-          fingerprint_hash?: string | null
-          id?: string
-          ip_hash?: string | null
-          reason?: string
-        }
-        Update: {
-          blocked_by?: string | null
-          blocked_until?: string | null
-          created_at?: string
-          fingerprint_hash?: string | null
-          id?: string
-          ip_hash?: string | null
-          reason?: string
-        }
-        Relationships: []
-      }
       build_reports: {
         Row: {
           changelog: string
@@ -233,24 +171,6 @@ export type Database = {
           sent_at?: string | null
           subject?: string | null
           version?: string
-        }
-        Relationships: []
-      }
-      CAR_PROJECT: {
-        Row: {
-          created_at: string
-          data: Json | null
-          id: number
-        }
-        Insert: {
-          created_at?: string
-          data?: Json | null
-          id?: number
-        }
-        Update: {
-          created_at?: string
-          data?: Json | null
-          id?: number
         }
         Relationships: []
       }
@@ -422,46 +342,6 @@ export type Database = {
         }
         Relationships: []
       }
-      note_access_codes: {
-        Row: {
-          access_code_id: string
-          id: string
-          note_id: string
-        }
-        Insert: {
-          access_code_id: string
-          id?: string
-          note_id: string
-        }
-        Update: {
-          access_code_id?: string
-          id?: string
-          note_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "note_access_codes_access_code_id_fkey"
-            columns: ["access_code_id"]
-            isOneToOne: false
-            referencedRelation: "access_codes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "note_access_codes_note_id_fkey"
-            columns: ["note_id"]
-            isOneToOne: false
-            referencedRelation: "notes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "note_access_codes_note_id_fkey"
-            columns: ["note_id"]
-            isOneToOne: false
-            referencedRelation: "notes_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       note_reports: {
         Row: {
           admin_notes: string | null
@@ -508,13 +388,6 @@ export type Database = {
             columns: ["note_id"]
             isOneToOne: false
             referencedRelation: "notes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "note_reports_note_id_fkey"
-            columns: ["note_id"]
-            isOneToOne: false
-            referencedRelation: "notes_public"
             referencedColumns: ["id"]
           },
         ]
@@ -650,6 +523,54 @@ export type Database = {
           },
         ]
       }
+      notification_versions: {
+        Row: {
+          created_at: string
+          edited_by: string | null
+          id: string
+          message: string
+          notification_id: string
+          title: string
+          user_id: string | null
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          edited_by?: string | null
+          id?: string
+          message: string
+          notification_id: string
+          title: string
+          user_id?: string | null
+          version: number
+        }
+        Update: {
+          created_at?: string
+          edited_by?: string | null
+          id?: string
+          message?: string
+          notification_id?: string
+          title?: string
+          user_id?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_versions_edited_by_fkey"
+            columns: ["edited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_versions_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -695,54 +616,6 @@ export type Database = {
           {
             foreignKeyName: "notifications_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      notification_versions: {
-        Row: {
-          created_at: string
-          edited_by: string | null
-          id: string
-          message: string
-          notification_id: string
-          title: string
-          user_id: string | null
-          version: number
-        }
-        Insert: {
-          created_at?: string
-          edited_by?: string | null
-          id?: string
-          message: string
-          notification_id: string
-          title: string
-          user_id?: string | null
-          version: number
-        }
-        Update: {
-          created_at?: string
-          edited_by?: string | null
-          id?: string
-          message?: string
-          notification_id?: string
-          title?: string
-          user_id?: string | null
-          version?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notification_versions_notification_id_fkey"
-            columns: ["notification_id"]
-            isOneToOne: false
-            referencedRelation: "notifications"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notification_versions_edited_by_fkey"
-            columns: ["edited_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -950,30 +823,6 @@ export type Database = {
         }
         Relationships: []
       }
-      request_audit: {
-        Row: {
-          action: string
-          created_at: string
-          fingerprint_hash: string | null
-          id: string
-          ip_hash: string | null
-        }
-        Insert: {
-          action: string
-          created_at?: string
-          fingerprint_hash?: string | null
-          id?: string
-          ip_hash?: string | null
-        }
-        Update: {
-          action?: string
-          created_at?: string
-          fingerprint_hash?: string | null
-          id?: string
-          ip_hash?: string | null
-        }
-        Relationships: []
-      }
       request_notes: {
         Row: {
           id: string
@@ -996,13 +845,6 @@ export type Database = {
             columns: ["note_id"]
             isOneToOne: false
             referencedRelation: "notes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "request_notes_note_id_fkey"
-            columns: ["note_id"]
-            isOneToOne: false
-            referencedRelation: "notes_public"
             referencedColumns: ["id"]
           },
           {
@@ -1045,63 +887,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      sys_snapshots: {
-        Row: {
-          day: string
-          estimated_rows: number
-          table_name: string
-          total_size: number
-        }
-        Insert: {
-          day?: string
-          estimated_rows: number
-          table_name: string
-          total_size: number
-        }
-        Update: {
-          day?: string
-          estimated_rows?: number
-          table_name?: string
-          total_size?: number
-        }
-        Relationships: []
-      }
-      system_events: {
-        Row: {
-          created_at: string
-          id: number
-          level: string
-          message: string
-          metadata: Json
-          source: string
-          stack: string | null
-          url: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: never
-          level?: string
-          message: string
-          metadata?: Json
-          source?: string
-          stack?: string | null
-          url?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: never
-          level?: string
-          message?: string
-          metadata?: Json
-          source?: string
-          stack?: string | null
-          url?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
       }
       teacher_verification_requests: {
         Row: {
@@ -1296,188 +1081,21 @@ export type Database = {
       }
     }
     Views: {
-      note_reports_admin: {
-        Row: {
-          admin_notes: string | null
-          appeal_date: string | null
-          appeal_text: string | null
-          created_at: string | null
-          description: string | null
-          id: string | null
-          note_id: string | null
-          reason: string | null
-          reporter_email: string | null
-          reviewed_at: string | null
-          status: string | null
-        }
-        Insert: {
-          admin_notes?: string | null
-          appeal_date?: string | null
-          appeal_text?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string | null
-          note_id?: string | null
-          reason?: string | null
-          reporter_email?: string | null
-          reviewed_at?: string | null
-          status?: string | null
-        }
-        Update: {
-          admin_notes?: string | null
-          appeal_date?: string | null
-          appeal_text?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string | null
-          note_id?: string | null
-          reason?: string | null
-          reporter_email?: string | null
-          reviewed_at?: string | null
-          status?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "note_reports_note_id_fkey"
-            columns: ["note_id"]
-            isOneToOne: false
-            referencedRelation: "notes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "note_reports_note_id_fkey"
-            columns: ["note_id"]
-            isOneToOne: false
-            referencedRelation: "notes_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      note_reports_for_teacher: {
-        Row: {
-          admin_notes: string | null
-          appeal_date: string | null
-          appeal_text: string | null
-          created_at: string | null
-          description: string | null
-          id: string | null
-          note_id: string | null
-          reason: string | null
-          reviewed_at: string | null
-          status: string | null
-        }
-        Insert: {
-          admin_notes?: string | null
-          appeal_date?: string | null
-          appeal_text?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string | null
-          note_id?: string | null
-          reason?: string | null
-          reviewed_at?: string | null
-          status?: string | null
-        }
-        Update: {
-          admin_notes?: string | null
-          appeal_date?: string | null
-          appeal_text?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string | null
-          note_id?: string | null
-          reason?: string | null
-          reviewed_at?: string | null
-          status?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "note_reports_note_id_fkey"
-            columns: ["note_id"]
-            isOneToOne: false
-            referencedRelation: "notes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "note_reports_note_id_fkey"
-            columns: ["note_id"]
-            isOneToOne: false
-            referencedRelation: "notes_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      notes_public: {
-        Row: {
-          created_at: string | null
-          deleted_at: string | null
-          description: string | null
-          file_url: string | null
-          id: string | null
-          is_free: boolean | null
-          preview_image_url: string | null
-          price: number | null
-          school_name: string | null
-          subcategory_id: string | null
-          teacher_id: string | null
-          title: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          deleted_at?: string | null
-          description?: string | null
-          file_url?: never
-          id?: string | null
-          is_free?: boolean | null
-          preview_image_url?: string | null
-          price?: number | null
-          school_name?: string | null
-          subcategory_id?: string | null
-          teacher_id?: string | null
-          title?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          deleted_at?: string | null
-          description?: string | null
-          file_url?: never
-          id?: string | null
-          is_free?: boolean | null
-          preview_image_url?: string | null
-          price?: number | null
-          school_name?: string | null
-          subcategory_id?: string | null
-          teacher_id?: string | null
-          title?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notes_subcategory_id_fkey"
-            columns: ["subcategory_id"]
-            isOneToOne: false
-            referencedRelation: "subcategories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notes_teacher_id_fkey"
-            columns: ["teacher_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
+      adjust_cohere_usage: {
+        Args: { p_delta: number; p_key_uuid: string; p_quota_date?: string }
+        Returns: {
+          daily_after: number
+          daily_before: number
+          key_after: number
+          key_before: number
+          key_name: string
+        }[]
+      }
       cancel_student_request: {
         Args: { p_request_id: string }
-        Returns: boolean
-      }
-      cancel_student_request_by_token: {
-        Args: { p_request_token: string }
         Returns: boolean
       }
       create_app_bucket: {
@@ -1523,16 +1141,22 @@ export type Database = {
         Args: { p_request_id: string }
         Returns: {
           created_at: string
+          details: string | null
           document_name: string | null
-          document_type: string
-          document_url: string
+          document_type: string | null
+          document_url: string | null
           id: string
+          institution_name: string | null
+          method: string
           review_feedback: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
+          subjects_taught: string | null
           teacher_id: string
+          teaching_mode: string | null
           updated_at: string
+          years_experience: string | null
         }
         SetofOptions: {
           from: "*"
@@ -1549,16 +1173,6 @@ export type Database = {
       }
       get_free_note_file_url: { Args: { p_note_id: string }; Returns: string }
       get_my_note_file_url: { Args: { p_note_id: string }; Returns: string }
-      get_public_profile: {
-        Args: { _id: string }
-        Returns: {
-          avatar_url: string
-          full_name: string
-          id: string
-          is_verified: boolean
-          school_name: string
-        }[]
-      }
       get_student_request_notes: {
         Args: { p_request_db_ids: string[] }
         Returns: {
@@ -1591,43 +1205,6 @@ export type Database = {
           updated_at: string
         }[]
       }
-      get_student_requests_by_token: {
-        Args: { p_request_tokens: string[] }
-        Returns: {
-          contact_type: string
-          created_at: string
-          download_code: string
-          download_code_used_at: string
-          id: string
-          receipt_image_url: string
-          refund_screenshot_url: string
-          rejection_reason: string
-          request_id: string
-          request_token: string
-          status: string
-          student_contact: string
-          teacher_email: string
-          teacher_full_name: string
-          teacher_id: string
-          teacher_phone: string
-          total_amount: number
-          updated_at: string
-        }[]
-      }
-      get_teacher_outstanding_balance: {
-        Args: { p_teacher_id: string }
-        Returns: number
-      }
-      get_teacher_overdue_months: {
-        Args: { p_teacher_id: string }
-        Returns: {
-          amount: number
-          days_overdue: number
-          month: number
-          record_id: string
-          year: number
-        }[]
-      }
       get_user_role_by_email: {
         Args: { p_email: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1644,63 +1221,14 @@ export type Database = {
         Returns: Json
       }
       is_category_in_use: { Args: { category_id: string }; Returns: boolean }
-      is_client_blocked: {
-        Args: { p_fp_hash: string; p_ip_hash: string }
-        Returns: {
-          blocked: boolean
-          reason: string
-        }[]
-      }
       is_subcategory_in_use: {
         Args: { subcategory_id: string }
         Returns: boolean
       }
       is_valid_teacher: { Args: { teacher_uuid: string }; Returns: boolean }
-      list_protected_teachers: {
-        Args: never
-        Returns: {
-          teacher_id: string
-        }[]
-      }
-      list_public_profiles: {
-        Args: never
-        Returns: {
-          avatar_url: string
-          full_name: string
-          id: string
-          is_verified: boolean
-          school_name: string
-        }[]
-      }
-      log_activity: {
-        Args: {
-          p_action: string
-          p_category?: string
-          p_details?: Json
-          p_ip_address?: string
-          p_user_agent?: string
-          p_user_id: string
-        }
-        Returns: undefined
-      }
-      log_system_event: {
-        Args: {
-          p_level: string
-          p_message: string
-          p_metadata?: Json
-          p_source: string
-          p_stack?: string
-          p_url?: string
-        }
-        Returns: undefined
-      }
       pgp_armor_headers: {
         Args: { "": string }
         Returns: Record<string, unknown>[]
-      }
-      record_client_hit: {
-        Args: { p_action: string; p_fp_hash: string; p_ip_hash: string }
-        Returns: undefined
       }
       record_teacher_payment: {
         Args: {
@@ -1718,51 +1246,10 @@ export type Database = {
         Args: { p_reason: string; p_record_id: string }
         Returns: undefined
       }
+      reset_apilayer_api_track_counts: { Args: never; Returns: undefined }
       reset_user_cohere_key_counts: { Args: never; Returns: undefined }
       review_teacher_verification: {
         Args: { p_approve: boolean; p_feedback?: string; p_request_id: string }
-        Returns: {
-          created_at: string
-          document_name: string | null
-          document_type: string
-          document_url: string
-          id: string
-          review_feedback: string | null
-          reviewed_at: string | null
-          reviewed_by: string | null
-          status: string
-          teacher_id: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "teacher_verification_requests"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      submit_payment_proof: {
-        Args: {
-          p_month: number
-          p_proof_reference?: string
-          p_proof_url?: string
-          p_teacher_id: string
-          p_year: number
-        }
-        Returns: string
-      }
-      submit_teacher_verification: {
-        Args: {
-          p_document_name?: string
-          p_document_type?: string
-          p_document_url?: string
-          p_details?: string
-          p_institution_name?: string
-          p_method?: string
-          p_subjects_taught?: string
-          p_teaching_mode?: string
-          p_years_experience?: string
-        }
         Returns: {
           created_at: string
           details: string | null
@@ -1789,54 +1276,88 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      sys_activity_analytics: {
-        Args: { p_start?: string }
-        Returns: Json
+      session_at_aal2: { Args: never; Returns: boolean }
+      submit_payment_proof: {
+        Args: {
+          p_month: number
+          p_proof_reference?: string
+          p_proof_url?: string
+          p_teacher_id: string
+          p_year: number
+        }
+        Returns: string
       }
-      sys_activity_stats: { Args: never; Returns: Json }
-      sys_admin_check: { Args: never; Returns: undefined }
-      sys_ai_analytics: { Args: never; Returns: Json }
-      sys_ai_stats: { Args: never; Returns: Json }
-      sys_cron_jobs: { Args: never; Returns: Json }
-      sys_cron_overview: { Args: never; Returns: Json }
-      sys_db_overview: { Args: never; Returns: Json }
-      sys_db_performance: { Args: never; Returns: Json }
-      sys_error_analytics: {
-        Args: { p_start?: string }
-        Returns: Json
-      }
-      sys_error_stats: { Args: never; Returns: Json }
-      sys_function_analytics: {
-        Args: { p_start?: string }
-        Returns: Json
-      }
-      sys_index_stats: { Args: never; Returns: Json }
-      sys_inventory: { Args: never; Returns: Json }
-      sys_query_stats: { Args: never; Returns: Json }
-      sys_record_snapshot: { Args: never; Returns: undefined }
-      sys_security_overview: { Args: never; Returns: Json }
-      sys_storage_analytics: {
-        Args: { p_start?: string }
-        Returns: Json
-      }
-      sys_storage_stats: { Args: never; Returns: Json }
-      sys_table_stats: { Args: never; Returns: Json }
-      sys_timeline: {
-        Args: { p_service?: string; p_start?: string }
-        Returns: Json
-      }
-      sys_top_queries: { Args: never; Returns: Json }
-      sys_user_analytics: {
-        Args: { p_start?: string }
-        Returns: Json
-      }
-      sys_user_stats: { Args: never; Returns: Json }
-      validate_access_code: {
-        Args: { p_code: string }
-        Returns: {
-          teacher_id: string
-        }[]
-      }
+      submit_teacher_verification:
+        | {
+            Args: {
+              p_details?: string
+              p_document_name?: string
+              p_document_type?: string
+              p_document_url?: string
+              p_institution_name?: string
+              p_method?: string
+              p_subjects_taught?: string
+              p_teaching_mode?: string
+              p_years_experience?: string
+            }
+            Returns: {
+              created_at: string
+              details: string | null
+              document_name: string | null
+              document_type: string | null
+              document_url: string | null
+              id: string
+              institution_name: string | null
+              method: string
+              review_feedback: string | null
+              reviewed_at: string | null
+              reviewed_by: string | null
+              status: string
+              subjects_taught: string | null
+              teacher_id: string
+              teaching_mode: string | null
+              updated_at: string
+              years_experience: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "teacher_verification_requests"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_document_name?: string
+              p_document_type: string
+              p_document_url: string
+            }
+            Returns: {
+              created_at: string
+              details: string | null
+              document_name: string | null
+              document_type: string | null
+              document_url: string | null
+              id: string
+              institution_name: string | null
+              method: string
+              review_feedback: string | null
+              reviewed_at: string | null
+              reviewed_by: string | null
+              status: string
+              subjects_taught: string | null
+              teacher_id: string
+              teaching_mode: string | null
+              updated_at: string
+              years_experience: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "teacher_verification_requests"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       verify_teacher_payment: {
         Args: {
           p_notes?: string
@@ -1872,12 +1393,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1901,11 +1422,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1926,11 +1447,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1951,11 +1472,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1968,11 +1489,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

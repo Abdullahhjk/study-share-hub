@@ -65,13 +65,26 @@ Deno.serve(trackFn("admin-create-user", async (req) => {
 
     const userId = newUser.user.id;
 
-    const { error: profileError } = await adminClient.from("profiles").insert({
-      id: userId,
-      email,
-      full_name: full_name || "",
-    });
+    // The on_auth_user_created trigger (AFTER INSERT ON auth.users) has already
+    // created the profile row and a 'pending' role for this user, so both writes
+    // below have to be corrections rather than plain inserts — inserting again
+    // violates profiles_pkey and would leave the user stuck on 'pending'.
+    const { error: profileError } = await adminClient
+      .from("profiles")
+      .upsert(
+        { id: userId, email, full_name: full_name || "" },
+        { onConflict: "id" },
+      );
 
     if (profileError) throw new Error(`Failed to create profile: ${profileError.message}`);
+
+    const { error: clearPendingError } = await adminClient
+      .from("user_roles")
+      .delete()
+      .eq("user_id", userId)
+      .eq("role", "pending");
+
+    if (clearPendingError) throw new Error(`Failed to assign role: ${clearPendingError.message}`);
 
     const { error: roleError } = await adminClient.from("user_roles").insert({
       user_id: userId,

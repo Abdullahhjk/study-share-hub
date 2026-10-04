@@ -12,7 +12,19 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/sonner";
 
 import {
   Cpu,
@@ -34,6 +46,7 @@ import {
   AlertTriangle,
   KeyRound,
   Flame,
+  Pencil,
 } from "lucide-react";
 
 interface CohereApiKey {
@@ -46,6 +59,18 @@ interface CohereApiKey {
 interface DailyQuotaRow {
   quota_date: string;
   request_count: number;
+}
+
+/** Per-key monthly cap — mirrors chk_request_count on cohere_api_keys. */
+const KEY_MAX = 1000;
+/** A key is never edited down to 0, otherwise the UI reports it as "Unused". */
+const KEY_MIN = 1;
+/** Global daily cap enforced by consumeDailyQuota() in the cohere-agent function. */
+const DAILY_MAX = 130;
+
+/** Strips the COHERE_API_KEY_ prefix so tiles/tooltips show just the key number. */
+function keyLabel(apiKeyName: string): string {
+  return apiKeyName.match(/^COHERE_API_KEY_(.+)$/)?.[1] ?? apiKeyName;
 }
 
 function useCountdown(target: Date): string {
@@ -281,6 +306,11 @@ export default function CohereQuotaTab() {
   const [keySort, setKeySort] = useState<"usage" | "name" | "remaining">("usage");
   const [refreshing, setRefreshing] = useState(false);
 
+  const [editTarget, setEditTarget] = useState<CohereApiKey | null>(null);
+  const [editDelta, setEditDelta] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+
   function usageColor(pct: number) {
     if (pct >= 100) return "#dc2626";
     if (pct >= 80) return "#ea580c";
@@ -431,6 +461,87 @@ export default function CohereQuotaTab() {
   const usageTrendDown = usageTrend < 0;
   const isHealthy = healthScore >= 70;
   const isCritical = monthlyUsagePercent >= 80;
+
+  // The RPC edits the row for the database's CURRENT_DATE, which is UTC — match
+  // that here so the preview shows the same numbers the function will act on.
+  const quotaToday = new Date().toISOString().slice(0, 10);
+  const quotaTodayCount = dailyRows.find(r => r.quota_date === quotaToday)?.request_count ?? 0;
+
+  const editKeyBefore = editTarget?.request_count ?? 0;
+  const editDeltaNum = /^[+-]?\d+$/.test(editDelta.trim()) ? Number(editDelta.trim()) : null;
+
+  function validateEditDelta(): string | null {
+    const raw = editDelta.trim();
+    if (raw === "") return "Enter how many requests were used.";
+    if (editDeltaNum === null) return "Whole numbers only, e.g. 25 or -25.";
+    if (editDeltaNum === 0) return "Enter a value other than zero.";
+    if (editKeyBefore + editDeltaNum > KEY_MAX) return `Maximum for this key is +${KEY_MAX - editKeyBefore}.`;
+    if (editKeyBefore + editDeltaNum < KEY_MIN) return `Minimum for this key is -${editKeyBefore - KEY_MIN}, usage cannot reach zero.`;
+    if (quotaTodayCount + editDeltaNum < 0) return `Today's usage is ${quotaTodayCount}, so you can subtract at most ${quotaTodayCount}.`;
+    if (quotaTodayCount + editDeltaNum > DAILY_MAX) return `Today's usage is ${quotaTodayCount}, so you can add at most ${DAILY_MAX - quotaTodayCount}.`;
+    return null;
+  }
+
+  function openEditUsage(key: CohereApiKey) {
+    if (keyTooltipTimeout.current) {
+      clearTimeout(keyTooltipTimeout.current);
+      keyTooltipTimeout.current = null;
+    }
+    setKeyTooltip(null);
+    setKeyCopied(false);
+    setEditDelta("");
+    setEditError(null);
+    setEditTarget(key);
+  }
+
+  function nudgeEditDelta(by: number) {
+    const base = editDeltaNum ?? 0;
+    setEditDelta(String(base + by));
+    setEditError(null);
+  }
+
+  async function saveEditUsage() {
+    if (!editTarget) return;
+
+    const invalid = validateEditDelta();
+    if (invalid || editDeltaNum === null) {
+      setEditError(invalid ?? "Enter a whole number.");
+      return;
+    }
+
+    const target = editTarget;
+    const delta = editDeltaNum;
+    setSavingEdit(true);
+    setEditError(null);
+
+    const { data, error } = await supabase.rpc("adjust_cohere_usage", {
+      p_key_uuid: target.uuid,
+      p_delta: delta,
+    });
+
+    if (error) {
+      setEditError(error.message);
+      setSavingEdit(false);
+      return;
+    }
+
+    const result = Array.isArray(data) ? data[0] : null;
+    const keyAfter = result?.key_after ?? editKeyBefore + delta;
+    const dailyAfter = result?.daily_after ?? quotaTodayCount + delta;
+
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["cohere-api-keys"] }),
+      qc.invalidateQueries({ queryKey: ["cohere-daily-quota"] }),
+    ]);
+
+    setSavingEdit(false);
+    setEditTarget(null);
+    setEditDelta("");
+
+    toast.success(`Key #${keyLabel(target.api_key_name)} updated`, {
+      description: `${delta > 0 ? "+" : ""}${delta} requests — key now ${keyAfter.toLocaleString()}/${KEY_MAX.toLocaleString()}, today ${dailyAfter}/${DAILY_MAX}.`,
+    });
+  }
 
   return (
     <div className="space-y-6 mt-4 animate-fade-in">
@@ -872,9 +983,7 @@ export default function CohereQuotaTab() {
             <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-16 xl:grid-cols-20 gap-1 sm:gap-1.5">
               {sortedKeys.map((key) => {
                 const pct = (key.request_count / 1000) * 100;
-                const keyNumber =
-                  key.api_key_name.match(/^COHERE_API_KEY_(.+)$/)?.[1] ??
-                  key.api_key_name;
+                const keyNumber = keyLabel(key.api_key_name);
 
                 return (
                   <div
@@ -903,7 +1012,7 @@ export default function CohereQuotaTab() {
                       }, 200);
                     }}
                   >
-                    {keyNumber}
+                    {Number(keyNumber)}
                   </div>
                 );
               })}
@@ -937,9 +1046,7 @@ export default function CohereQuotaTab() {
             {keyTooltip && (() => {
               const pct = (keyTooltip.key.request_count / 1000) * 100;
               const remaining = Math.max(0, 1000 - keyTooltip.key.request_count);
-              const keyNumber =
-                keyTooltip.key.api_key_name.match(/^COHERE_API_KEY_(.+)$/)?.[1] ??
-                keyTooltip.key.api_key_name;
+              const keyNumber = keyLabel(keyTooltip.key.api_key_name);
 
               const tooltipWidth = 240;
               const margin = 12;
@@ -969,7 +1076,7 @@ export default function CohereQuotaTab() {
                 >
                   <div className="mb-2 rounded-xl border bg-popover px-4 py-3 shadow-xl text-xs space-y-2.5 w-60 backdrop-blur-sm">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-sm">Key #{keyNumber}</h3>
+                      <h3 className="font-bold text-sm">Key #{(Number(keyNumber))}</h3>
                       <Badge variant={getKeyStatusColor(keyTooltip.key.request_count) as "destructive" | "secondary" | "outline"} className="text-[10px]">
                         {getKeyStatus(keyTooltip.key.request_count)}
                       </Badge>
@@ -1028,6 +1135,14 @@ export default function CohereQuotaTab() {
                           </>
                         )}
                       </button>
+
+                      <button
+                        className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-all hover:bg-primary/10 active:scale-[0.98]"
+                        onClick={() => openEditUsage(keyTooltip.key)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit Usage
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1056,6 +1171,145 @@ export default function CohereQuotaTab() {
           </Card>
         )}
       </div>
+
+      {/* Edit Usage Dialog */}
+      <Dialog
+        open={!!editTarget}
+        onOpenChange={(open) => {
+          if (!open && !savingEdit) {
+            setEditTarget(null);
+            setEditDelta("");
+            setEditError(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-4 w-4 text-primary" />
+              Edit usage — Key #{editTarget ? keyLabel(editTarget.api_key_name) : ""}
+            </DialogTitle>
+            <DialogDescription>
+              How many requests were used for this key? A positive number adds to the counters, a
+              negative number subtracts from them. The same amount is applied to today&apos;s daily
+              quota.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void saveEditUsage();
+            }}
+            noValidate
+            className="space-y-3"
+          >
+            <div className="space-y-1.5 rounded-lg border bg-muted/30 p-3 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Key usage</span>
+                <span className="font-semibold tabular-nums">
+                  {editKeyBefore.toLocaleString()} / {KEY_MAX.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Today&apos;s quota</span>
+                <span className="font-semibold tabular-nums">
+                  {quotaTodayCount} / {DAILY_MAX}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="cohere-usage-delta">Requests used</Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="tabular-nums"
+                  onClick={() => nudgeEditDelta(-1)}
+                >
+                  −1
+                </Button>
+                <Input
+                  id="cohere-usage-delta"
+                  type="number"
+                  inputMode="numeric"
+                  step={1}
+                  value={editDelta}
+                  onChange={(e) => {
+                    setEditDelta(e.target.value);
+                    setEditError(null);
+                  }}
+                  placeholder="e.g. 25 or -25"
+                  autoFocus
+                  className="text-center font-semibold tabular-nums"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="tabular-nums"
+                  onClick={() => nudgeEditDelta(1)}
+                >
+                  +1
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Allowed: {-(editKeyBefore - KEY_MIN)} to +{KEY_MAX - editKeyBefore} for this key.
+              </p>
+            </div>
+
+            {editDeltaNum !== null && editDeltaNum !== 0 && !validateEditDelta() && (
+              <div className="space-y-1.5 rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Key usage</span>
+                  <span className="font-semibold tabular-nums">
+                    {editKeyBefore.toLocaleString()}
+                    <span className="mx-1 text-muted-foreground">
+                      → {Math.min(KEY_MAX, Math.max(KEY_MIN, editKeyBefore + editDeltaNum)).toLocaleString()}
+                    </span>
+                    / {KEY_MAX.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Today&apos;s quota</span>
+                  <span className="font-semibold tabular-nums">
+                    {quotaTodayCount}
+                    <span className="mx-1 text-muted-foreground">
+                      → {Math.max(0, Math.min(DAILY_MAX, quotaTodayCount + editDeltaNum))}
+                    </span>
+                    / {DAILY_MAX}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <p
+              className="h-4 text-xs text-destructive"
+              role={editError ? "alert" : undefined}
+            >
+              {editError ?? ""}
+            </p>
+
+            <DialogFooter className="grid grid-cols-2 gap-2">
+              <DialogClose asChild>
+                <Button type="button" variant="outline" disabled={savingEdit}>
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="submit" disabled={savingEdit || !!validateEditDelta()}>
+                {savingEdit ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1 inline-block" />
+                ) : (
+                  <Check className="h-4 w-4 mr-1 inline-block" />
+                )}
+                Apply
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -75,9 +75,9 @@ export function AccessibilitySection({
       </h3>
       <div className="rounded-xl border p-4 space-y-5">
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-muted-foreground">Adjust the text size across the interface.</p>
-            <Badge variant="secondary" className="text-xs">
+          <div className="flex items-center justify-between gap-3">
+            <p className="min-w-0 flex-1 text-xs text-muted-foreground">Adjust the text size across the interface.</p>
+            <Badge variant="secondary" className="shrink-0 text-xs">
               {FONT_SIZES.find((s) => s.value === fontSize)?.scale}
             </Badge>
           </div>
@@ -89,12 +89,13 @@ export function AccessibilitySection({
             step={1}
             className="w-full"
           />
-          <div className="flex justify-between mt-1.5">
+          <div className="mt-1.5 grid grid-cols-4 gap-1">
             {FONT_SIZES.map((s) => (
               <button
                 key={s.value}
+                type="button"
                 onClick={() => onFontSizeChange(s.value)}
-                className={`text-[10px] px-1 transition-colors ${fontSize === s.value
+                className={`min-w-0 truncate rounded px-1 text-[10px] transition-colors ${fontSize === s.value
                   ? "text-primary font-semibold"
                   : "text-muted-foreground"
                   }`}
@@ -106,8 +107,8 @@ export function AccessibilitySection({
         </div>
 
         <div className="space-y-4 pt-2 border-t">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
               <Label htmlFor="high-contrast" className="text-sm font-medium">
                 High Contrast Mode
               </Label>
@@ -117,11 +118,12 @@ export function AccessibilitySection({
               id="high-contrast"
               checked={highContrast}
               onCheckedChange={onHighContrastChange}
+              className="shrink-0"
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
               <Label htmlFor="dyslexia-font" className="text-sm font-medium">
                 Dyslexia-friendly Font
               </Label>
@@ -131,10 +133,11 @@ export function AccessibilitySection({
               id="dyslexia-font"
               checked={dyslexiaFriendly}
               onCheckedChange={onDyslexiaFriendlyChange}
+              className="shrink-0"
             />
           </div>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
               <Label htmlFor="colorblind-mode" className="text-sm font-medium">
                 Colorblind Mode
               </Label>
@@ -148,6 +151,7 @@ export function AccessibilitySection({
               id="colorblind-mode"
               checked={colorBlindMode}
               onCheckedChange={onColorBlindModeChange}
+              className="shrink-0"
             />
           </div>
 
@@ -171,13 +175,13 @@ export function AccessibilitySection({
                         <RadioGroupItem
                           value={type.value}
                           id={type.value}
-                          className="h-3.5 w-3.5"
+                          className="h-3.5 w-3.5 shrink-0"
                         />
                         <Label
                           htmlFor={type.value}
-                          className="text-xs font-normal cursor-pointer flex items-baseline gap-1.5"
+                          className="flex min-w-0 flex-1 cursor-pointer flex-wrap items-baseline gap-x-1.5 text-xs font-normal"
                         >
-                          <span>{type.name}</span>
+                          <span className="truncate">{type.name}</span>
                           <span className="text-[10px] text-muted-foreground">
                             {type.desc}
                           </span>
