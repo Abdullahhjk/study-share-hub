@@ -10,6 +10,20 @@ export default defineConfig(({ mode }) => ({
 		port: 8080,
 	},
 
+	build: {
+		sourcemap: false,
+		minify: "oxc",
+	},
+
+	css: {
+		modules: {
+			generateScopedName:
+				mode === "production"
+					? "[hash:base64:5]"
+					: "[name]__[local]__[hash:base64:5]",
+		},
+	},
+
 	plugins: [
 		react(),
 		// mode === "development" && componentTagger(),
